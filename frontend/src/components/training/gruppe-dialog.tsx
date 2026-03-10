@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -57,29 +57,33 @@ export function GruppeDialog({
   const [formAktiv, setFormAktiv] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (open) {
-      if (gruppe) {
-        setFormName(gruppe.name)
-        setFormBeschreibung(gruppe.beschreibung ?? "")
-        setFormAbteilungId(gruppe.abteilung_id.toString())
-        setFormTrainerName(gruppe.trainer_name)
-        setFormWochentag(gruppe.wochentag)
-        setFormUhrzeit(gruppe.uhrzeit)
-        setFormMaxTeilnehmer(gruppe.max_teilnehmer.toString())
-        setFormAktiv(gruppe.aktiv)
-      } else {
-        setFormName("")
-        setFormBeschreibung("")
-        setFormAbteilungId("")
-        setFormTrainerName("")
-        setFormWochentag("")
-        setFormUhrzeit("")
-        setFormMaxTeilnehmer("")
-        setFormAktiv(true)
-      }
+  const resetForm = useCallback(() => {
+    if (gruppe) {
+      setFormName(gruppe.name)
+      setFormBeschreibung(gruppe.beschreibung ?? "")
+      setFormAbteilungId(gruppe.abteilung_id.toString())
+      setFormTrainerName(gruppe.trainer_name)
+      setFormWochentag(gruppe.wochentag)
+      setFormUhrzeit(gruppe.uhrzeit)
+      setFormMaxTeilnehmer(gruppe.max_teilnehmer.toString())
+      setFormAktiv(gruppe.aktiv)
+    } else {
+      setFormName("")
+      setFormBeschreibung("")
+      setFormAbteilungId("")
+      setFormTrainerName("")
+      setFormWochentag("")
+      setFormUhrzeit("")
+      setFormMaxTeilnehmer("")
+      setFormAktiv(true)
     }
-  }, [open, gruppe])
+  }, [gruppe])
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (open) resetForm()
+  }, [open, resetForm])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleSave() {
     const payload = {

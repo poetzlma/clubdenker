@@ -206,9 +206,11 @@ export function EuerReport() {
     setLoading(false)
   }, [year, sphare])
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    fetchReport()
+    void fetchReport()
   }, [fetchReport])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (loading || !report) {
     return (

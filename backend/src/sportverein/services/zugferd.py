@@ -297,21 +297,21 @@ class ZugferdService:
                         "tax": Decimal("0"),
                         "exemption_reason": pos.steuerbefreiungsgrund,
                     }
-                tax_groups[rate]["basis"] += pos.gesamtpreis_netto
-                tax_groups[rate]["tax"] += pos.gesamtpreis_steuer
+                tax_groups[rate]["basis"] += Decimal(str(pos.gesamtpreis_netto or 0))
+                tax_groups[rate]["tax"] += Decimal(str(pos.gesamtpreis_steuer or 0))
 
             for rate in sorted(tax_groups.keys()):
                 group = tax_groups[rate]
                 tax_el = etree.SubElement(settlement, _ram("ApplicableTradeTax"))
                 etree.SubElement(tax_el, _ram("CalculatedAmount")).text = _fmt_amount(
-                    group["tax"]
+                    Decimal(str(group["tax"]))
                 )
                 etree.SubElement(tax_el, _ram("TypeCode")).text = "VAT"
                 if rate == 0 and group.get("exemption_reason"):
                     etree.SubElement(tax_el, _ram("ExemptionReason")).text = str(
                         group["exemption_reason"]
                     )
-                etree.SubElement(tax_el, _ram("BasisAmount")).text = _fmt_amount(group["basis"])
+                etree.SubElement(tax_el, _ram("BasisAmount")).text = _fmt_amount(Decimal(str(group["basis"])))
                 etree.SubElement(tax_el, _ram("CategoryCode")).text = _tax_category_code(rate)
                 etree.SubElement(tax_el, _ram("RateApplicablePercent")).text = _fmt_amount(rate)
         else:
