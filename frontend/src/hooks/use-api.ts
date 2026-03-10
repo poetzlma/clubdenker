@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import api from "@/lib/api"
 
 interface UseApiState<T> {
@@ -13,13 +13,16 @@ export function useApi<T>(path: string | null) {
     loading: !!path,
     error: null,
   })
+  const currentPath = useRef(path)
+  currentPath.current = path
 
   const fetchData = useCallback(async () => {
-    if (!path) return
+    const activePath = currentPath.current
+    if (!activePath) return
 
     setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const data = await api.get<T>(path)
+      const data = await api.get<T>(activePath)
       setState({ data, loading: false, error: null })
     } catch (err) {
       setState({
@@ -28,11 +31,12 @@ export function useApi<T>(path: string | null) {
         error: err instanceof Error ? err.message : "An error occurred",
       })
     }
-  }, [path])
+  }, [])
 
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path])
 
   return { ...state, refetch: fetchData }
 }

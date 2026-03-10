@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import enum
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel
 from sqlalchemy import func, select, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,15 +77,11 @@ class MitgliederService:
     # -- helpers -------------------------------------------------------------
 
     async def _next_mitgliedsnummer(self) -> str:
-        result = await self.session.execute(
-            select(func.count()).select_from(Mitglied)
-        )
-        count = result.scalar_one()
         # Find the max existing number to avoid collisions
         result = await self.session.execute(
             select(Mitglied.mitgliedsnummer).order_by(Mitglied.mitgliedsnummer.desc()).limit(1)
         )
-        last = result.scalar_one_or_none()
+        last: str | None = result.scalar_one_or_none()
         if last is not None:
             # Extract numeric part from "M-XXXX"
             num = int(last.split("-")[1])

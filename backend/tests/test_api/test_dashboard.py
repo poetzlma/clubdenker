@@ -21,7 +21,7 @@ async def test_stats(client):
 
 async def test_stats_with_members(client):
     # Create a member first so counts are non-zero check
-    await client.post("/api/mitglieder/", json={
+    await client.post("/api/mitglieder", json={
         "vorname": "Stats",
         "nachname": "Test",
         "email": "stats@example.de",

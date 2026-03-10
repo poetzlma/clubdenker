@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,6 @@ from sportverein.models.mitglied import (
     Abteilung,
     BeitragKategorie,
     Mitglied,
-    MitgliedAbteilung,
     MitgliedStatus,
 )
 from sportverein.services.mitglieder import (

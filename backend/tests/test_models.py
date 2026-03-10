@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 
 import pytest

@@ -70,7 +70,7 @@ async def list_bookings(
     session: AsyncSession = Depends(get_db_session),
 ) -> BuchungListResponse:
     svc = FinanzenService(session)
-    filters = {}
+    filters: dict[str, str | date | int] = {}
     if sphare:
         filters["sphare"] = sphare
     if date_from:
@@ -145,7 +145,7 @@ async def list_invoices(
     session: AsyncSession = Depends(get_db_session),
 ) -> RechnungListResponse:
     svc = FinanzenService(session)
-    filters = {}
+    filters: dict[str, str | int] = {}
     if rechnung_status:
         filters["status"] = rechnung_status
     if mitglied_id:

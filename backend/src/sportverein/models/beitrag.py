@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, func
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sportverein.models.base import Base, TimestampMixin
-from sportverein.models.mitglied import BeitragKategorie, Mitglied
+from sportverein.models.mitglied import Mitglied
 
-import enum
-from sqlalchemy import Enum
 
 
 class BeitragsKategorie(TimestampMixin, Base):

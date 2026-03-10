@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any
 
 from sportverein.mcp.server import mcp
 from sportverein.mcp.session import get_mcp_session

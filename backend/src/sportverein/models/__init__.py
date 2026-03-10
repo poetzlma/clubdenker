@@ -24,8 +24,6 @@ from sportverein.models.kommunikation import (
     NachrichtEmpfaenger,
     NachrichtTyp,
 )
-from sportverein.auth.models import AdminUser, ApiToken
-
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -47,6 +45,12 @@ __all__ = [
     "NachrichtEmpfaenger",
     "NachrichtTyp",
     "EmpfaengerStatus",
-    "AdminUser",
-    "ApiToken",
 ]
+
+
+def __getattr__(name: str):
+    """Lazy import auth models to avoid circular imports."""
+    if name in ("AdminUser", "ApiToken"):
+        from sportverein.auth.models import AdminUser, ApiToken
+        return {"AdminUser": AdminUser, "ApiToken": ApiToken}[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

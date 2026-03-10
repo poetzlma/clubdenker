@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,7 +69,7 @@ async def list_departments(
     return [AbteilungResponse.model_validate(d) for d in departments]
 
 
-@router.get("/", response_model=MitgliedListResponse)
+@router.get("", response_model=MitgliedListResponse)
 async def list_members(
     name: str | None = None,
     member_status: MitgliedStatus | None = Query(None, alias="status"),
@@ -76,7 +78,7 @@ async def list_members(
     page: int = 1,
     page_size: int = 20,
     sort_by: str = "nachname",
-    sort_order: str = "asc",
+    sort_order: Literal["asc", "desc"] = "asc",
     _token: ApiToken = Depends(get_current_token),
     session: AsyncSession = Depends(get_db_session),
 ) -> MitgliedListResponse:
@@ -100,7 +102,7 @@ async def list_members(
     )
 
 
-@router.post("/", response_model=MitgliedResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=MitgliedResponse, status_code=status.HTTP_201_CREATED)
 async def create_member(
     body: MitgliedCreate,
     _token: ApiToken = Depends(get_current_token),
@@ -113,8 +115,9 @@ async def create_member(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     # Re-fetch with eager-loaded relationships
-    member = await svc.get_member(member.id)
-    return _member_to_response(member)
+    refreshed = await svc.get_member(member.id)
+    assert refreshed is not None  # just created, must exist
+    return _member_to_response(refreshed)
 
 
 @router.get("/{member_id}", response_model=MitgliedResponse)
@@ -139,13 +142,14 @@ async def update_member(
 ) -> MitgliedResponse:
     svc = MitgliederService(session)
     try:
-        member = await svc.update_member(member_id, body)
+        await svc.update_member(member_id, body)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
     # Re-fetch with abteilungen loaded
-    member = await svc.get_member(member_id)
-    return _member_to_response(member)
+    refreshed = await svc.get_member(member_id)
+    assert refreshed is not None  # just updated, must exist
+    return _member_to_response(refreshed)
 
 
 @router.post("/{member_id}/kuendigen", response_model=MitgliedResponse)
@@ -158,12 +162,13 @@ async def cancel_membership(
     svc = MitgliederService(session)
     austrittsdatum = body.austrittsdatum if body else None
     try:
-        member = await svc.cancel_member(member_id, austrittsdatum=austrittsdatum)
+        await svc.cancel_member(member_id, austrittsdatum=austrittsdatum)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
-    member = await svc.get_member(member_id)
-    return _member_to_response(member)
+    refreshed = await svc.get_member(member_id)
+    assert refreshed is not None  # just cancelled, must exist
+    return _member_to_response(refreshed)
 
 
 @router.post("/{member_id}/abteilungen/{abteilung_id}", status_code=status.HTTP_201_CREATED)

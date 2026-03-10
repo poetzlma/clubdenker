@@ -7,6 +7,7 @@ from typing import Any
 
 from sportverein.mcp.server import mcp
 from sportverein.mcp.session import get_mcp_session
+from sportverein.models.mitglied import BeitragKategorie, MitgliedStatus
 from sportverein.services.mitglieder import (
     MitgliedCreate,
     MitgliedFilter,
@@ -62,7 +63,7 @@ async def mitglieder_suchen(
         svc = MitgliederService(session)
         filters = MitgliedFilter(
             name=name,
-            status=status,
+            status=MitgliedStatus(status) if status else None,
             abteilung_id=abteilung_id,
             page=page,
             page_size=page_size,
@@ -115,8 +116,8 @@ async def mitglied_anlegen(
             plz=plz,
             ort=ort,
             eintrittsdatum=date.fromisoformat(eintrittsdatum) if eintrittsdatum else None,
-            status=status,
-            beitragskategorie=beitragskategorie,
+            status=MitgliedStatus(status),
+            beitragskategorie=BeitragKategorie(beitragskategorie),
             notizen=notizen,
         )
         member = await svc.create_member(data)

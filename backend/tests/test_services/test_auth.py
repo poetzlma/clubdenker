@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
-from sportverein.auth.models import AdminUser, ApiToken
 from sportverein.auth.service import AuthService
 
 

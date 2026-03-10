@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sportverein.api.schemas import ActivityItem, DashboardStats, RecentActivityResponse
 from sportverein.auth.dependencies import get_current_token, get_db_session
 from sportverein.auth.models import ApiToken
+from sportverein.services.finanzen import FinanzenService
 from sportverein.services.mitglieder import MitgliederService
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -20,12 +21,18 @@ async def get_stats(
 ) -> DashboardStats:
     svc = MitgliederService(session)
     stats = await svc.get_member_stats()
+    fin_svc = FinanzenService(session)
+    total_balance = await fin_svc.get_total_balance()
+    by_sphere = await fin_svc.get_balance_by_sphere()
     return DashboardStats(
         total_active=stats["total_active"],
         total_passive=stats["total_passive"],
         new_this_month=stats["new_this_month"],
         by_department=stats["by_department"],
-        financial_summary={},
+        financial_summary={
+            "total_balance": float(total_balance),
+            "by_sphere": {k: float(v) for k, v in by_sphere.items()},
+        },
     )
 
 

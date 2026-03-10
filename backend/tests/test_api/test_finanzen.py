@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sportverein.models.finanzen import Buchung, Rechnung, RechnungStatus, Sphare
+from sportverein.models.finanzen import Rechnung, RechnungStatus
 from sportverein.models.mitglied import Mitglied, MitgliedStatus, BeitragKategorie
 
 

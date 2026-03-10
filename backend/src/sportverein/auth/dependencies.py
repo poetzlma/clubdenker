@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sportverein.db.session import get_session
+
+if TYPE_CHECKING:
+    from sportverein.auth.models import ApiToken
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -24,7 +28,6 @@ async def get_current_token(
 
     Raises 401 if the token is missing, malformed, or invalid.
     """
-    from sportverein.auth.models import ApiToken
     from sportverein.auth.service import AuthService
 
     if not authorization.startswith("Bearer "):

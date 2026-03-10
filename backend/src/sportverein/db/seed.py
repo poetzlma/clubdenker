@@ -8,7 +8,7 @@ import random
 from datetime import date, timedelta
 from decimal import Decimal
 
-from passlib.hash import bcrypt
+import bcrypt as _bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from sportverein.config import settings
@@ -179,7 +179,7 @@ async def seed() -> None:
         await session.flush()
 
         # --- AdminUser ---
-        hashed_pw = bcrypt.hash("admin123")
+        hashed_pw = _bcrypt.hashpw("admin123".encode(), _bcrypt.gensalt()).decode()
         admin = AdminUser(
             email="admin@sportverein.de",
             hashed_password=hashed_pw,
@@ -203,11 +203,11 @@ async def seed() -> None:
 
         await session.commit()
         print("Seed completed successfully!")
-        print(f"  - 4 departments")
-        print(f"  - 5 fee categories")
-        print(f"  - 50 members")
-        print(f"  - 20 SEPA mandates")
-        print(f"  - 1 admin user (admin@sportverein.de / admin123)")
+        print("  - 4 departments")
+        print("  - 5 fee categories")
+        print("  - 50 members")
+        print("  - 20 SEPA mandates")
+        print("  - 1 admin user (admin@sportverein.de / admin123)")
         print(f"  - 1 API token (dev-token: {token_value})")
 
     await engine.dispose()

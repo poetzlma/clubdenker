@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -11,7 +10,6 @@ from sportverein.models.base import Base
 import sportverein.models  # noqa: F401
 
 from sportverein.auth.dependencies import get_current_token, get_db_session
-from sportverein.auth.models import ApiToken
 from sportverein.auth.service import AuthService
 from sportverein.main import app
 

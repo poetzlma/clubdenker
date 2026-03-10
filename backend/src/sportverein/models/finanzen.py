@@ -4,7 +4,7 @@ import enum
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, Enum, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Date, Enum, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sportverein.models.base import Base

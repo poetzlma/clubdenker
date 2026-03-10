@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 import pytest
 
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.finanzen import (
-    Buchung,
-    Rechnung,
     RechnungStatus,
     Sphare,
-    Spendenbescheinigung,
     Zahlungsart,
 )
 from sportverein.models.mitglied import Mitglied, MitgliedStatus
@@ -261,12 +258,12 @@ class TestPaymentAndStatus:
         assert rechnung.status == RechnungStatus.offen
 
         # Partial payment
-        z1 = await svc.record_payment(rechnung.id, Decimal("60.00"), "ueberweisung")
+        await svc.record_payment(rechnung.id, Decimal("60.00"), "ueberweisung")
         await session.refresh(rechnung)
         assert rechnung.status == RechnungStatus.offen
 
         # Full payment
-        z2 = await svc.record_payment(rechnung.id, Decimal("40.00"), "ueberweisung")
+        await svc.record_payment(rechnung.id, Decimal("40.00"), "ueberweisung")
         await session.refresh(rechnung)
         assert rechnung.status == RechnungStatus.bezahlt
 
