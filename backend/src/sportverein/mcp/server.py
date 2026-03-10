@@ -1,0 +1,9 @@
+"""FastMCP server instance for Sportverein."""
+
+from fastmcp import FastMCP
+
+mcp = FastMCP("Sportverein", instructions="MCP-Server für Sportvereins-Verwaltung")
+
+# Import tool and resource registrations so they are executed at import time.
+import sportverein.mcp.tools_mitglieder  # noqa: F401, E402
+import sportverein.mcp.resources  # noqa: F401, E402
