@@ -1,0 +1,16 @@
+pyproject.toml
+src/sportverein/__init__.py
+src/sportverein/config.py
+src/sportverein/main.py
+src/sportverein.egg-info/PKG-INFO
+src/sportverein.egg-info/SOURCES.txt
+src/sportverein.egg-info/dependency_links.txt
+src/sportverein.egg-info/requires.txt
+src/sportverein.egg-info/top_level.txt
+src/sportverein/api/__init__.py
+src/sportverein/auth/__init__.py
+src/sportverein/db/__init__.py
+src/sportverein/db/session.py
+src/sportverein/mcp/__init__.py
+src/sportverein/models/__init__.py
+src/sportverein/services/__init__.py

@@ -1,0 +1,17 @@
+fastmcp
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+aiosqlite
+alembic
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+httpx
+
+[dev]
+pytest
+pytest-asyncio
+mypy
+ruff
+httpx

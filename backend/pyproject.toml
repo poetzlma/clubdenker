@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sportverein"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp",
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy[asyncio]",
+    "aiosqlite",
+    "alembic",
+    "pydantic-settings",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "mypy",
+    "ruff",
+    "httpx",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
