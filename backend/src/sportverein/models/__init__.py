@@ -11,6 +11,7 @@ from sportverein.models.mitglied import (
 from sportverein.models.beitrag import BeitragsKategorie, SepaMandat
 from sportverein.models.finanzen import (
     Buchung,
+    Kostenstelle,
     Rechnung,
     RechnungStatus,
     Sphare,
@@ -24,6 +25,9 @@ from sportverein.models.kommunikation import (
     NachrichtEmpfaenger,
     NachrichtTyp,
 )
+from sportverein.models.audit import AuditLog
+from sportverein.models.ehrenamt import Aufwandsentschaedigung, AufwandTyp
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -35,6 +39,7 @@ __all__ = [
     "BeitragsKategorie",
     "SepaMandat",
     "Buchung",
+    "Kostenstelle",
     "Rechnung",
     "RechnungStatus",
     "Sphare",
@@ -45,6 +50,9 @@ __all__ = [
     "NachrichtEmpfaenger",
     "NachrichtTyp",
     "EmpfaengerStatus",
+    "AuditLog",
+    "Aufwandsentschaedigung",
+    "AufwandTyp",
 ]
 
 

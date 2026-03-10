@@ -5,10 +5,16 @@ from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from sportverein.models.beitrag import BeitragsKategorie
 from sportverein.models.finanzen import Rechnung, RechnungStatus
-from sportverein.models.mitglied import BeitragKategorie, Mitglied, MitgliedStatus
+from sportverein.models.mitglied import (
+    BeitragKategorie,
+    Mitglied,
+    MitgliedAbteilung,
+    MitgliedStatus,
+)
 
 
 # Default annual rates per category (used when no DB row exists)
@@ -159,6 +165,99 @@ class BeitraegeService:
             invoices.append(rechnung)
 
         return invoices
+
+    async def calculate_combined_fee(
+        self, member_id: int, billing_year: int
+    ) -> dict:
+        """Calculate combined fee with discounts.
+
+        Formula: Grundbeitrag + Sum(Spartenbeitraege) * Rabattfaktor
+        Discounts:
+          - Jugend: 50% off base
+          - Multi-department: 10% off each additional department beyond first
+          - Familie: Members at same address get 20% off from 2nd member onwards
+        """
+        result = await self.session.execute(
+            select(Mitglied)
+            .where(Mitglied.id == member_id)
+            .options(
+                selectinload(Mitglied.abteilungen).selectinload(MitgliedAbteilung.abteilung)
+            )
+        )
+        member = result.scalar_one_or_none()
+        if member is None:
+            raise ValueError(f"Member {member_id} not found")
+
+        base_fee = await self.get_category_rate(member.beitragskategorie)
+        base_fee = self.calculate_prorata(base_fee, member.eintrittsdatum, billing_year)
+
+        discounts: list[dict] = []
+        department_fees: list[dict] = []
+
+        # Jugend discount: 50% off base
+        if member.beitragskategorie == BeitragKategorie.jugend:
+            discount_amount = base_fee * Decimal("0.50")
+            discounts.append({
+                "type": "jugend",
+                "description": "Jugendrabatt 50%",
+                "amount": discount_amount,
+            })
+
+        # Department fees and multi-department discount
+        dept_count = len(member.abteilungen) if member.abteilungen else 0
+        # Each department has a notional fee of 0 (included in base), but
+        # multi-department discount applies to base
+        for idx, ma in enumerate(member.abteilungen or []):
+            dept_name = ma.abteilung.name if ma.abteilung else str(ma.abteilung_id)
+            dept_fee = Decimal("0.00")  # included in base
+            department_fees.append({
+                "abteilung": dept_name,
+                "fee": dept_fee,
+            })
+
+        if dept_count > 1:
+            additional = dept_count - 1
+            discount_amount = base_fee * Decimal("0.10") * Decimal(str(additional))
+            discounts.append({
+                "type": "multi_department",
+                "description": f"Mehrspartenrabatt ({additional} weitere Abteilungen, je 10%)",
+                "amount": discount_amount,
+            })
+
+        # Familie discount: members at same address get 20% off from 2nd member
+        if member.strasse and member.plz and member.ort:
+            family_result = await self.session.execute(
+                select(Mitglied.id)
+                .where(
+                    Mitglied.strasse == member.strasse,
+                    Mitglied.plz == member.plz,
+                    Mitglied.ort == member.ort,
+                    Mitglied.status == MitgliedStatus.aktiv,
+                )
+                .order_by(Mitglied.eintrittsdatum.asc())
+            )
+            family_ids = [row[0] for row in family_result.all()]
+            if len(family_ids) > 1 and member.id != family_ids[0]:
+                discount_amount = base_fee * Decimal("0.20")
+                discounts.append({
+                    "type": "familie",
+                    "description": "Familienrabatt 20% (ab 2. Mitglied gleiche Adresse)",
+                    "amount": discount_amount,
+                })
+
+        total_discounts = sum(d["amount"] for d in discounts)
+        total = max(base_fee - total_discounts, Decimal("0.00"))
+
+        return {
+            "member_id": member.id,
+            "name": f"{member.vorname} {member.nachname}",
+            "base_fee": base_fee,
+            "department_fees": department_fees,
+            "discounts": [
+                {**d, "amount": float(d["amount"])} for d in discounts
+            ],
+            "total": total,
+        }
 
     async def get_dunning_candidates(self) -> list[dict]:
         """Members with overdue invoices, grouped by dunning level.

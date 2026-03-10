@@ -8,6 +8,7 @@ from decimal import Decimal
 from sportverein.mcp.server import mcp
 from sportverein.mcp.session import get_mcp_session
 from sportverein.services.beitraege import BeitraegeService
+from sportverein.services.ehrenamt import EhrenamtService
 from sportverein.services.finanzen import FinanzenService
 
 
@@ -193,3 +194,67 @@ async def buchung_anlegen(
             "sphare": buchung.sphare.value,
             "mitglied_id": buchung.mitglied_id,
         }
+
+
+@mcp.tool(description="Budget einer Kostenstelle prüfen. Zeigt Budget, Ausgaben und verbleibendes Budget.")
+async def budget_pruefen(kostenstelle_id: int) -> dict:
+    async with get_mcp_session() as session:
+        svc = FinanzenService(session)
+        try:
+            status = await svc.get_budget_status(kostenstelle_id)
+        except ValueError as exc:
+            return {"error": str(exc)}
+        await session.commit()
+        return {
+            "kostenstelle_id": status["kostenstelle_id"],
+            "name": status["name"],
+            "budget": float(status["budget"]),
+            "spent": float(status["spent"]),
+            "remaining": float(status["remaining"]),
+        }
+
+
+@mcp.tool(description="Aufwandsentschädigung: Freibeträge prüfen und verwalten (§3 Nr.26/26a EStG).")
+async def aufwandsentschaedigung(
+    member_id: int,
+    year: int,
+    betrag: float | None = None,
+    typ: str | None = None,
+    beschreibung: str | None = None,
+    datum: str | None = None,
+) -> dict:
+    """If betrag/typ/beschreibung provided: create new entry.
+    Otherwise: check current limits."""
+    async with get_mcp_session() as session:
+        svc = EhrenamtService(session)
+        if betrag is not None and typ is not None and beschreibung is not None:
+            entry = await svc.create_compensation({
+                "mitglied_id": member_id,
+                "betrag": Decimal(str(betrag)),
+                "datum": date.fromisoformat(datum) if datum else date.today(),
+                "typ": typ,
+                "beschreibung": beschreibung,
+            })
+            limits = await svc.check_limits(member_id, year)
+            await session.commit()
+            return {
+                "created": {
+                    "id": entry.id,
+                    "betrag": float(entry.betrag),
+                    "typ": entry.typ.value,
+                    "datum": entry.datum.isoformat(),
+                },
+                "limits": {
+                    k: {kk: float(vv) if isinstance(vv, Decimal) else vv for kk, vv in v.items()}
+                    for k, v in limits.items()
+                },
+            }
+        else:
+            limits = await svc.check_limits(member_id, year)
+            await session.commit()
+            return {
+                "limits": {
+                    k: {kk: float(vv) if isinstance(vv, Decimal) else vv for kk, vv in v.items()}
+                    for k, v in limits.items()
+                },
+            }

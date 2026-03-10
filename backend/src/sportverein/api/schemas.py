@@ -131,6 +131,54 @@ class RecentActivityResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Audit schemas
+# ---------------------------------------------------------------------------
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    timestamp: datetime
+    user_id: int | None = None
+    action: str
+    entity_type: str
+    entity_id: int | None = None
+    details: str | None = None
+    ip_address: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class AuditLogListResponse(BaseModel):
+    items: list[AuditLogResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+# ---------------------------------------------------------------------------
+# DSGVO schemas
+# ---------------------------------------------------------------------------
+
+
+class EinwilligungRequest(BaseModel):
+    consent: bool
+
+
+class DsgvoAuskunftResponse(BaseModel):
+    personal_data: dict[str, Any]
+    departments: list[dict[str, Any]]
+    invoices: list[dict[str, Any]]
+    payments: list[dict[str, Any]]
+    sepa_mandates: list[dict[str, Any]]
+    audit_log: list[dict[str, Any]]
+
+
+# ---------------------------------------------------------------------------
+# Finance schemas
+# ---------------------------------------------------------------------------
+
+
 class BuchungCreate(BaseModel):
     buchungsdatum: date
     betrag: float

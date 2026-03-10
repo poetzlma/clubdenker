@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sportverein.api.schemas import ActivityItem, DashboardStats, RecentActivityResponse
 from sportverein.auth.dependencies import get_current_token, get_db_session
 from sportverein.auth.models import ApiToken
+from sportverein.services.audit import AuditService
 from sportverein.services.finanzen import FinanzenService
 from sportverein.services.mitglieder import MitgliederService
 
@@ -39,12 +40,20 @@ async def get_stats(
 @router.get("/recent-activity", response_model=RecentActivityResponse)
 async def get_recent_activity(
     _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
 ) -> RecentActivityResponse:
-    # Placeholder — will be wired up when activity tracking is implemented.
-    return RecentActivityResponse(items=[
-        ActivityItem(
-            type="placeholder",
-            description="Activity tracking coming soon",
-            timestamp="2026-01-01T00:00:00Z",
-        ),
-    ])
+    audit_svc = AuditService(session)
+    logs = await audit_svc.get_recent(limit=20)
+    if not logs:
+        return RecentActivityResponse(items=[])
+    items = []
+    for log in logs:
+        items.append(
+            ActivityItem(
+                type=log.action,
+                description=f"{log.action} {log.entity_type}"
+                + (f" #{log.entity_id}" if log.entity_id else ""),
+                timestamp=log.timestamp.isoformat() if log.timestamp else "",
+            )
+        )
+    return RecentActivityResponse(items=items)

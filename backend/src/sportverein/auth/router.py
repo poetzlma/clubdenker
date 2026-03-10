@@ -13,6 +13,7 @@ from sportverein.api.schemas import (
     TokenCreateResponse,
     TokenResponse,
 )
+from sportverein.api.audit_helper import log_audit
 from sportverein.auth.dependencies import get_current_token, get_db_session
 from sportverein.auth.models import ApiToken
 from sportverein.auth.service import AuthService
@@ -34,6 +35,13 @@ async def login(
         )
     plain_token, _token_record = await auth.create_token(
         admin_user_id=admin.id, name="login-token"
+    )
+    await log_audit(
+        session,
+        user_id=admin.id,
+        action="login",
+        entity_type="admin_user",
+        entity_id=admin.id,
     )
     await session.commit()
     return LoginResponse(

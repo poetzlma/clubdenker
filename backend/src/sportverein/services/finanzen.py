@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.finanzen import (
     Buchung,
+    Kostenstelle,
     Rechnung,
     RechnungStatus,
     Sphare,
@@ -353,6 +354,41 @@ class FinanzenService:
             ET.SubElement(rmt_inf, "Ustrd").text = rechnung.beschreibung
 
         return ET.tostring(root, encoding="unicode", xml_declaration=True)
+
+    # -- Cost centers --------------------------------------------------------
+
+    async def get_cost_centers(self) -> list[Kostenstelle]:
+        """List all cost centers."""
+        result = await self.session.execute(
+            select(Kostenstelle).order_by(Kostenstelle.name)
+        )
+        return list(result.scalars().all())
+
+    async def get_budget_status(self, kostenstelle_id: int) -> dict:
+        """Get budget status for a cost center."""
+        result = await self.session.execute(
+            select(Kostenstelle).where(Kostenstelle.id == kostenstelle_id)
+        )
+        ks = result.scalar_one_or_none()
+        if ks is None:
+            raise ValueError(f"Kostenstelle {kostenstelle_id} not found")
+
+        spent_result = await self.session.execute(
+            select(func.sum(Buchung.betrag)).where(
+                Buchung.kostenstelle_id == kostenstelle_id
+            )
+        )
+        spent = spent_result.scalar_one() or Decimal("0.00")
+        budget = ks.budget or Decimal("0.00")
+        remaining = budget - spent
+
+        return {
+            "kostenstelle_id": ks.id,
+            "name": ks.name,
+            "budget": budget,
+            "spent": spent,
+            "remaining": remaining,
+        }
 
     # -- Donation receipts ---------------------------------------------------
 

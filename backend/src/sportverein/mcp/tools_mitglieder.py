@@ -8,6 +8,7 @@ from typing import Any
 from sportverein.mcp.server import mcp
 from sportverein.mcp.session import get_mcp_session
 from sportverein.models.mitglied import BeitragKategorie, MitgliedStatus
+from sportverein.services.datenschutz import DatenschutzService
 from sportverein.services.mitglieder import (
     MitgliedCreate,
     MitgliedFilter,
@@ -200,3 +201,15 @@ async def mitglied_abteilung_zuordnen(
             "beitrittsdatum": assoc.beitrittsdatum.isoformat() if assoc.beitrittsdatum else None,
             "message": "Abteilung erfolgreich zugeordnet.",
         }
+
+
+@mcp.tool(description="DSGVO-Auskunft: Alle gespeicherten Daten eines Mitglieds exportieren (Art. 15 DSGVO).")
+async def datenschutz_auskunft(member_id: int) -> dict:
+    async with get_mcp_session() as session:
+        svc = DatenschutzService(session)
+        try:
+            data = await svc.generate_auskunft(member_id)
+        except ValueError as exc:
+            return {"error": str(exc)}
+        await session.commit()
+        return data

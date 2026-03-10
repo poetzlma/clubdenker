@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Moon, Sun, LogOut, User } from "lucide-react"
+import { Moon, Sun, LogOut, User, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -14,9 +14,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 interface HeaderProps {
   title: string
   onLogout: () => void
+  onChatToggle?: () => void
 }
 
-export function Header({ title, onLogout }: HeaderProps) {
+export function Header({ title, onLogout, onChatToggle }: HeaderProps) {
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains("dark")
   })
@@ -34,6 +35,19 @@ export function Header({ title, onLogout }: HeaderProps) {
       <h1 className="text-lg font-semibold">{title}</h1>
 
       <div className="flex items-center gap-2">
+        {/* Chat toggle */}
+        {onChatToggle && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onChatToggle}
+            aria-label="Chat öffnen"
+            data-testid="chat-toggle-button"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </Button>
+        )}
+
         {/* Dark/Light mode toggle */}
         <Button
           variant="ghost"

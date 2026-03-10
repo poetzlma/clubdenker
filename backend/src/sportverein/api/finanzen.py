@@ -8,6 +8,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sportverein.api.audit_helper import log_audit
 from sportverein.api.schemas import (
     BeitragslaufRequest,
     BuchungCreate,
@@ -100,6 +101,14 @@ async def create_booking(
         buchung = await svc.create_booking(body.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="create",
+        entity_type="buchung",
+        entity_id=buchung.id,
+        details={"beschreibung": buchung.beschreibung, "betrag": str(buchung.betrag)},
+    )
     await session.commit()
     return _buchung_to_response(buchung)
 
@@ -177,6 +186,14 @@ async def create_invoice(
         )
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="create",
+        entity_type="rechnung",
+        entity_id=rechnung.id,
+        details={"rechnungsnummer": rechnung.rechnungsnummer, "betrag": str(rechnung.betrag)},
+    )
     await session.commit()
     return _rechnung_to_response(rechnung)
 

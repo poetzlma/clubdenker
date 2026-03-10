@@ -21,6 +21,9 @@ from sportverein.models.mitglied import (
     MitgliedStatus,
 )
 from sportverein.models.beitrag import BeitragsKategorie, SepaMandat
+from sportverein.models.finanzen import Kostenstelle
+from sportverein.models.audit import AuditLog
+from sportverein.models.ehrenamt import Aufwandsentschaedigung, AufwandTyp
 from sportverein.auth.models import AdminUser, ApiToken
 
 VORNAMEN = [
@@ -178,6 +181,36 @@ async def seed() -> None:
             )
         await session.flush()
 
+        # --- Kostenstellen ---
+        kostenstellen_data = [
+            ("Gesamtverein", None, Decimal("50000.00")),
+            ("Fussball", abteilungen[0].id, Decimal("20000.00")),
+            ("Tennis", abteilungen[1].id, Decimal("15000.00")),
+            ("Schwimmen", abteilungen[2].id, Decimal("18000.00")),
+            ("Leichtathletik", abteilungen[3].id, Decimal("12000.00")),
+        ]
+        kostenstellen = []
+        for name, abt_id, budget in kostenstellen_data:
+            ks = Kostenstelle(name=name, abteilung_id=abt_id, budget=budget)
+            session.add(ks)
+            kostenstellen.append(ks)
+        await session.flush()
+
+        # --- Aufwandsentschädigungen ---
+        sample_members = random.sample(mitglieder[:20], 5)
+        for idx, m in enumerate(sample_members):
+            typ = AufwandTyp.uebungsleiter if idx % 2 == 0 else AufwandTyp.ehrenamt
+            session.add(
+                Aufwandsentschaedigung(
+                    mitglied_id=m.id,
+                    betrag=Decimal(str(random.randint(100, 500))),
+                    datum=_random_date(2025, 2025),
+                    typ=typ,
+                    beschreibung=f"Aufwandsentschaedigung {typ.value} fuer {m.vorname} {m.nachname}",
+                )
+            )
+        await session.flush()
+
         # --- AdminUser ---
         hashed_pw = _bcrypt.hashpw("admin123".encode(), _bcrypt.gensalt()).decode()
         admin = AdminUser(
@@ -201,12 +234,35 @@ async def seed() -> None:
             )
         )
 
+        # --- Audit Log entries ---
+        audit_actions = [
+            ("create", "mitglied", mitglieder[0].id, '{"vorname": "Hans"}'),
+            ("update", "mitglied", mitglieder[1].id, '{"email": "new@example.de"}'),
+            ("login", "admin_user", admin.id, None),
+            ("create", "buchung", 1, '{"betrag": "100.00"}'),
+            ("export", "mitglied", mitglieder[2].id, '{"type": "dsgvo_auskunft"}'),
+        ]
+        for action, entity_type, entity_id, details in audit_actions:
+            session.add(
+                AuditLog(
+                    user_id=admin.id,
+                    action=action,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    details=details,
+                )
+            )
+        await session.flush()
+
         await session.commit()
         print("Seed completed successfully!")
         print("  - 4 departments")
         print("  - 5 fee categories")
         print("  - 50 members")
         print("  - 20 SEPA mandates")
+        print("  - 5 Kostenstellen")
+        print("  - 5 Aufwandsentschaedigungen")
+        print("  - 5 audit log entries")
         print("  - 1 admin user (admin@sportverein.de / admin123)")
         print(f"  - 1 API token (dev-token: {token_value})")
 

@@ -7,7 +7,7 @@ from decimal import Decimal
 from sqlalchemy import Date, Enum, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from sportverein.models.base import Base
+from sportverein.models.base import Base, TimestampMixin
 
 
 class Sphare(str, enum.Enum):
@@ -45,7 +45,22 @@ class Buchung(Base):
     mitglied_id: Mapped[int | None] = mapped_column(
         ForeignKey("mitglieder.id"), default=None
     )
+    kostenstelle_id: Mapped[int | None] = mapped_column(
+        ForeignKey("kostenstellen.id"), default=None
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class Kostenstelle(TimestampMixin, Base):
+    """Cost center."""
+
+    __tablename__ = "kostenstellen"
+
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    abteilung_id: Mapped[int | None] = mapped_column(
+        ForeignKey("abteilungen.id"), default=None
+    )
+    budget: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), default=None)
 
 
 class Rechnung(Base):

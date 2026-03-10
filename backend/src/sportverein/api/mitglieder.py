@@ -1,4 +1,4 @@
-"""Members router — CRUD and department assignment."""
+"""Members router — CRUD, department assignment, and DSGVO."""
 
 from __future__ import annotations
 
@@ -7,8 +7,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sportverein.api.audit_helper import log_audit
 from sportverein.api.schemas import (
     AbteilungResponse,
+    DsgvoAuskunftResponse,
+    EinwilligungRequest,
     KuendigenRequest,
     MitgliedAbteilungResponse,
     MitgliedListResponse,
@@ -17,6 +20,7 @@ from sportverein.api.schemas import (
 from sportverein.auth.dependencies import get_current_token, get_db_session
 from sportverein.auth.models import ApiToken
 from sportverein.models.mitglied import BeitragKategorie, MitgliedStatus
+from sportverein.services.datenschutz import DatenschutzService
 from sportverein.services.mitglieder import MitgliedCreate, MitgliedFilter, MitgliedUpdate, MitgliederService
 
 router = APIRouter(prefix="/api/mitglieder", tags=["mitglieder"])
@@ -113,6 +117,14 @@ async def create_member(
         member = await svc.create_member(body)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="create",
+        entity_type="mitglied",
+        entity_id=member.id,
+        details={"vorname": member.vorname, "nachname": member.nachname},
+    )
     await session.commit()
     # Re-fetch with eager-loaded relationships
     refreshed = await svc.get_member(member.id)
@@ -145,6 +157,14 @@ async def update_member(
         await svc.update_member(member_id, body)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="update",
+        entity_type="mitglied",
+        entity_id=member_id,
+        details=body.model_dump(exclude_unset=True),
+    )
     await session.commit()
     # Re-fetch with abteilungen loaded
     refreshed = await svc.get_member(member_id)
@@ -165,6 +185,14 @@ async def cancel_membership(
         await svc.cancel_member(member_id, austrittsdatum=austrittsdatum)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="delete",
+        entity_type="mitglied",
+        entity_id=member_id,
+        details={"austrittsdatum": str(austrittsdatum)},
+    )
     await session.commit()
     refreshed = await svc.get_member(member_id)
     assert refreshed is not None  # just cancelled, must exist
@@ -201,3 +229,59 @@ async def remove_department(
             status_code=status.HTTP_404_NOT_FOUND, detail="Department assignment not found"
         )
     await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# DSGVO endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{member_id}/datenschutz", response_model=DsgvoAuskunftResponse)
+async def get_dsgvo_data(
+    member_id: int,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> DsgvoAuskunftResponse:
+    svc = DatenschutzService(session)
+    try:
+        data = await svc.generate_auskunft(member_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="export",
+        entity_type="mitglied",
+        entity_id=member_id,
+        details={"type": "dsgvo_auskunft"},
+    )
+    await session.commit()
+    return DsgvoAuskunftResponse(**data)
+
+
+@router.post("/{member_id}/einwilligung")
+async def set_consent(
+    member_id: int,
+    body: EinwilligungRequest,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    svc = DatenschutzService(session)
+    try:
+        member = await svc.set_consent(member_id, body.consent)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="update",
+        entity_type="mitglied",
+        entity_id=member_id,
+        details={"dsgvo_einwilligung": body.consent},
+    )
+    await session.commit()
+    return {
+        "member_id": member.id,
+        "dsgvo_einwilligung": member.dsgvo_einwilligung,
+        "einwilligung_datum": member.einwilligung_datum.isoformat() if member.einwilligung_datum else None,
+    }
