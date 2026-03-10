@@ -54,10 +54,34 @@ async def protokoll_anlegen(
     titel: str,
     inhalt: str,
     datum: str | None = None,
+    typ: str = "sonstige",
+    erstellt_von: str | None = None,
+    teilnehmer: str | None = None,
+    beschluesse: str | None = None,
 ) -> dict:
-    # Placeholder implementation
-    return {
-        "status": "success",
-        "message": f"Protokoll '{titel}' angelegt.",
-        "titel": titel,
-    }
+    from datetime import date as date_type
+
+    from sportverein.db.session import async_session
+    from sportverein.services.protokoll import ProtokollService
+
+    effective_datum = datum or date_type.today().isoformat()
+    async with async_session() as session:
+        svc = ProtokollService(session)
+        p = await svc.create_protokoll(
+            titel=titel,
+            datum=effective_datum,
+            inhalt=inhalt,
+            typ=typ,
+            erstellt_von=erstellt_von,
+            teilnehmer=teilnehmer,
+            beschluesse=beschluesse,
+        )
+        await session.commit()
+        return {
+            "status": "success",
+            "message": f"Protokoll '{titel}' angelegt.",
+            "id": p.id,
+            "titel": p.titel,
+            "datum": p.datum,
+            "typ": p.typ.value,
+        }

@@ -11,6 +11,7 @@ from sportverein.api.dashboard import router as dashboard_router
 from sportverein.api.finanzen import router as finanzen_router
 from sportverein.api.mitglieder import router as mitglieder_router
 from sportverein.api.setup import router as setup_router
+from sportverein.api.dokumente import router as dokumente_router
 from sportverein.api.training import router as training_router
 from sportverein.auth.router import router as auth_router
 
@@ -24,3 +25,4 @@ api_router.include_router(chat_router)
 api_router.include_router(audit_router)
 api_router.include_router(setup_router)
 api_router.include_router(training_router)
+api_router.include_router(dokumente_router)

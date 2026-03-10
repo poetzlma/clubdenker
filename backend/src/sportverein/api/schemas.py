@@ -1026,3 +1026,49 @@ class EingangsrechnungUploadResponse(BaseModel):
 class EingangsrechnungStatusUpdate(BaseModel):
     status: str
     notiz: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Protokoll schemas
+# ---------------------------------------------------------------------------
+
+
+class ProtokollCreate(BaseModel):
+    titel: str
+    datum: str
+    inhalt: str
+    typ: str = "sonstige"
+    erstellt_von: str | None = None
+    teilnehmer: str | None = None
+    beschluesse: str | None = None
+
+
+class ProtokollUpdate(BaseModel):
+    titel: str | None = None
+    datum: str | None = None
+    inhalt: str | None = None
+    typ: str | None = None
+    erstellt_von: str | None = None
+    teilnehmer: str | None = None
+    beschluesse: str | None = None
+
+
+class ProtokollResponse(BaseModel):
+    id: int
+    titel: str
+    datum: str
+    inhalt: str
+    typ: str
+    erstellt_von: str | None = None
+    teilnehmer: str | None = None
+    beschluesse: str | None = None
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class ProtokollListResponse(BaseModel):
+    items: list[ProtokollResponse]
+    total: int
+    page: int
+    page_size: int

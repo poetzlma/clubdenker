@@ -8,6 +8,8 @@ import { FinanzenPage } from "@/pages/finanzen"
 import { AdminPage } from "@/pages/admin"
 import { VereinsSetupPage } from "@/pages/vereins-setup"
 import { TrainingPage } from "@/pages/training"
+import { KalenderPage } from "@/pages/kalender"
+import { DokumentePage } from "@/pages/dokumente"
 import { OnboardingPage } from "@/pages/onboarding"
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
         <Route path="/mitglieder" element={<MitgliederPage />} />
         <Route path="/finanzen" element={<FinanzenPage />} />
         <Route path="/training" element={<TrainingPage />} />
+        <Route path="/kalender" element={<KalenderPage />} />
+        <Route path="/dokumente" element={<DokumentePage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/vereins-setup" element={<VereinsSetupPage />} />
       </Route>

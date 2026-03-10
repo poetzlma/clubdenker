@@ -35,8 +35,8 @@ const navItems: NavItem[] = [
   { title: "Mitglieder", href: "/mitglieder", icon: Users },
   { title: "Finanzen", href: "/finanzen", icon: Wallet },
   { title: "Training", href: "/training", icon: Dumbbell },
-  { title: "Kalender", href: "/kalender", icon: Calendar, disabled: true },
-  { title: "Dokumente", href: "/dokumente", icon: FileText, disabled: true },
+  { title: "Kalender", href: "/kalender", icon: Calendar },
+  { title: "Dokumente", href: "/dokumente", icon: FileText },
   { title: "Admin", href: "/admin", icon: Shield },
   { title: "Vereins-Setup", href: "/vereins-setup", icon: Settings },
 ]

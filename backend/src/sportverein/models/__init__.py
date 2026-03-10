@@ -36,6 +36,7 @@ from sportverein.models.kommunikation import (
 from sportverein.models.audit import AuditLog
 from sportverein.models.ehrenamt import Aufwandsentschaedigung, AufwandTyp
 from sportverein.models.training import Anwesenheit, Trainingsgruppe, Wochentag
+from sportverein.models.protokoll import Protokoll, ProtokollTyp
 
 __all__ = [
     "Base",
@@ -73,6 +74,8 @@ __all__ = [
     "Anwesenheit",
     "Trainingsgruppe",
     "Wochentag",
+    "Protokoll",
+    "ProtokollTyp",
 ]
 
 
