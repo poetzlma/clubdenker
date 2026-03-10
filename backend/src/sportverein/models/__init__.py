@@ -9,6 +9,21 @@ from sportverein.models.mitglied import (
     MitgliedStatus,
 )
 from sportverein.models.beitrag import BeitragsKategorie, SepaMandat
+from sportverein.models.finanzen import (
+    Buchung,
+    Rechnung,
+    RechnungStatus,
+    Sphare,
+    Spendenbescheinigung,
+    Zahlung,
+    Zahlungsart,
+)
+from sportverein.models.kommunikation import (
+    EmpfaengerStatus,
+    Nachricht,
+    NachrichtEmpfaenger,
+    NachrichtTyp,
+)
 from sportverein.auth.models import AdminUser, ApiToken
 
 __all__ = [
@@ -21,6 +36,17 @@ __all__ = [
     "MitgliedStatus",
     "BeitragsKategorie",
     "SepaMandat",
+    "Buchung",
+    "Rechnung",
+    "RechnungStatus",
+    "Sphare",
+    "Spendenbescheinigung",
+    "Zahlung",
+    "Zahlungsart",
+    "Nachricht",
+    "NachrichtEmpfaenger",
+    "NachrichtTyp",
+    "EmpfaengerStatus",
     "AdminUser",
     "ApiToken",
 ]

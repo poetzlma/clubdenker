@@ -124,3 +124,119 @@ class ActivityItem(BaseModel):
 
 class RecentActivityResponse(BaseModel):
     items: list[ActivityItem]
+
+
+# ---------------------------------------------------------------------------
+# Finance schemas
+# ---------------------------------------------------------------------------
+
+
+class BuchungCreate(BaseModel):
+    buchungsdatum: date
+    betrag: float
+    beschreibung: str
+    konto: str
+    gegenkonto: str
+    sphare: str
+    mitglied_id: int | None = None
+
+
+class BuchungResponse(BaseModel):
+    id: int
+    buchungsdatum: date
+    betrag: float
+    beschreibung: str
+    konto: str
+    gegenkonto: str
+    sphare: str
+    mitglied_id: int | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class BuchungListResponse(BaseModel):
+    items: list[BuchungResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class RechnungCreate(BaseModel):
+    mitglied_id: int
+    betrag: float
+    beschreibung: str
+    faelligkeitsdatum: date
+    rechnungsdatum: date | None = None
+
+
+class RechnungResponse(BaseModel):
+    id: int
+    rechnungsnummer: str
+    mitglied_id: int
+    betrag: float
+    beschreibung: str
+    rechnungsdatum: date
+    faelligkeitsdatum: date
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+class RechnungListResponse(BaseModel):
+    items: list[RechnungResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class ZahlungCreate(BaseModel):
+    betrag: float
+    zahlungsart: str = "ueberweisung"
+    referenz: str | None = None
+
+
+class ZahlungResponse(BaseModel):
+    id: int
+    rechnung_id: int
+    betrag: float
+    zahlungsdatum: date
+    zahlungsart: str
+    referenz: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class SepaRequest(BaseModel):
+    rechnungen_ids: list[int]
+
+
+class SepaResponse(BaseModel):
+    xml: str
+    count: int
+
+
+class KassenstandSphare(BaseModel):
+    sphare: str
+    betrag: float
+
+
+class KassenstandResponse(BaseModel):
+    by_sphere: list[KassenstandSphare]
+    total: float
+
+
+class MahnungResponse(BaseModel):
+    id: int
+    rechnungsnummer: str
+    mitglied_id: int
+    betrag: float
+    beschreibung: str
+    rechnungsdatum: date
+    faelligkeitsdatum: date
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+class BeitragslaufRequest(BaseModel):
+    billing_year: int

@@ -6,4 +6,6 @@ mcp = FastMCP("Sportverein", instructions="MCP-Server für Sportvereins-Verwaltu
 
 # Import tool and resource registrations so they are executed at import time.
 import sportverein.mcp.tools_mitglieder  # noqa: F401, E402
+import sportverein.mcp.tools_beitraege  # noqa: F401, E402
+import sportverein.mcp.tools_kommunikation  # noqa: F401, E402
 import sportverein.mcp.resources  # noqa: F401, E402

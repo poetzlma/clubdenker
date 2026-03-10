@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 
 from sportverein.models.beitrag import BeitragsKategorie
+from sportverein.models.finanzen import RechnungStatus
 from sportverein.models.mitglied import BeitragKategorie, Mitglied, MitgliedStatus
 from sportverein.services.beitraege import BeitraegeService
 
@@ -175,3 +176,129 @@ class TestCalculateAllFees:
         amounts = {f["name"]: f["jahresbeitrag"] for f in fees}
         assert amounts["Max Mustermann"] == Decimal("240.00")
         assert amounts["Anna Mustermann"] == Decimal("120.00")
+
+
+# ── Fee run tests ─────────────────────────────────────────────────────
+
+
+@pytest.mark.usefixtures("_seed_categories")
+class TestGenerateFeeRun:
+    async def test_creates_invoices_for_active_members(self, session):
+        active1 = _make_member(eintrittsdatum=date(2020, 1, 1))
+        active2 = _make_member(
+            vorname="Anna",
+            email="anna@example.com",
+            mitgliedsnummer="M002",
+            kategorie=BeitragKategorie.jugend,
+        )
+        inactive = _make_member(
+            vorname="Bob",
+            email="bob@example.com",
+            mitgliedsnummer="M003",
+            status=MitgliedStatus.gekuendigt,
+        )
+        session.add_all([active1, active2, inactive])
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        invoices = await svc.generate_fee_run(2024)
+
+        assert len(invoices) == 2
+        amounts = {inv.mitglied_id: inv.betrag for inv in invoices}
+        assert amounts[active1.id] == Decimal("240.00")
+        assert amounts[active2.id] == Decimal("120.00")
+
+        # All invoices should be open
+        for inv in invoices:
+            assert inv.status == RechnungStatus.offen
+            assert inv.rechnungsnummer.startswith("R-")
+
+    async def test_fee_run_skips_zero_amount(self, session):
+        """Ehrenmitglied with 0 fee should not generate an invoice."""
+        member = _make_member(
+            kategorie=BeitragKategorie.ehrenmitglied,
+        )
+        session.add(member)
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        invoices = await svc.generate_fee_run(2024)
+
+        assert len(invoices) == 0
+
+
+# ── Dunning candidates tests ─────────────────────────────────────────
+
+
+@pytest.mark.usefixtures("_seed_categories")
+class TestGetDunningCandidates:
+    async def test_dunning_levels(self, session):
+        member = _make_member(eintrittsdatum=date(2020, 1, 1))
+        session.add(member)
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        today = date.today()
+
+        from sportverein.models.finanzen import Rechnung
+
+        # Level 1: 14+ days overdue
+        r1 = Rechnung(
+            rechnungsnummer="R-1001",
+            mitglied_id=member.id,
+            betrag=Decimal("100.00"),
+            beschreibung="Level 1",
+            rechnungsdatum=today - timedelta(days=30),
+            faelligkeitsdatum=today - timedelta(days=15),
+            status=RechnungStatus.offen,
+        )
+        # Level 2: 28+ days overdue
+        r2 = Rechnung(
+            rechnungsnummer="R-1002",
+            mitglied_id=member.id,
+            betrag=Decimal("200.00"),
+            beschreibung="Level 2",
+            rechnungsdatum=today - timedelta(days=45),
+            faelligkeitsdatum=today - timedelta(days=30),
+            status=RechnungStatus.offen,
+        )
+        # Level 3: 42+ days overdue
+        r3 = Rechnung(
+            rechnungsnummer="R-1003",
+            mitglied_id=member.id,
+            betrag=Decimal("300.00"),
+            beschreibung="Level 3",
+            rechnungsdatum=today - timedelta(days=60),
+            faelligkeitsdatum=today - timedelta(days=45),
+            status=RechnungStatus.offen,
+        )
+        # Not overdue enough (only 5 days)
+        r4 = Rechnung(
+            rechnungsnummer="R-1004",
+            mitglied_id=member.id,
+            betrag=Decimal("50.00"),
+            beschreibung="Not dunnable",
+            rechnungsdatum=today - timedelta(days=10),
+            faelligkeitsdatum=today - timedelta(days=5),
+            status=RechnungStatus.offen,
+        )
+        # Paid invoice (should be excluded)
+        r5 = Rechnung(
+            rechnungsnummer="R-1005",
+            mitglied_id=member.id,
+            betrag=Decimal("50.00"),
+            beschreibung="Already paid",
+            rechnungsdatum=today - timedelta(days=60),
+            faelligkeitsdatum=today - timedelta(days=45),
+            status=RechnungStatus.bezahlt,
+        )
+        session.add_all([r1, r2, r3, r4, r5])
+        await session.flush()
+
+        candidates = await svc.get_dunning_candidates()
+
+        assert len(candidates) == 3
+        levels = {c["rechnungsnummer"]: c["mahnstufe"] for c in candidates}
+        assert levels["R-1001"] == 1
+        assert levels["R-1002"] == 2
+        assert levels["R-1003"] == 3
