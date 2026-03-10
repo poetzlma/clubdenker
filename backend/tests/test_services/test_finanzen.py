@@ -384,3 +384,210 @@ class TestDonationReceipt:
         assert receipt.betrag == Decimal("500.00")
         assert receipt.zweck == "Sportförderung"
         assert receipt.ausstellungsdatum == date.today()
+
+
+class TestSkonto:
+    """Tests for skonto (early payment discount) calculation and application."""
+
+    async def test_calculate_skonto_within_deadline(self, session):
+        """Skonto is available when reference_date is within the skonto deadline."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("1000.00"),
+            beschreibung="Test Skonto",
+            rechnungsdatum=date(2024, 1, 1),
+            faelligkeitsdatum=date(2024, 2, 1),
+            sphaere="ideell",
+            skonto_prozent=Decimal("2.00"),
+            skonto_frist_tage=10,
+        )
+
+        # Within deadline (day 5)
+        info = await svc.calculate_skonto(rechnung.id, reference_date=date(2024, 1, 5))
+
+        assert info["skonto_verfuegbar"] is True
+        assert info["skonto_prozent"] == Decimal("2.00")
+        # netto is 1000, skonto = 1000 * 2% = 20
+        assert info["skonto_betrag"] == Decimal("20.00")
+        assert info["zahlbetrag"] == Decimal("980.00")
+        assert info["skonto_frist_bis"] == date(2024, 1, 11)
+
+    async def test_calculate_skonto_on_deadline_day(self, session):
+        """Skonto is still available on the exact deadline day."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("500.00"),
+            beschreibung="Test Skonto deadline",
+            rechnungsdatum=date(2024, 3, 1),
+            faelligkeitsdatum=date(2024, 4, 1),
+            sphaere="ideell",
+            skonto_prozent=Decimal("3.00"),
+            skonto_frist_tage=14,
+        )
+
+        # Exactly on deadline day
+        info = await svc.calculate_skonto(rechnung.id, reference_date=date(2024, 3, 15))
+        assert info["skonto_verfuegbar"] is True
+        assert info["skonto_betrag"] == Decimal("15.00")
+
+    async def test_calculate_skonto_after_deadline(self, session):
+        """Skonto is not available after the deadline has passed."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("1000.00"),
+            beschreibung="Test Skonto expired",
+            rechnungsdatum=date(2024, 1, 1),
+            faelligkeitsdatum=date(2024, 2, 1),
+            sphaere="ideell",
+            skonto_prozent=Decimal("2.00"),
+            skonto_frist_tage=10,
+        )
+
+        # After deadline (day 12)
+        info = await svc.calculate_skonto(rechnung.id, reference_date=date(2024, 1, 12))
+        assert info["skonto_verfuegbar"] is False
+        # Still returns the amounts for informational purposes
+        assert info["skonto_betrag"] == Decimal("20.00")
+
+    async def test_calculate_skonto_no_skonto_configured(self, session):
+        """Invoice without skonto terms returns zero discount."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("100.00"),
+            beschreibung="No skonto",
+            faelligkeitsdatum=date(2024, 1, 31),
+        )
+
+        info = await svc.calculate_skonto(rechnung.id)
+        assert info["skonto_verfuegbar"] is False
+        assert info["skonto_betrag"] == Decimal("0.00")
+        assert info["zahlbetrag"] == Decimal("100.00")
+        assert info["skonto_frist_bis"] is None
+
+    async def test_calculate_skonto_not_found(self, session):
+        """Raises ValueError for non-existent invoice."""
+        svc = FinanzenService(session)
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await svc.calculate_skonto(99999)
+
+    async def test_record_payment_with_skonto(self, session):
+        """Payment with apply_skonto creates skonto booking and marks as paid."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("1000.00"),
+            beschreibung="Skonto payment test",
+            rechnungsdatum=date.today(),
+            faelligkeitsdatum=date.today(),
+            sphaere="ideell",
+            skonto_prozent=Decimal("2.00"),
+            skonto_frist_tage=10,
+        )
+
+        # Pay the discounted amount (980) with skonto applied
+        zahlung = await svc.record_payment(
+            rechnung.id,
+            Decimal("980.00"),
+            "ueberweisung",
+            apply_skonto=True,
+        )
+
+        await session.refresh(rechnung)
+
+        # The payment itself is 980
+        assert zahlung.betrag == Decimal("980.00")
+
+        # Total paid should be 1000 (980 payment + 20 skonto)
+        assert rechnung.bezahlt_betrag == Decimal("1000.00")
+        assert rechnung.offener_betrag == Decimal("0.00")
+        assert rechnung.status == RechnungStatus.bezahlt
+
+    async def test_record_payment_with_skonto_expired(self, session):
+        """Payment with apply_skonto after deadline does not apply skonto."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        # Invoice from the past with expired skonto
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("1000.00"),
+            beschreibung="Skonto expired test",
+            rechnungsdatum=date(2020, 1, 1),
+            faelligkeitsdatum=date(2020, 2, 1),
+            sphaere="ideell",
+            skonto_prozent=Decimal("2.00"),
+            skonto_frist_tage=10,
+        )
+
+        # Pay full amount with skonto flag -- but skonto is expired
+        zahlung = await svc.record_payment(
+            rechnung.id,
+            Decimal("1000.00"),
+            "ueberweisung",
+            apply_skonto=True,
+        )
+
+        await session.refresh(rechnung)
+
+        # No skonto applied, just the direct payment
+        assert zahlung.betrag == Decimal("1000.00")
+        assert rechnung.bezahlt_betrag == Decimal("1000.00")
+        assert rechnung.status == RechnungStatus.bezahlt
+
+    async def test_record_payment_without_skonto_flag(self, session):
+        """Payment without apply_skonto does not apply skonto even if eligible."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("1000.00"),
+            beschreibung="No skonto flag",
+            rechnungsdatum=date.today(),
+            faelligkeitsdatum=date.today(),
+            sphaere="ideell",
+            skonto_prozent=Decimal("2.00"),
+            skonto_frist_tage=10,
+        )
+
+        # Pay 980 without skonto flag -- treated as partial payment
+        zahlung = await svc.record_payment(
+            rechnung.id,
+            Decimal("980.00"),
+            "ueberweisung",
+        )
+
+        await session.refresh(rechnung)
+
+        assert zahlung.betrag == Decimal("980.00")
+        assert rechnung.bezahlt_betrag == Decimal("980.00")
+        assert rechnung.offener_betrag == Decimal("20.00")
+        assert rechnung.status == RechnungStatus.teilbezahlt

@@ -273,6 +273,23 @@ async def datenschutz_loeschfrist_planen(
         }
 
 
+@mcp.tool(description="DSGVO: Personenbezogene Daten eines Mitglieds anonymisieren (Art. 17 DSGVO Recht auf Loeschung).")
+async def datenschutz_mitglied_loeschen(member_id: int) -> dict:
+    """Anonymize a member's personal data for DSGVO compliance."""
+    async with get_mcp_session() as session:
+        svc = DatenschutzService(session)
+        try:
+            member = await svc.delete_member_data(member_id)
+        except ValueError as exc:
+            return {"error": str(exc)}
+        await session.commit()
+        return {
+            "mitglied_id": member.id,
+            "geloescht_am": member.geloescht_am.isoformat() if member.geloescht_am else None,
+            "message": "Personenbezogene Daten wurden DSGVO-konform anonymisiert.",
+        }
+
+
 @mcp.tool(description="DSGVO: Ausstehende Datenlöschungen anzeigen (Mitglieder mit abgelaufener Loeschfrist).")
 async def datenschutz_ausstehende_loeschungen() -> dict:
     """List members pending data deletion."""

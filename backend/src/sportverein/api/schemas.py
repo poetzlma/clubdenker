@@ -495,6 +495,7 @@ class ZahlungCreate(BaseModel):
     betrag: float
     zahlungsart: str = "ueberweisung"
     referenz: str | None = None
+    apply_skonto: bool = False
 
 
 class ZahlungResponse(BaseModel):
@@ -506,6 +507,14 @@ class ZahlungResponse(BaseModel):
     referenz: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class SkontoInfoResponse(BaseModel):
+    skonto_betrag: float
+    zahlbetrag: float
+    skonto_frist_bis: date | None = None
+    skonto_verfuegbar: bool
+    skonto_prozent: float
 
 
 class SepaRequest(BaseModel):

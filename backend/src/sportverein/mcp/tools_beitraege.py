@@ -142,12 +142,13 @@ async def rechnung_stornieren(rechnung_id: int, grund: str | None = None) -> dic
         }
 
 
-@mcp.tool(description="Zahlung fuer eine Rechnung verbuchen.")
+@mcp.tool(description="Zahlung fuer eine Rechnung verbuchen. Bei apply_skonto=True wird Skonto automatisch abgezogen, falls innerhalb der Frist.")
 async def zahlung_verbuchen(
     rechnung_id: int,
     betrag: float,
     zahlungsart: str = "ueberweisung",
     referenz: str | None = None,
+    apply_skonto: bool = False,
 ) -> dict:
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
@@ -156,6 +157,7 @@ async def zahlung_verbuchen(
             betrag=Decimal(str(betrag)),
             zahlungsart=zahlungsart,
             referenz=referenz,
+            apply_skonto=apply_skonto,
         )
         await session.commit()
         return {

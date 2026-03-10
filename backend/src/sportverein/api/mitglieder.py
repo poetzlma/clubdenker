@@ -259,6 +259,34 @@ async def get_dsgvo_data(
     return DsgvoAuskunftResponse(**data)
 
 
+@router.delete("/{member_id}/dsgvo-loeschen")
+async def dsgvo_delete_member(
+    member_id: int,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """DSGVO-Datenlöschung: Anonymisiert personenbezogene Daten eines Mitglieds."""
+    svc = DatenschutzService(session)
+    try:
+        member = await svc.delete_member_data(member_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="dsgvo_loeschung",
+        entity_type="mitglied",
+        entity_id=member_id,
+        details={"type": "dsgvo_anonymisierung"},
+    )
+    await session.commit()
+    return {
+        "mitglied_id": member.id,
+        "geloescht_am": member.geloescht_am.isoformat() if member.geloescht_am else None,
+        "message": "Personenbezogene Daten wurden DSGVO-konform anonymisiert.",
+    }
+
+
 @router.post("/{member_id}/einwilligung")
 async def set_consent(
     member_id: int,

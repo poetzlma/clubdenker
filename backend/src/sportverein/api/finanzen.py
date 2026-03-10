@@ -45,6 +45,7 @@ from sportverein.api.schemas import (
     SepaMandatUpdate,
     SepaRequest,
     SepaResponse,
+    SkontoInfoResponse,
     StornoRequest,
     VereinsstammdatenResponse,
     VereinsstammdatenUpdate,
@@ -463,6 +464,29 @@ async def versende_rechnung(
     return _rechnung_to_response(rechnung)
 
 
+@router.get("/rechnungen/{rechnung_id}/skonto", response_model=SkontoInfoResponse)
+async def get_skonto_info(
+    rechnung_id: int,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> SkontoInfoResponse:
+    """Return skonto (early payment discount) info for an invoice."""
+    svc = FinanzenService(session)
+    try:
+        info = await svc.calculate_skonto(rechnung_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    return SkontoInfoResponse(
+        skonto_betrag=float(info["skonto_betrag"]),
+        zahlbetrag=float(info["zahlbetrag"]),
+        skonto_frist_bis=info["skonto_frist_bis"],
+        skonto_verfuegbar=info["skonto_verfuegbar"],
+        skonto_prozent=float(info["skonto_prozent"]),
+    )
+
+
 @router.post("/rechnungen/{rechnung_id}/zahlungen", response_model=ZahlungResponse, status_code=status.HTTP_201_CREATED)
 async def record_payment(
     rechnung_id: int,
@@ -477,6 +501,7 @@ async def record_payment(
             betrag=Decimal(str(body.betrag)),
             zahlungsart=body.zahlungsart,
             referenz=body.referenz,
+            apply_skonto=body.apply_skonto,
         )
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

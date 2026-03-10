@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+import json
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from sportverein.models.audit import AuditLog
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.finanzen import Rechnung, Zahlung
-from sportverein.models.mitglied import Mitglied, MitgliedAbteilung
+from sportverein.models.mitglied import Mitglied, MitgliedAbteilung, MitgliedStatus
 
 
 class DatenschutzService:
@@ -167,11 +168,86 @@ class DatenschutzService:
         return member
 
     async def get_pending_deletions(self) -> list[Mitglied]:
-        """Members past their loesch_datum."""
+        """Members past their loesch_datum that have not yet been anonymized."""
         result = await self.session.execute(
             select(Mitglied).where(
                 Mitglied.loesch_datum != None,  # noqa: E711
                 Mitglied.loesch_datum <= date.today(),
+                Mitglied.geloescht_am == None,  # noqa: E711
             )
         )
         return list(result.scalars().all())
+
+    async def delete_member_data(self, member_id: int) -> Mitglied:
+        """Anonymize personal data for DSGVO compliance.
+
+        Keeps the record for financial audit trail (soft-delete).
+        Replaces personal data with placeholder values and sets geloescht_am.
+        """
+        result = await self.session.execute(
+            select(Mitglied).where(Mitglied.id == member_id)
+        )
+        member = result.scalar_one_or_none()
+        if member is None:
+            raise ValueError(f"Mitglied mit ID {member_id} nicht gefunden.")
+
+        if member.geloescht_am is not None:
+            raise ValueError(
+                f"Mitglied mit ID {member_id} wurde bereits am "
+                f"{member.geloescht_am.isoformat()} anonymisiert."
+            )
+
+        # Anonymize personal data
+        member.vorname = "Geloescht"
+        member.nachname = "Geloescht"
+        member.email = f"geloescht-{member.id}@deleted.local"
+        member.telefon = None
+        member.strasse = None
+        member.plz = None
+        member.ort = None
+        member.geburtsdatum = date(1900, 1, 1)
+        member.notizen = None
+        member.dsgvo_einwilligung = False
+        member.einwilligung_datum = None
+        member.status = MitgliedStatus.gekuendigt
+        member.geloescht_am = datetime.now()
+
+        # Log the deletion in audit trail
+        from sportverein.services.audit import AuditService
+
+        audit_svc = AuditService(self.session)
+        await audit_svc.log(
+            action="dsgvo_loeschung",
+            entity_type="mitglied",
+            entity_id=member_id,
+            details=json.dumps(
+                {"grund": "DSGVO-Datenlöschung durchgeführt"},
+                default=str,
+            ),
+        )
+
+        await self.session.flush()
+        await self.session.refresh(member)
+        return member
+
+    async def enforce_pending_deletions(self) -> list[dict]:
+        """Find all members with loesch_datum <= today and anonymize them.
+
+        Returns a list of dicts with member_id and status for each processed member.
+        """
+        pending = await self.get_pending_deletions()
+        results: list[dict] = []
+        for member in pending:
+            try:
+                await self.delete_member_data(member.id)
+                results.append({
+                    "mitglied_id": member.id,
+                    "status": "geloescht",
+                })
+            except ValueError as exc:
+                results.append({
+                    "mitglied_id": member.id,
+                    "status": "fehler",
+                    "detail": str(exc),
+                })
+        return results

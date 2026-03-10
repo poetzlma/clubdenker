@@ -3,6 +3,7 @@ import {
   type ColumnDef,
   type SortingState,
   type PaginationState,
+  type RowSelectionState,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
@@ -25,16 +26,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InvoiceDialog } from "@/components/finanzen/invoice-dialog"
+import { VersandDialog } from "@/components/finanzen/versand-dialog"
 import {
   RECHNUNG_STATUS_COLORS,
   RECHNUNG_TYP_LABELS,
   SPHERE_COLORS,
 } from "@/constants/design"
 import { cn } from "@/lib/utils"
-import { ArrowUpDown, ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import {
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  FileCode,
+  MoreHorizontal,
+  Plus,
+  Send,
+} from "lucide-react"
 
 const API_BASE = "/api"
 
@@ -209,6 +229,16 @@ function SphaereBadge({ sphaere }: { sphaere?: string }) {
   )
 }
 
+function downloadFile(url: string, fallbackFilename: string) {
+  const link = document.createElement("a")
+  link.href = url
+  link.download = fallbackFilename
+  link.target = "_blank"
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 export function InvoiceTable() {
   const [invoices, setInvoices] = useState<Rechnung[]>([])
   const [loading, setLoading] = useState(true)
@@ -217,6 +247,7 @@ export function InvoiceTable() {
     pageIndex: 0,
     pageSize: 10,
   })
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [statusFilter, setStatusFilter] = useState<string>("alle")
   const [typFilter, setTypFilter] = useState<string>("alle")
   const [sphaereFilter, setSphaereFilter] = useState<string>("alle")
@@ -224,6 +255,10 @@ export function InvoiceTable() {
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
+  const [versandDialogOpen, setVersandDialogOpen] = useState(false)
+  const [versandInvoice, setVersandInvoice] = useState<Rechnung | null>(null)
+  const [exportYear, setExportYear] = useState(new Date().getFullYear().toString())
+  const [exporting, setExporting] = useState(false)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -312,8 +347,68 @@ export function InvoiceTable() {
     }
   }
 
+  function handleDownloadPdf(invoice: Rechnung) {
+    downloadFile(
+      `${API_BASE}/finanzen/rechnungen/${invoice.id}/pdf`,
+      `RE-${invoice.rechnungsnummer}.pdf`
+    )
+  }
+
+  function handleDownloadXml(invoice: Rechnung) {
+    downloadFile(
+      `${API_BASE}/finanzen/rechnungen/${invoice.id}/xml`,
+      `RE-${invoice.rechnungsnummer}-zugferd.xml`
+    )
+  }
+
+  function handleVersenden(invoice: Rechnung) {
+    setVersandInvoice(invoice)
+    setVersandDialogOpen(true)
+  }
+
+  async function handleExportZip() {
+    const year = parseInt(exportYear)
+    if (isNaN(year)) return
+    setExporting(true)
+    try {
+      const res = await fetch(`${API_BASE}/finanzen/rechnungen/export?jahr=${year}`)
+      if (!res.ok) throw new Error("Export fehlgeschlagen")
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      downloadFile(url, `Rechnungen-${year}.zip`)
+      URL.revokeObjectURL(url)
+    } catch {
+      // silently fail — user sees no download
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const columns = useMemo<ColumnDef<Rechnung>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table: tbl }) => (
+          <input
+            type="checkbox"
+            checked={tbl.getIsAllPageRowsSelected()}
+            onChange={tbl.getToggleAllPageRowsSelectedHandler()}
+            className="h-4 w-4 accent-blue-600"
+            aria-label="Alle auswaehlen"
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            className="h-4 w-4 accent-blue-600"
+            aria-label="Zeile auswaehlen"
+          />
+        ),
+        enableSorting: false,
+        size: 32,
+      },
       {
         accessorKey: "rechnungsnummer",
         header: ({ column }) => (
@@ -341,7 +436,7 @@ export function InvoiceTable() {
             className="flex items-center gap-1 hover:text-foreground"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Empfänger
+            Empfaenger
             <ArrowUpDown className="h-4 w-4" />
           </button>
         ),
@@ -352,7 +447,7 @@ export function InvoiceTable() {
       },
       {
         accessorKey: "sphaere",
-        header: "Sphäre",
+        header: "Sphaere",
         cell: ({ getValue }) => <SphaereBadge sphaere={getValue<string>()} />,
       },
       {
@@ -385,7 +480,7 @@ export function InvoiceTable() {
             className="flex items-center gap-1 hover:text-foreground"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Fällig am
+            Faellig am
             <ArrowUpDown className="h-4 w-4" />
           </button>
         ),
@@ -422,37 +517,60 @@ export function InvoiceTable() {
         cell: ({ row }) => {
           const invoice = row.original
           const s = invoice.status
+          const canSend = s !== "entwurf" && s !== "storniert" && s !== "abgeschrieben"
+
           return (
-            <div className="flex gap-1">
-              {s === "entwurf" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAction(invoice, "stellen")}
-                >
-                  Stellen
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Aktionen</span>
                 </Button>
-              )}
-              {(s === "gestellt" || s === "faellig" || s === "mahnung_1" || s === "mahnung_2" || s === "mahnung_3") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAction(invoice, "zahlung")}
-                >
-                  Zahlung
-                </Button>
-              )}
-              {(s === "entwurf" || s === "gestellt") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={() => handleAction(invoice, "stornieren")}
-                >
-                  Storno
-                </Button>
-              )}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>E-Rechnung</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleDownloadPdf(invoice)}>
+                  <FileText className="h-4 w-4" />
+                  PDF herunterladen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownloadXml(invoice)}>
+                  <FileCode className="h-4 w-4" />
+                  ZUGFeRD-XML herunterladen
+                </DropdownMenuItem>
+
+                {canSend && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleVersenden(invoice)}>
+                      <Send className="h-4 w-4" />
+                      Versenden
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Status</DropdownMenuLabel>
+
+                {s === "entwurf" && (
+                  <DropdownMenuItem onClick={() => handleAction(invoice, "stellen")}>
+                    Stellen
+                  </DropdownMenuItem>
+                )}
+                {(s === "gestellt" || s === "faellig" || s === "mahnung_1" || s === "mahnung_2" || s === "mahnung_3") && (
+                  <DropdownMenuItem onClick={() => handleAction(invoice, "zahlung")}>
+                    Zahlung verbuchen
+                  </DropdownMenuItem>
+                )}
+                {(s === "entwurf" || s === "gestellt") && (
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onClick={() => handleAction(invoice, "stornieren")}
+                  >
+                    Stornieren
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )
         },
       },
@@ -489,15 +607,25 @@ export function InvoiceTable() {
     return data
   }, [invoices, statusFilter, typFilter, sphaereFilter, searchTerm, dateFrom, dateTo])
 
+  // Determine which invoices are selected (from filtered data)
+  const selectedInvoices = useMemo(() => {
+    const selectedIndices = Object.keys(rowSelection).filter((k) => rowSelection[k])
+    return selectedIndices
+      .map((idx) => filteredData[parseInt(idx)])
+      .filter(Boolean) as Rechnung[]
+  }, [rowSelection, filteredData])
+
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting, pagination },
+    state: { sorting, pagination, rowSelection },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    enableRowSelection: true,
   })
 
   if (loading) {
@@ -510,7 +638,7 @@ export function InvoiceTable() {
 
   return (
     <div className="space-y-4">
-      {/* Filters + New Invoice button */}
+      {/* Filters + Actions */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40" data-testid="status-filter">
@@ -542,10 +670,10 @@ export function InvoiceTable() {
 
         <Select value={sphaereFilter} onValueChange={setSphaereFilter}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Sphäre" />
+            <SelectValue placeholder="Sphaere" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="alle">Alle Sphären</SelectItem>
+            <SelectItem value="alle">Alle Sphaeren</SelectItem>
             {Object.entries(SPHERE_COLORS).map(([key, config]) => (
               <SelectItem key={key} value={key}>
                 {config.label}
@@ -582,6 +710,61 @@ export function InvoiceTable() {
         </div>
       </div>
 
+      {/* Batch actions toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* ZIP export */}
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            className="w-24"
+            value={exportYear}
+            onChange={(e) => setExportYear(e.target.value)}
+            min="2020"
+            max="2099"
+            placeholder="Jahr"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportZip}
+            disabled={exporting}
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? "Exportiert..." : "Export Jahr als ZIP"}
+          </Button>
+        </div>
+
+        {/* Selection-dependent batch actions */}
+        {selectedInvoices.length > 0 && (
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm text-muted-foreground">
+              {selectedInvoices.length} ausgewaehlt
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // For batch send, open dialog for the first selected invoice
+                // In a real app this would be a batch dialog
+                const sendable = selectedInvoices.filter(
+                  (inv) =>
+                    inv.status !== "entwurf" &&
+                    inv.status !== "storniert" &&
+                    inv.status !== "abgeschrieben"
+                )
+                if (sendable.length > 0) {
+                  setVersandInvoice(sendable[0])
+                  setVersandDialogOpen(true)
+                }
+              }}
+            >
+              <Send className="h-4 w-4" />
+              Ausgewaehlte versenden
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* Table */}
       <div className="rounded-md border">
         <Table>
@@ -601,7 +784,11 @@ export function InvoiceTable() {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-testid="invoice-row">
+                <TableRow
+                  key={row.id}
+                  data-testid="invoice-row"
+                  data-state={row.getIsSelected() && "selected"}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -624,7 +811,7 @@ export function InvoiceTable() {
       <div className="flex items-center justify-between px-2">
         <p className="text-sm text-muted-foreground">
           Seite {table.getState().pagination.pageIndex + 1} von{" "}
-          {table.getPageCount() || 1} ({filteredData.length} Einträge)
+          {table.getPageCount() || 1} ({filteredData.length} Eintraege)
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -648,6 +835,14 @@ export function InvoiceTable() {
       <InvoiceDialog
         open={invoiceDialogOpen}
         onOpenChange={setInvoiceDialogOpen}
+        onSuccess={fetchInvoices}
+      />
+
+      {/* Versand Dialog */}
+      <VersandDialog
+        open={versandDialogOpen}
+        onOpenChange={setVersandDialogOpen}
+        invoice={versandInvoice}
         onSuccess={fetchInvoices}
       />
     </div>

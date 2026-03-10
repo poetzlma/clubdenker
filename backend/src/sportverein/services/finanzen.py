@@ -582,6 +582,56 @@ class FinanzenService:
         await self.session.refresh(rechnung)
         return rechnung
 
+    # -- Skonto (early payment discount) ----------------------------------------
+
+    async def calculate_skonto(
+        self, rechnung_id: int, reference_date: date | None = None
+    ) -> dict[str, Any]:
+        """Calculate skonto info for an invoice.
+
+        Returns a dict with:
+          - skonto_betrag: the discount amount (how much is deducted)
+          - zahlbetrag: the amount to pay after skonto
+          - skonto_frist_bis: the deadline date for skonto
+          - skonto_verfuegbar: whether skonto can still be used
+          - skonto_prozent: the discount percentage
+        """
+        ref = reference_date or date.today()
+
+        result = await self.session.execute(
+            select(Rechnung).where(Rechnung.id == rechnung_id)
+        )
+        rechnung = result.scalar_one_or_none()
+        if rechnung is None:
+            raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
+
+        if rechnung.skonto_prozent is None or rechnung.skonto_frist_tage is None:
+            return {
+                "skonto_betrag": Decimal("0.00"),
+                "zahlbetrag": rechnung.betrag,
+                "skonto_frist_bis": None,
+                "skonto_verfuegbar": False,
+                "skonto_prozent": Decimal("0.00"),
+            }
+
+        skonto_frist_bis = rechnung.rechnungsdatum + timedelta(
+            days=rechnung.skonto_frist_tage
+        )
+        skonto_verfuegbar = ref <= skonto_frist_bis
+
+        skonto_abzug = (
+            rechnung.summe_netto * rechnung.skonto_prozent / Decimal("100")
+        ).quantize(Decimal("0.01"))
+        zahlbetrag = (rechnung.betrag - skonto_abzug).quantize(Decimal("0.01"))
+
+        return {
+            "skonto_betrag": skonto_abzug,
+            "zahlbetrag": zahlbetrag,
+            "skonto_frist_bis": skonto_frist_bis,
+            "skonto_verfuegbar": skonto_verfuegbar,
+            "skonto_prozent": rechnung.skonto_prozent,
+        }
+
     # -- Payments ------------------------------------------------------------
 
     async def record_payment(
@@ -590,8 +640,16 @@ class FinanzenService:
         betrag: Decimal,
         zahlungsart: Zahlungsart | str,
         referenz: str | None = None,
+        *,
+        apply_skonto: bool = False,
     ) -> Zahlung:
-        """Record a payment against an invoice, updating status accordingly."""
+        """Record a payment against an invoice, updating status accordingly.
+
+        If ``apply_skonto`` is True and the invoice has skonto terms that are
+        still within the deadline, a second booking entry (Skonto-Abzug) is
+        created automatically and the remaining open amount is reduced
+        accordingly.
+        """
         if isinstance(zahlungsart, str):
             zahlungsart = Zahlungsart(zahlungsart)
 
@@ -609,6 +667,43 @@ class FinanzenService:
         )
         self.session.add(zahlung)
         await self.session.flush()
+
+        # Apply skonto if requested and eligible
+        skonto_buchung: Buchung | None = None
+        if apply_skonto:
+            skonto_info = await self.calculate_skonto(rechnung_id)
+            if (
+                skonto_info["skonto_verfuegbar"]
+                and skonto_info["skonto_betrag"] > Decimal("0")
+            ):
+                skonto_abzug = skonto_info["skonto_betrag"]
+                sphare_value = Sphare(rechnung.sphaere) if rechnung.sphaere else Sphare.ideell
+                skonto_buchung = Buchung(
+                    buchungsdatum=date.today(),
+                    betrag=-skonto_abzug,
+                    beschreibung=(
+                        f"Skonto-Abzug {rechnung.skonto_prozent}% "
+                        f"zu Rechnung {rechnung.rechnungsnummer}"
+                    ),
+                    konto="4730",  # SKR42: Skontoaufwand
+                    gegenkonto="1200",  # Forderungen
+                    sphare=sphare_value,
+                    mitglied_id=rechnung.mitglied_id,
+                )
+                self.session.add(skonto_buchung)
+                await self.session.flush()
+
+                # Record the skonto as an additional payment entry so
+                # bezahlt_betrag tracking stays consistent
+                skonto_zahlung = Zahlung(
+                    rechnung_id=rechnung_id,
+                    betrag=skonto_abzug,
+                    zahlungsdatum=date.today(),
+                    zahlungsart=zahlungsart,
+                    referenz=f"Skonto-Abzug {rechnung.skonto_prozent}%",
+                )
+                self.session.add(skonto_zahlung)
+                await self.session.flush()
 
         # Recalculate total payments
         pay_result = await self.session.execute(
