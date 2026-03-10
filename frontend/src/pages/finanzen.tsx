@@ -7,6 +7,7 @@ import { SepaMandateTab } from "@/components/finanzen/sepa-mandate-tab"
 import { KostenstellenTab } from "@/components/finanzen/kostenstellen-tab"
 import { EuerReport } from "@/components/finanzen/euer-report"
 import { EingangsrechnungenTab } from "@/components/finanzen/eingangsrechnungen-tab"
+import { EhrenamtTab } from "@/components/finanzen/ehrenamt-tab"
 import { PageHeader } from "@/components/dashboard/page-header"
 
 export function FinanzenPage() {
@@ -29,6 +30,7 @@ export function FinanzenPage() {
           <TabsTrigger value="kostenstellen">Kostenstellen</TabsTrigger>
           <TabsTrigger value="euer">EÜR</TabsTrigger>
           <TabsTrigger value="eingangsrechnungen">Eingangsrechnungen</TabsTrigger>
+          <TabsTrigger value="ehrenamt">Ehrenamt</TabsTrigger>
         </TabsList>
         <TabsContent value="uebersicht">
           <PaymentOverview />
@@ -53,6 +55,9 @@ export function FinanzenPage() {
         </TabsContent>
         <TabsContent value="eingangsrechnungen">
           <EingangsrechnungenTab />
+        </TabsContent>
+        <TabsContent value="ehrenamt">
+          <EhrenamtTab />
         </TabsContent>
       </Tabs>
     </div>
