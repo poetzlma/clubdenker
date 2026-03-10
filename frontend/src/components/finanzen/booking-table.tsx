@@ -29,9 +29,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { ArrowUpDown, ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronDown, Plus, Download } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { SPHERE_COLORS } from "@/constants/design"
 import { BookingDialog } from "@/components/finanzen/booking-dialog"
+import { DatevExportDialog } from "@/components/finanzen/datev-export-dialog"
 
 const API_BASE = "/api"
 
@@ -165,6 +172,7 @@ export function BookingTable() {
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
+  const [datevExportType, setDatevExportType] = useState<"buchungen" | "rechnungen" | null>(null)
 
   const fetchBuchungen = useCallback(async () => {
     setLoading(true)
@@ -365,7 +373,24 @@ export function BookingTable() {
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
         />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" data-testid="datev-export-dropdown">
+                <Download className="mr-2 h-4 w-4" />
+                DATEV Export
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setDatevExportType("buchungen")}>
+                Buchungen exportieren
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDatevExportType("rechnungen")}>
+                Rechnungen exportieren
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setBookingDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Neue Buchung
@@ -452,6 +477,17 @@ export function BookingTable() {
         onOpenChange={setBookingDialogOpen}
         onSuccess={fetchBuchungen}
       />
+
+      {/* DATEV Export Dialog */}
+      {datevExportType && (
+        <DatevExportDialog
+          open={!!datevExportType}
+          onOpenChange={(open) => {
+            if (!open) setDatevExportType(null)
+          }}
+          exportType={datevExportType}
+        />
+      )}
     </div>
   )
 }

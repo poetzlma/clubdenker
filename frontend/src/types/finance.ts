@@ -190,6 +190,21 @@ export interface MahnwesenResult {
   total_overdue_amount: number;
 }
 
+export interface ComplianceFinding {
+  category: string;
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  affected_count: number;
+}
+
+export interface ComplianceMonitorResult {
+  findings: ComplianceFinding[];
+  total: number;
+  critical_count: number;
+  warning_count: number;
+  info_count: number;
+}
+
 export interface AufwandMonitorResult {
   status: string;
   cost_centers: {

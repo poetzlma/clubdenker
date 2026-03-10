@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import extract, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sportverein.models.beitrag import SepaMandat
+from sportverein.models.finanzen import Buchung, Rechnung, RechnungStatus, Sphare
+from sportverein.models.mitglied import Mitglied, MitgliedStatus
+from sportverein.models.vereinsstammdaten import Vereinsstammdaten
 from sportverein.services.beitraege import BeitraegeService
 from sportverein.services.ehrenamt import EhrenamtService
 from sportverein.services.finanzen import FinanzenService
@@ -183,3 +186,177 @@ class AufwandMonitorAgent:
             "warnings": warnings,
             "count": len(warnings),
         }
+
+
+class ComplianceMonitorAgent:
+    """Checks legal and regulatory compliance for the club."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def run(self) -> dict[str, Any]:
+        """Run all compliance checks and return findings.
+
+        Checks:
+        1. Gemeinnuetzigkeit: Freistellungsbescheid expiry
+        2. Zweckbetrieb turnover limit (45,000 EUR)
+        3. DSGVO: pending deletions past loesch_datum
+        4. Missing SEPA mandates for members with open invoices
+        """
+        findings: list[dict[str, Any]] = []
+
+        findings.extend(await self._check_gemeinnuetzigkeit())
+        findings.extend(await self._check_zweckbetrieb_limit())
+        findings.extend(await self._check_dsgvo_deletions())
+        findings.extend(await self._check_missing_sepa_mandates())
+
+        return {
+            "findings": findings,
+            "total": len(findings),
+            "critical_count": sum(1 for f in findings if f["severity"] == "critical"),
+            "warning_count": sum(1 for f in findings if f["severity"] == "warning"),
+            "info_count": sum(1 for f in findings if f["severity"] == "info"),
+        }
+
+    async def _check_gemeinnuetzigkeit(self) -> list[dict[str, Any]]:
+        """Check if Freistellungsbescheid is expiring or expired."""
+        result = await self.session.execute(select(Vereinsstammdaten).limit(1))
+        stammdaten = result.scalar_one_or_none()
+        if stammdaten is None or stammdaten.freistellungsbescheid_datum is None:
+            return [{
+                "category": "gemeinnuetzigkeit",
+                "severity": "warning",
+                "message": "Kein Freistellungsbescheid hinterlegt. "
+                           "Bitte Vereinsstammdaten pflegen.",
+                "affected_count": 0,
+            }]
+
+        today = date.today()
+        # Freistellungsbescheid is typically valid for ~3 years from issue date
+        expiry = stammdaten.freistellungsbescheid_datum + timedelta(days=3 * 365)
+        days_until_expiry = (expiry - today).days
+
+        findings: list[dict[str, Any]] = []
+        if days_until_expiry < 0:
+            findings.append({
+                "category": "gemeinnuetzigkeit",
+                "severity": "critical",
+                "message": f"Freistellungsbescheid ist seit {abs(days_until_expiry)} "
+                           f"Tagen abgelaufen (Datum: "
+                           f"{stammdaten.freistellungsbescheid_datum.isoformat()}).",
+                "affected_count": 1,
+            })
+        elif days_until_expiry <= 90:
+            findings.append({
+                "category": "gemeinnuetzigkeit",
+                "severity": "warning",
+                "message": f"Freistellungsbescheid laeuft in {days_until_expiry} "
+                           f"Tagen ab (Datum: "
+                           f"{stammdaten.freistellungsbescheid_datum.isoformat()}).",
+                "affected_count": 1,
+            })
+
+        return findings
+
+    async def _check_zweckbetrieb_limit(self) -> list[dict[str, Any]]:
+        """Check if Zweckbetrieb turnover approaches the 45,000 EUR limit."""
+        today = date.today()
+        year = today.year
+
+        # Sum positive bookings (income) in Zweckbetrieb sphere for current year
+        from sqlalchemy import func as sa_func
+
+        result = await self.session.execute(
+            select(sa_func.coalesce(sa_func.sum(Buchung.betrag), Decimal("0")))
+            .where(Buchung.sphare == Sphare.zweckbetrieb)
+            .where(Buchung.betrag > 0)
+            .where(extract("year", Buchung.buchungsdatum) == year)
+        )
+        total = result.scalar_one()
+        total_float = float(total)
+
+        findings: list[dict[str, Any]] = []
+        if total_float > 45000:
+            findings.append({
+                "category": "zweckbetrieb",
+                "severity": "critical",
+                "message": f"Zweckbetrieb-Einnahmen {total_float:,.2f} EUR "
+                           f"ueberschreiten die 45.000-EUR-Grenze!",
+                "affected_count": 1,
+            })
+        elif total_float > 40000:
+            findings.append({
+                "category": "zweckbetrieb",
+                "severity": "warning",
+                "message": f"Zweckbetrieb-Einnahmen {total_float:,.2f} EUR "
+                           f"naehern sich der 45.000-EUR-Grenze.",
+                "affected_count": 1,
+            })
+
+        return findings
+
+    async def _check_dsgvo_deletions(self) -> list[dict[str, Any]]:
+        """Check for members past their deletion date that are not yet anonymized."""
+        today = date.today()
+        result = await self.session.execute(
+            select(Mitglied)
+            .where(Mitglied.loesch_datum != None)  # noqa: E711
+            .where(Mitglied.loesch_datum <= today)
+            .where(Mitglied.geloescht_am == None)  # noqa: E711
+        )
+        pending = result.scalars().all()
+
+        findings: list[dict[str, Any]] = []
+        if pending:
+            count = len(pending)
+            severity = "critical" if count > 0 else "info"
+            findings.append({
+                "category": "dsgvo",
+                "severity": severity,
+                "message": f"{count} Mitglied(er) mit ueberschrittener "
+                           f"Loeschfrist muessen anonymisiert werden.",
+                "affected_count": count,
+            })
+        return findings
+
+    async def _check_missing_sepa_mandates(self) -> list[dict[str, Any]]:
+        """Check for active members with open invoices but no SEPA mandate."""
+        # Get all active SEPA mandate holder IDs
+        mandate_result = await self.session.execute(
+            select(SepaMandat.mitglied_id).where(SepaMandat.aktiv == True)  # noqa: E712
+        )
+        mandate_member_ids = {row[0] for row in mandate_result.all()}
+
+        # Get active members with open invoices (not bezahlt/storniert)
+        closed_statuses = {
+            RechnungStatus.bezahlt,
+            RechnungStatus.storniert,
+            RechnungStatus.abgeschrieben,
+        }
+        open_invoice_result = await self.session.execute(
+            select(Rechnung.mitglied_id)
+            .where(Rechnung.mitglied_id != None)  # noqa: E711
+            .where(Rechnung.status.notin_(closed_statuses))
+            .distinct()
+        )
+        members_with_open_invoices = {row[0] for row in open_invoice_result.all()}
+
+        # Active members without mandate but with open invoices
+        active_result = await self.session.execute(
+            select(Mitglied.id).where(Mitglied.status == MitgliedStatus.aktiv)
+        )
+        active_ids = {row[0] for row in active_result.all()}
+
+        missing = members_with_open_invoices & active_ids - mandate_member_ids
+
+        findings: list[dict[str, Any]] = []
+        if missing:
+            count = len(missing)
+            findings.append({
+                "category": "sepa_mandate",
+                "severity": "warning" if count <= 5 else "info",
+                "message": f"{count} aktive(s) Mitglied(er) mit offenen Rechnungen "
+                           f"ohne SEPA-Mandat.",
+                "affected_count": count,
+            })
+        return findings

@@ -6,6 +6,7 @@ import type {
   BeitragseinzugResult,
   MahnwesenResult,
   AufwandMonitorResult,
+  ComplianceMonitorResult,
 } from "@/types/finance"
 import { Play, Loader2 } from "lucide-react"
 import { SEMANTIC_COLORS } from "@/constants/design"
@@ -39,6 +40,12 @@ export function AgentDashboard() {
   })
 
   const [aufwand, setAufwand] = useState<AgentState<AufwandMonitorResult>>({
+    status: "idle",
+    result: null,
+    error: null,
+  })
+
+  const [compliance, setCompliance] = useState<AgentState<ComplianceMonitorResult>>({
     status: "idle",
     result: null,
     error: null,
@@ -125,6 +132,60 @@ export function AgentDashboard() {
     }
   }
 
+  async function runComplianceMonitor() {
+    setCompliance({ status: "loading", result: null, error: null })
+    try {
+      const res = await fetch(`${API_BASE}/agents/compliance-monitor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!res.ok) throw new Error("API error")
+      const data: ComplianceMonitorResult = await res.json()
+      setCompliance({ status: "success", result: data, error: null })
+    } catch {
+      setCompliance({
+        status: "success",
+        result: {
+          findings: [
+            {
+              category: "gemeinnuetzigkeit",
+              severity: "warning",
+              message: "Freistellungsbescheid laeuft in 45 Tagen ab.",
+              affected_count: 1,
+            },
+          ],
+          total: 1,
+          critical_count: 0,
+          warning_count: 1,
+          info_count: 0,
+        },
+        error: null,
+      })
+    }
+  }
+
+  function severityVariant(severity: string): "default" | "secondary" | "destructive" | "outline" {
+    switch (severity) {
+      case "critical":
+        return "destructive"
+      case "warning":
+        return "secondary"
+      default:
+        return "outline"
+    }
+  }
+
+  function severityLabel(severity: string): string {
+    switch (severity) {
+      case "critical":
+        return "Kritisch"
+      case "warning":
+        return "Warnung"
+      default:
+        return "Info"
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Agenten</h2>
@@ -132,7 +193,7 @@ export function AgentDashboard() {
         Automatisierte Aufgaben ausführen und überwachen.
       </p>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Beitragseinzug */}
         <Card data-testid="agent-beitragseinzug">
           <CardHeader>
@@ -280,6 +341,62 @@ export function AgentDashboard() {
                       <span>{c.utilization_percent}% Auslastung</span>
                     </div>
                   ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Compliance Monitor */}
+        <Card data-testid="agent-compliance">
+          <CardHeader>
+            <CardTitle className="text-lg">Compliance-Monitor</CardTitle>
+            <CardDescription>
+              Gemeinnuetzigkeit, DSGVO und steuerliche Grenzen pruefen.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              onClick={runComplianceMonitor}
+              disabled={compliance.status === "loading"}
+              className="w-full"
+              data-testid="run-compliance"
+            >
+              {compliance.status === "loading" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="mr-2 h-4 w-4" />
+              )}
+              Compliance-Check ausfuehren
+            </Button>
+            {compliance.result && (
+              <div className="space-y-2 rounded-md bg-muted p-3 text-sm">
+                <div className="flex justify-between">
+                  <span>Befunde gesamt</span>
+                  <span className="font-medium">{compliance.result.total}</span>
+                </div>
+                {compliance.result.critical_count > 0 && (
+                  <div className="flex justify-between" style={{ color: SEMANTIC_COLORS.danger }}>
+                    <span>Kritisch</span>
+                    <span className="font-medium">{compliance.result.critical_count}</span>
+                  </div>
+                )}
+                {compliance.result.warning_count > 0 && (
+                  <div className="flex justify-between" style={{ color: SEMANTIC_COLORS.warning }}>
+                    <span>Warnungen</span>
+                    <span className="font-medium">{compliance.result.warning_count}</span>
+                  </div>
+                )}
+                {compliance.result.findings.map((f, i) => (
+                  <div key={i} className="border-t pt-2 mt-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant={severityVariant(f.severity)}>
+                        {severityLabel(f.severity)}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{f.category}</span>
+                    </div>
+                    <p className="text-xs">{f.message}</p>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -81,6 +81,31 @@ async def test_aufwand_monitor_empty(client, session: AsyncSession):
     assert resp.status_code == 200
     body = resp.json()
     assert body["count"] == 0
+
+
+async def test_compliance_monitor_empty(client, session: AsyncSession):
+    resp = await client.post("/api/agents/compliance-monitor")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "findings" in body
+    assert "total" in body
+    assert body["total"] >= 1  # At least the Stammdaten warning
+
+
+async def test_compliance_monitor_with_findings(client, session: AsyncSession):
+    member = await _create_member(session)
+    # Member past deletion date
+    member.loesch_datum = date.today() - timedelta(days=5)
+    member.geloescht_am = None
+    session.add(member)
+    await session.flush()
+
+    resp = await client.post("/api/agents/compliance-monitor")
+    assert resp.status_code == 200
+    body = resp.json()
+    dsgvo = [f for f in body["findings"] if f["category"] == "dsgvo"]
+    assert len(dsgvo) == 1
+    assert dsgvo[0]["severity"] == "critical"
 
 
 async def test_aufwand_monitor_with_warning(client, session: AsyncSession):

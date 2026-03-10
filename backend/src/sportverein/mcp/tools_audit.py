@@ -1,4 +1,4 @@
-"""MCP tools for audit log queries."""
+"""MCP tools for audit log queries and compliance monitoring."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from typing import Any
 
 from sportverein.mcp.server import mcp
 from sportverein.mcp.session import get_mcp_session
+from sportverein.services.agents import ComplianceMonitorAgent
 from sportverein.services.audit import AuditService
 
 
@@ -45,3 +46,13 @@ async def audit_logs_abrufen(
             "items": [_audit_to_dict(log) for log in logs],
             "total": total,
         }
+
+
+@mcp.tool(description="Compliance-Pruefung ausfuehren: Gemeinnuetzigkeit, Zweckbetrieb-Grenzen, DSGVO-Loeschfristen, SEPA-Mandate.")
+async def compliance_monitor() -> dict:
+    """Run all compliance checks and return findings."""
+    async with get_mcp_session() as session:
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+        await session.commit()
+        return result

@@ -9,6 +9,7 @@ from sportverein.api.schemas import (
     AufwandMonitorResponse,
     BeitragseinzugRequest,
     BeitragseinzugResponse,
+    ComplianceMonitorResponse,
     MahnwesenResponse,
 )
 from sportverein.auth.dependencies import get_current_token, get_db_session
@@ -16,6 +17,7 @@ from sportverein.auth.models import ApiToken
 from sportverein.services.agents import (
     AufwandMonitorAgent,
     BeitragseinzugAgent,
+    ComplianceMonitorAgent,
     MahnwesenAgent,
 )
 
@@ -55,3 +57,13 @@ async def run_aufwand_monitor(
     agent = AufwandMonitorAgent(session)
     result = await agent.run()
     return AufwandMonitorResponse(**result)
+
+
+@router.post("/compliance-monitor", response_model=ComplianceMonitorResponse, status_code=status.HTTP_200_OK)
+async def run_compliance_monitor(
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> ComplianceMonitorResponse:
+    agent = ComplianceMonitorAgent(session)
+    result = await agent.run()
+    return ComplianceMonitorResponse(**result)

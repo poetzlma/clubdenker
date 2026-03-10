@@ -768,6 +768,21 @@ class AufwandMonitorResponse(BaseModel):
     count: int
 
 
+class ComplianceFinding(BaseModel):
+    category: str
+    severity: str
+    message: str
+    affected_count: int
+
+
+class ComplianceMonitorResponse(BaseModel):
+    findings: list[ComplianceFinding]
+    total: int
+    critical_count: int
+    warning_count: int
+    info_count: int
+
+
 # ---------------------------------------------------------------------------
 # Ehrenamt (volunteer compensation) schemas
 # ---------------------------------------------------------------------------

@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sportverein.models.beitrag import SepaMandat
-from sportverein.models.finanzen import Rechnung, RechnungStatus
+from sportverein.models.finanzen import Buchung, Rechnung, RechnungStatus, Sphare
 from sportverein.models.mitglied import BeitragKategorie, Mitglied, MitgliedStatus
 from sportverein.models.ehrenamt import Aufwandsentschaedigung, AufwandTyp
+from sportverein.models.vereinsstammdaten import Vereinsstammdaten
 from sportverein.services.agents import (
     AufwandMonitorAgent,
     BeitragseinzugAgent,
+    ComplianceMonitorAgent,
     MahnwesenAgent,
 )
 
@@ -155,3 +157,151 @@ class TestAufwandMonitorAgent:
         assert w["member_id"] == member.id
         assert w["typ"] == "ehrenamt"
         assert "projected_year_end" in w
+
+
+class TestComplianceMonitorAgent:
+    async def test_run_no_issues(self, session):
+        """Test compliance check with no data returns only Stammdaten warning."""
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+        # Should at least warn about missing Vereinsstammdaten
+        assert result["total"] >= 1
+        gemeinnuetzigkeit = [
+            f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"
+        ]
+        assert len(gemeinnuetzigkeit) == 1
+        assert gemeinnuetzigkeit[0]["severity"] == "warning"
+
+    async def test_expired_freistellungsbescheid(self, session):
+        """Test critical finding for expired Freistellungsbescheid."""
+        stammdaten = Vereinsstammdaten(
+            name="TSV Test",
+            strasse="Teststr. 1",
+            plz="12345",
+            ort="Teststadt",
+            iban="DE89370400440532013000",
+            # Set to ~4 years ago so the 3-year validity is expired
+            freistellungsbescheid_datum=date.today() - timedelta(days=4 * 365),
+        )
+        session.add(stammdaten)
+        await session.flush()
+
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+
+        gemeinnuetzigkeit = [
+            f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"
+        ]
+        assert len(gemeinnuetzigkeit) == 1
+        assert gemeinnuetzigkeit[0]["severity"] == "critical"
+        assert result["critical_count"] >= 1
+
+    async def test_freistellungsbescheid_expiring_soon(self, session):
+        """Test warning for Freistellungsbescheid expiring within 90 days."""
+        # Set so that expiry (datum + 3 years) is 60 days from now
+        target_expiry = date.today() + timedelta(days=60)
+        bescheid_datum = target_expiry - timedelta(days=3 * 365)
+        stammdaten = Vereinsstammdaten(
+            name="TSV Test",
+            strasse="Teststr. 1",
+            plz="12345",
+            ort="Teststadt",
+            iban="DE89370400440532013000",
+            freistellungsbescheid_datum=bescheid_datum,
+        )
+        session.add(stammdaten)
+        await session.flush()
+
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+
+        gemeinnuetzigkeit = [
+            f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"
+        ]
+        assert len(gemeinnuetzigkeit) == 1
+        assert gemeinnuetzigkeit[0]["severity"] == "warning"
+
+    async def test_zweckbetrieb_over_40k_warning(self, session):
+        """Test warning when Zweckbetrieb turnover exceeds 40,000 EUR."""
+        buchung = Buchung(
+            buchungsdatum=date.today(),
+            betrag=Decimal("42000.00"),
+            beschreibung="Kursgebuehren",
+            konto="4400",
+            gegenkonto="1200",
+            sphare=Sphare.zweckbetrieb,
+        )
+        session.add(buchung)
+        await session.flush()
+
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+
+        zweckbetrieb = [
+            f for f in result["findings"] if f["category"] == "zweckbetrieb"
+        ]
+        assert len(zweckbetrieb) == 1
+        assert zweckbetrieb[0]["severity"] == "warning"
+
+    async def test_zweckbetrieb_over_45k_critical(self, session):
+        """Test critical when Zweckbetrieb turnover exceeds 45,000 EUR."""
+        buchung = Buchung(
+            buchungsdatum=date.today(),
+            betrag=Decimal("46000.00"),
+            beschreibung="Kursgebuehren",
+            konto="4400",
+            gegenkonto="1200",
+            sphare=Sphare.zweckbetrieb,
+        )
+        session.add(buchung)
+        await session.flush()
+
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+
+        zweckbetrieb = [
+            f for f in result["findings"] if f["category"] == "zweckbetrieb"
+        ]
+        assert len(zweckbetrieb) == 1
+        assert zweckbetrieb[0]["severity"] == "critical"
+
+    async def test_dsgvo_pending_deletions(self, session):
+        """Test finding for members past their deletion date."""
+        member = _make_member()
+        member.loesch_datum = date.today() - timedelta(days=10)
+        member.geloescht_am = None
+        session.add(member)
+        await session.flush()
+
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+
+        dsgvo = [f for f in result["findings"] if f["category"] == "dsgvo"]
+        assert len(dsgvo) == 1
+        assert dsgvo[0]["severity"] == "critical"
+        assert dsgvo[0]["affected_count"] == 1
+
+    async def test_missing_sepa_mandate(self, session):
+        """Test finding for active members with open invoices but no mandate."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        rechnung = Rechnung(
+            rechnungsnummer="R-COMP-001",
+            mitglied_id=member.id,
+            betrag=Decimal("120.00"),
+            beschreibung="Beitrag",
+            rechnungsdatum=date.today(),
+            faelligkeitsdatum=date.today() + timedelta(days=14),
+            status=RechnungStatus.gestellt,
+        )
+        session.add(rechnung)
+        await session.flush()
+
+        agent = ComplianceMonitorAgent(session)
+        result = await agent.run()
+
+        sepa = [f for f in result["findings"] if f["category"] == "sepa_mandate"]
+        assert len(sepa) == 1
+        assert sepa[0]["affected_count"] == 1

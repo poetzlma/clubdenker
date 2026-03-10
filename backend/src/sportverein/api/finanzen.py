@@ -8,7 +8,7 @@ from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import extract, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1267,4 +1267,53 @@ async def get_freibetrag_summary(
     return FreibetragSummaryResponse(
         year=year,
         items=[FreibetragSummary(**s) for s in summaries],
+    )
+
+
+# ---------------------------------------------------------------------------
+# DATEV CSV Export
+# ---------------------------------------------------------------------------
+
+
+@router.get("/export/datev/buchungen")
+async def export_datev_buchungen(
+    jahr: int = Query(..., description="Jahr"),
+    monat: int | None = Query(None, description="Monat (optional)"),
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    """Download bookings as DATEV-compatible CSV."""
+    from sportverein.services.datev_export import DatevExportService
+
+    svc = DatevExportService(session)
+    csv_bytes = await svc.export_buchungen_csv(jahr, monat)
+
+    suffix = f"_{monat:02d}" if monat else ""
+    filename = f"DATEV_Buchungen_{jahr}{suffix}.csv"
+
+    return StreamingResponse(
+        iter([csv_bytes]),
+        media_type="text/csv; charset=windows-1252",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/export/datev/rechnungen")
+async def export_datev_rechnungen(
+    jahr: int = Query(..., description="Jahr"),
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    """Download invoices as DATEV-compatible CSV."""
+    from sportverein.services.datev_export import DatevExportService
+
+    svc = DatevExportService(session)
+    csv_bytes = await svc.export_rechnungen_csv(jahr)
+
+    filename = f"DATEV_Rechnungen_{jahr}.csv"
+
+    return StreamingResponse(
+        iter([csv_bytes]),
+        media_type="text/csv; charset=windows-1252",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
