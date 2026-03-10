@@ -19,6 +19,7 @@ export function AppLayout({ onLogout }: AppLayoutProps) {
   const location = useLocation()
   const title = pageTitles[location.pathname] || "Sportverein"
   const [chatOpen, setChatOpen] = useState(false)
+  const isDashboard = location.pathname === "/"
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -29,7 +30,7 @@ export function AppLayout({ onLogout }: AppLayoutProps) {
           onLogout={onLogout}
           onChatToggle={() => setChatOpen((prev) => !prev)}
         />
-        <main className="flex-1 overflow-auto p-6">
+        <main className={isDashboard ? "flex-1 overflow-hidden" : "flex-1 overflow-auto p-6"}>
           <Outlet />
         </main>
       </div>

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { FinanzenPage } from "@/pages/finanzen"
 
 // Mock recharts to avoid rendering issues in jsdom
@@ -25,50 +26,58 @@ beforeEach(() => {
   )
 })
 
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <FinanzenPage />
+    </MemoryRouter>
+  )
+}
+
 describe("FinanzenPage", () => {
   it("renders the page title", () => {
-    render(<FinanzenPage />)
+    renderPage()
     expect(screen.getByText("Finanzen")).toBeInTheDocument()
   })
 
-  it("renders all three tabs", () => {
-    render(<FinanzenPage />)
+  it("renders all tabs", () => {
+    renderPage()
     expect(screen.getByRole("tab", { name: /Übersicht/i })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: /Buchungen/i })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: /SEPA/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /Rechnungen/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /Buchungsjournal/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /^SEPA$/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /SEPA-Mandate/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /EÜR/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /Kostenstellen/i })).toBeInTheDocument()
   })
 
-  it("renders payment overview stats cards by default", async () => {
-    render(<FinanzenPage />)
+  it("renders KPI cards and quick actions in the overview", async () => {
+    renderPage()
     await waitFor(() => {
-      expect(screen.getByTestId("stat-total")).toBeInTheDocument()
-      expect(screen.getByTestId("stat-offen")).toBeInTheDocument()
-      expect(screen.getByTestId("stat-ueberfaellig")).toBeInTheDocument()
-      expect(screen.getByTestId("stat-bezahlt")).toBeInTheDocument()
+      expect(screen.getByTestId("kpi-row")).toBeInTheDocument()
+      expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
     })
   })
 
-  it("renders payment overview with correct labels", async () => {
-    render(<FinanzenPage />)
+  it("renders payment overview with correct KPI labels", async () => {
+    renderPage()
     await waitFor(() => {
-      expect(screen.getByText("Gesamtbetrag")).toBeInTheDocument()
-      expect(screen.getByText("Offene Rechnungen")).toBeInTheDocument()
-      expect(screen.getByText("Überfällig")).toBeInTheDocument()
-      expect(screen.getByText("Bezahlt")).toBeInTheDocument()
+      expect(screen.getByText("Kassenstand")).toBeInTheDocument()
+      expect(screen.getByText("Einnahmen Monat")).toBeInTheDocument()
+      expect(screen.getByText("Ausgaben Monat")).toBeInTheDocument()
+      expect(screen.getByText("Offene Forderungen")).toBeInTheDocument()
     })
   })
 
-  it("shows booking table when Buchungen tab is clicked", async () => {
-    render(<FinanzenPage />)
-    const buchungenTab = screen.getByRole("tab", { name: /Buchungen/i })
+  it("shows booking table when Buchungsjournal tab is clicked", async () => {
+    renderPage()
+    const buchungenTab = screen.getByRole("tab", { name: /Buchungsjournal/i })
     buchungenTab.click()
     await waitFor(() => {
       const panel = screen.getByRole("tabpanel")
       expect(panel).toBeInTheDocument()
     })
-    // After tab switch, the booking table should be loading or loaded
     await waitFor(() => {
-      // The booking table shows "Laden..." first, then actual rows
       const panel = screen.getByRole("tabpanel")
       expect(panel.textContent).toBeTruthy()
     })

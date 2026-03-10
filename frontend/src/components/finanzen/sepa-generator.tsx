@@ -24,37 +24,34 @@ function formatDate(dateStr: string): string {
 
 const mockOpenInvoices: Rechnung[] = [
   {
-    id: 3,
-    rechnungsnummer: "R-2025-003",
-    mitglied_id: 3,
-    betrag: 60.0,
-    beschreibung: "Jahresbeitrag Jugend 2025",
-    rechnungsdatum: "2025-01-15",
-    faelligkeitsdatum: "2025-02-15",
-    status: "offen",
-    created_at: "2025-01-15T10:00:00Z",
+    id: 3, rechnungsnummer: "RE-2025-003", rechnungstyp: "mitgliedsbeitrag",
+    status: "faellig", mahnstufe: 0, empfaenger_typ: "mitglied",
+    empfaenger_name: "Weber, Klaus", mitglied_id: 3, mitglied_name: "Weber, Klaus",
+    rechnungsdatum: "2025-01-15", faelligkeitsdatum: "2025-02-15",
+    summe_netto: 60.0, summe_steuer: 0, summe_brutto: 60.0,
+    betrag: 60.0, bezahlt_betrag: 0, offener_betrag: 60.0,
+    sphaere: "ideell", zahlungsziel_tage: 14, verwendungszweck: "Jahresbeitrag Jugend 2025",
+    positionen: [], created_at: "2025-01-15T10:00:00Z",
   },
   {
-    id: 5,
-    rechnungsnummer: "R-2025-005",
-    mitglied_id: 5,
-    betrag: 120.0,
-    beschreibung: "Jahresbeitrag 2025",
-    rechnungsdatum: "2025-01-15",
-    faelligkeitsdatum: "2025-02-15",
-    status: "ueberfaellig",
-    created_at: "2025-01-15T10:00:00Z",
+    id: 5, rechnungsnummer: "RE-2025-005", rechnungstyp: "mitgliedsbeitrag",
+    status: "mahnung_1", mahnstufe: 1, empfaenger_typ: "mitglied",
+    empfaenger_name: "Becker, Stefan", mitglied_id: 5, mitglied_name: "Becker, Stefan",
+    rechnungsdatum: "2025-01-15", faelligkeitsdatum: "2025-02-15",
+    summe_netto: 120.0, summe_steuer: 0, summe_brutto: 120.0,
+    betrag: 120.0, bezahlt_betrag: 0, offener_betrag: 120.0,
+    sphaere: "ideell", zahlungsziel_tage: 14, verwendungszweck: "Jahresbeitrag 2025",
+    positionen: [], created_at: "2025-01-15T10:00:00Z",
   },
   {
-    id: 6,
-    rechnungsnummer: "R-2025-006",
-    mitglied_id: 6,
-    betrag: 80.0,
-    beschreibung: "Jahresbeitrag Passiv 2025",
-    rechnungsdatum: "2025-01-15",
-    faelligkeitsdatum: "2025-02-15",
-    status: "offen",
-    created_at: "2025-01-15T10:00:00Z",
+    id: 6, rechnungsnummer: "RE-2025-006", rechnungstyp: "mitgliedsbeitrag",
+    status: "faellig", mahnstufe: 0, empfaenger_typ: "mitglied",
+    empfaenger_name: "Hoffmann, Lisa", mitglied_id: 6, mitglied_name: "Hoffmann, Lisa",
+    rechnungsdatum: "2025-01-15", faelligkeitsdatum: "2025-02-15",
+    summe_netto: 80.0, summe_steuer: 0, summe_brutto: 80.0,
+    betrag: 80.0, bezahlt_betrag: 0, offener_betrag: 80.0,
+    sphaere: "ideell", zahlungsziel_tage: 14, verwendungszweck: "Jahresbeitrag Passiv 2025",
+    positionen: [], created_at: "2025-01-15T10:00:00Z",
   },
 ]
 
@@ -246,10 +243,10 @@ export function SepaGenerator() {
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {inv.beschreibung} - Fällig: {formatDate(inv.faelligkeitsdatum)}
+                          {inv.verwendungszweck ?? inv.empfaenger_name} - Fällig: {formatDate(inv.faelligkeitsdatum)}
                         </p>
                       </div>
-                      {inv.status === "ueberfaellig" && (
+                      {(inv.status === "mahnung_1" || inv.status === "mahnung_2" || inv.status === "mahnung_3") && (
                         <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
                           Überfällig
                         </span>
@@ -291,7 +288,7 @@ export function SepaGenerator() {
                   <div>
                     <span className="font-medium">{inv.rechnungsnummer}</span>
                     <p className="text-sm text-muted-foreground">
-                      {inv.beschreibung}
+                      {inv.verwendungszweck ?? inv.empfaenger_name}
                     </p>
                   </div>
                   <span className="font-medium">{formatEuro(inv.betrag)}</span>

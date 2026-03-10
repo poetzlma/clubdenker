@@ -112,3 +112,39 @@
     font-family: system-ui, -apple-system, sans-serif;
   }
 }
+
+/* Dashboard design tokens */
+.dashboard-shell {
+  --bg-base: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f9fafb;
+  --bg-active: #f3f4f6;
+  --border-subtle: #e5e7eb;
+  --border-card: #e5e7eb;
+  --border-strong: #d1d5db;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+}
+
+/* Tabular nums for all numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pulse dot animation */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.pulse-dot-ring {
+  animation: pulse-ring 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}

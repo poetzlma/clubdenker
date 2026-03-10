@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sportverein.services.audit import AuditService

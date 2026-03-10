@@ -113,9 +113,9 @@ async def test_rechnung_erstellen(mcp_session_factory, sample_member):
         faelligkeitsdatum="2025-03-31",
     )
     assert result["id"] is not None
-    assert result["rechnungsnummer"] == "R-0001"
+    assert result["rechnungsnummer"].endswith("-0001")
     assert result["betrag"] == 240.0
-    assert result["status"] == "offen"
+    assert result["status"] == "entwurf"
     assert result["mitglied_id"] == sample_member.id
 
 

@@ -25,8 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import { SPHERE_COLORS } from "@/constants/design"
+import { BookingDialog } from "@/components/finanzen/booking-dialog"
 
 const API_BASE = "/api"
 
@@ -46,24 +51,7 @@ function formatDate(dateStr: string): string {
   return `${day}.${month}.${year}`
 }
 
-const sphereConfig: Record<
-  Buchung["sphare"],
-  { label: string; className: string }
-> = {
-  ideell: { label: "Ideell", className: "bg-blue-100 text-blue-800" },
-  zweckbetrieb: {
-    label: "Zweckbetrieb",
-    className: "bg-green-100 text-green-800",
-  },
-  vermoegensverwaltung: {
-    label: "Vermögensverwaltung",
-    className: "bg-yellow-100 text-yellow-800",
-  },
-  wirtschaftlich: {
-    label: "Wirtschaftlich",
-    className: "bg-purple-100 text-purple-800",
-  },
-}
+const sphereConfig = SPHERE_COLORS
 
 const mockBuchungen: Buchung[] = [
   {
@@ -74,6 +62,7 @@ const mockBuchungen: Buchung[] = [
     konto: "1200",
     gegenkonto: "8100",
     sphare: "ideell",
+    kostenstelle: "Verwaltung",
     mitglied_id: 1,
     created_at: "2025-01-15T10:00:00Z",
   },
@@ -85,6 +74,7 @@ const mockBuchungen: Buchung[] = [
     konto: "1200",
     gegenkonto: "8200",
     sphare: "vermoegensverwaltung",
+    kostenstelle: "Verwaltung",
     mitglied_id: null,
     created_at: "2025-01-20T10:00:00Z",
   },
@@ -96,6 +86,7 @@ const mockBuchungen: Buchung[] = [
     konto: "4800",
     gegenkonto: "1200",
     sphare: "zweckbetrieb",
+    kostenstelle: "Fussball",
     mitglied_id: null,
     created_at: "2025-02-01T10:00:00Z",
   },
@@ -107,6 +98,7 @@ const mockBuchungen: Buchung[] = [
     konto: "1200",
     gegenkonto: "8400",
     sphare: "wirtschaftlich",
+    kostenstelle: null,
     mitglied_id: null,
     created_at: "2025-02-10T10:00:00Z",
   },
@@ -118,6 +110,7 @@ const mockBuchungen: Buchung[] = [
     konto: "1200",
     gegenkonto: "8100",
     sphare: "ideell",
+    kostenstelle: "Verwaltung",
     mitglied_id: 2,
     created_at: "2025-02-15T10:00:00Z",
   },
@@ -129,6 +122,7 @@ const mockBuchungen: Buchung[] = [
     konto: "4100",
     gegenkonto: "1200",
     sphare: "zweckbetrieb",
+    kostenstelle: "Tennis",
     mitglied_id: null,
     created_at: "2025-03-01T10:00:00Z",
   },
@@ -140,6 +134,7 @@ const mockBuchungen: Buchung[] = [
     konto: "1200",
     gegenkonto: "8100",
     sphare: "ideell",
+    kostenstelle: "Jugendarbeit",
     mitglied_id: 3,
     created_at: "2025-03-05T10:00:00Z",
   },
@@ -151,6 +146,7 @@ const mockBuchungen: Buchung[] = [
     konto: "4500",
     gegenkonto: "1200",
     sphare: "vermoegensverwaltung",
+    kostenstelle: "Verwaltung",
     mitglied_id: null,
     created_at: "2025-03-10T10:00:00Z",
   },
@@ -165,6 +161,10 @@ export function BookingTable() {
     pageSize: 10,
   })
   const [sphereFilter, setSphereFilter] = useState<string>("alle")
+  const [kostenstelleFilter, setKostenstelleFilter] = useState<string>("alle")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
 
   const fetchBuchungen = useCallback(async () => {
     setLoading(true)
@@ -251,7 +251,8 @@ export function BookingTable() {
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                config.className
+                config.bg,
+                config.text
               )}
             >
               {config.label}
@@ -259,14 +260,43 @@ export function BookingTable() {
           )
         },
       },
+      {
+        accessorKey: "kostenstelle",
+        header: "Kostenstelle",
+        cell: ({ getValue }) => {
+          const ks = getValue<string | null | undefined>()
+          if (!ks) return <span className="text-muted-foreground">-</span>
+          return <Badge variant="outline">{ks}</Badge>
+        },
+      },
     ],
     []
   )
 
+  const kostenstellenOptions = useMemo(() => {
+    const set = new Set<string>()
+    buchungen.forEach((b) => {
+      if (b.kostenstelle) set.add(b.kostenstelle)
+    })
+    return Array.from(set).sort()
+  }, [buchungen])
+
   const filteredData = useMemo(() => {
-    if (!sphereFilter || sphereFilter === "alle") return buchungen
-    return buchungen.filter((b) => b.sphare === sphereFilter)
-  }, [buchungen, sphereFilter])
+    let data = buchungen
+    if (sphereFilter && sphereFilter !== "alle") {
+      data = data.filter((b) => b.sphare === sphereFilter)
+    }
+    if (kostenstelleFilter && kostenstelleFilter !== "alle") {
+      data = data.filter((b) => b.kostenstelle === kostenstelleFilter)
+    }
+    if (dateFrom) {
+      data = data.filter((b) => b.buchungsdatum >= dateFrom)
+    }
+    if (dateTo) {
+      data = data.filter((b) => b.buchungsdatum <= dateTo)
+    }
+    return data
+  }, [buchungen, sphereFilter, kostenstelleFilter, dateFrom, dateTo])
 
   const table = useReactTable({
     data: filteredData,
@@ -308,6 +338,39 @@ export function BookingTable() {
             <SelectItem value="wirtschaftlich">Wirtschaftlich</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={kostenstelleFilter} onValueChange={setKostenstelleFilter}>
+          <SelectTrigger className="w-52" data-testid="kostenstelle-filter">
+            <SelectValue placeholder="Kostenstelle filtern" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Kostenstellen</SelectItem>
+            {kostenstellenOptions.map((ks) => (
+              <SelectItem key={ks} value={ks}>
+                {ks}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          type="date"
+          className="w-40"
+          placeholder="Von"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+        />
+        <Input
+          type="date"
+          className="w-40"
+          placeholder="Bis"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+        />
+        <div className="ml-auto">
+          <Button onClick={() => setBookingDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Neue Buchung
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -382,6 +445,13 @@ export function BookingTable() {
           </button>
         </div>
       </div>
+
+      {/* Booking Dialog */}
+      <BookingDialog
+        open={bookingDialogOpen}
+        onOpenChange={setBookingDialogOpen}
+        onSuccess={fetchBuchungen}
+      />
     </div>
   )
 }

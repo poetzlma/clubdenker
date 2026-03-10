@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useState, useEffect, type FormEvent } from "react"
 import type { Member } from "@/types/member"
 import {
   Dialog,
@@ -36,7 +36,17 @@ export interface MemberFormData {
   ort: string
   beitragskategorie: Member["beitragskategorie"]
   notizen: string
+  abteilungen: string[]
 }
+
+const defaultDepartments = [
+  "Fussball",
+  "Tennis",
+  "Schwimmen",
+  "Leichtathletik",
+  "Fitness",
+  "Handball",
+]
 
 const beitragOptions: { value: Member["beitragskategorie"]; label: string }[] = [
   { value: "erwachsene", label: "Erwachsene" },
@@ -63,10 +73,30 @@ export function MemberForm({ open, onOpenChange, member, onSubmit }: MemberFormP
     ort: member?.ort ?? "",
     beitragskategorie: member?.beitragskategorie ?? "erwachsene",
     notizen: member?.notizen ?? "",
+    abteilungen: [],
   }))
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [departments, setDepartments] = useState<string[]>(defaultDepartments)
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchDepartments() {
+      try {
+        const res = await fetch("/api/mitglieder/abteilungen")
+        if (!res.ok) throw new Error("fetch failed")
+        const data = await res.json()
+        if (!cancelled && Array.isArray(data)) {
+          setDepartments(data.map((d: { name: string }) => d.name ?? d))
+        }
+      } catch {
+        // Use default departments as fallback
+      }
+    }
+    fetchDepartments()
+    return () => { cancelled = true }
+  }, [])
 
   function validate(): boolean {
     const newErrors: Record<string, string> = {}
@@ -101,6 +131,15 @@ export function MemberForm({ open, onOpenChange, member, onSubmit }: MemberFormP
         return next
       })
     }
+  }
+
+  function toggleDepartment(dept: string) {
+    setFormData((prev) => ({
+      ...prev,
+      abteilungen: prev.abteilungen.includes(dept)
+        ? prev.abteilungen.filter((d) => d !== dept)
+        : [...prev.abteilungen, dept],
+    }))
   }
 
   return (
@@ -219,6 +258,33 @@ export function MemberForm({ open, onOpenChange, member, onSubmit }: MemberFormP
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Abteilungen — only for new members */}
+            {!isEdit && (
+              <div className="col-span-2 space-y-1">
+                <label className="text-sm font-medium">Abteilungen</label>
+                <div className="flex flex-wrap gap-2">
+                  {departments.map((dept) => {
+                    const selected = formData.abteilungen.includes(dept)
+                    return (
+                      <button
+                        key={dept}
+                        type="button"
+                        onClick={() => toggleDepartment(dept)}
+                        className={cn(
+                          "inline-flex items-center rounded-full px-3 py-1 text-sm font-medium transition-colors",
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-input bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        )}
+                      >
+                        {dept}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Straße */}
             <div className="col-span-2 space-y-1">

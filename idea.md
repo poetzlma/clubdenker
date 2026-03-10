@@ -345,8 +345,6 @@ Für **Auftragsverarbeitung** (AVV) mit dem SaaS-Anbieter und die Integration mi
 
 **Phase 4 (Ökosystem — fortlaufend):** Verbandsmeldung-Export, DATEV-Schnittstelle, E-Rechnung (XRechnung/ZUGFeRD), Multi-Verein-Fähigkeit. Veröffentlichung als Open-Source-MCP-Server, den jeder Verein mit seinem LLM-Anbieter der Wahl verbinden kann.
 
----s‚
-
 ## Fazit: Der Verein als API, der Agent als Sachbearbeiter
 
 Das agentic-first Paradigma löst das Kernproblem der Vereinsverwaltung: **Es eliminiert die Software-Lernkurve für Ehrenamtliche.** Statt einer weiteren SaaS-Plattform mit eigenem Login und eigener Oberfläche wird der Verein zu einer strukturierten Datenquelle mit 26 Tools, die jeder KI-Assistent nutzen kann. Die Satzung wird zum Resource-Kontext, der dem Agenten ermöglicht, vereinsspezifische Regeln korrekt anzuwenden. Autonome Agenten übernehmen Routineaufgaben — von der Beitragsberechnung bis zur Compliance-Überwachung — mit eingebauten Sicherheitsmechanismen für kritische Aktionen.

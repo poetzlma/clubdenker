@@ -4,9 +4,11 @@ import {
   LayoutDashboard,
   Users,
   Wallet,
+  Dumbbell,
   Calendar,
   FileText,
   Shield,
+  Settings,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -32,9 +34,11 @@ const navItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Mitglieder", href: "/mitglieder", icon: Users },
   { title: "Finanzen", href: "/finanzen", icon: Wallet },
+  { title: "Training", href: "/training", icon: Dumbbell },
   { title: "Kalender", href: "/kalender", icon: Calendar, disabled: true },
   { title: "Dokumente", href: "/dokumente", icon: FileText, disabled: true },
   { title: "Admin", href: "/admin", icon: Shield },
+  { title: "Vereins-Setup", href: "/vereins-setup", icon: Settings },
 ]
 
 export function Sidebar() {

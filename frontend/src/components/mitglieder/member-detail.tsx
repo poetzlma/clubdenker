@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { STATUS_COLORS } from "@/constants/design"
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "-"
@@ -17,13 +18,6 @@ function formatDate(dateStr: string | null): string {
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const year = date.getFullYear()
   return `${day}.${month}.${year}`
-}
-
-const statusConfig: Record<Member["status"], { label: string; className: string }> = {
-  aktiv: { label: "Aktiv", className: "bg-green-100 text-green-800" },
-  passiv: { label: "Passiv", className: "bg-yellow-100 text-yellow-800" },
-  gekuendigt: { label: "Gekündigt", className: "bg-red-100 text-red-800" },
-  ehrenmitglied: { label: "Ehrenmitglied", className: "bg-blue-100 text-blue-800" },
 }
 
 const beitragLabels: Record<Member["beitragskategorie"], string> = {
@@ -76,7 +70,7 @@ export function MemberDetail({
 
   if (!member) return null
 
-  const statusInfo = statusConfig[member.status]
+  const statusInfo = STATUS_COLORS[member.status]
 
   async function handleCancel() {
     if (!member || !onCancel) return
@@ -108,7 +102,8 @@ export function MemberDetail({
             <span
               className={cn(
                 "ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                statusInfo.className
+                statusInfo.bg,
+                statusInfo.text
               )}
             >
               {statusInfo.label}

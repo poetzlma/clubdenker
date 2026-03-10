@@ -17,6 +17,9 @@ dependencies = [
     "python-jose[cryptography]",
     "passlib[bcrypt]",
     "httpx",
+    "reportlab",
+    "lxml",
+    "python-multipart",
 ]
 
 [project.optional-dependencies]

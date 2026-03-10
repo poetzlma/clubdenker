@@ -212,7 +212,7 @@ class TestInvoices:
             beschreibung="Beitrag 2024",
             faelligkeitsdatum=date(2024, 1, 31),
         )
-        assert r1.rechnungsnummer == "R-0001"
+        assert r1.rechnungsnummer.endswith("-0001")
 
         r2 = await svc.create_invoice(
             mitglied_id=member.id,
@@ -220,7 +220,7 @@ class TestInvoices:
             beschreibung="Beitrag 2024 H2",
             faelligkeitsdatum=date(2024, 7, 31),
         )
-        assert r2.rechnungsnummer == "R-0002"
+        assert r2.rechnungsnummer.endswith("-0002")
 
     async def test_get_invoices_with_filters(self, session):
         m1 = _make_member()
@@ -255,12 +255,12 @@ class TestPaymentAndStatus:
             faelligkeitsdatum=date(2024, 1, 31),
         )
 
-        assert rechnung.status == RechnungStatus.offen
+        assert rechnung.status == RechnungStatus.entwurf
 
         # Partial payment
         await svc.record_payment(rechnung.id, Decimal("60.00"), "ueberweisung")
         await session.refresh(rechnung)
-        assert rechnung.status == RechnungStatus.offen
+        assert rechnung.status == RechnungStatus.teilbezahlt
 
         # Full payment
         await svc.record_payment(rechnung.id, Decimal("40.00"), "ueberweisung")

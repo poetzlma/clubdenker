@@ -6,6 +6,9 @@ import { LoginPage } from "@/pages/login"
 import { MitgliederPage } from "@/pages/mitglieder"
 import { FinanzenPage } from "@/pages/finanzen"
 import { AdminPage } from "@/pages/admin"
+import { VereinsSetupPage } from "@/pages/vereins-setup"
+import { TrainingPage } from "@/pages/training"
+import { OnboardingPage } from "@/pages/onboarding"
 
 function App() {
   const { isAuthenticated, loginWithToken, logout } = useAuth()
@@ -13,6 +16,7 @@ function App() {
   if (!isAuthenticated) {
     return (
       <Routes>
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="*" element={<LoginPage onLogin={loginWithToken} />} />
       </Routes>
     )
@@ -20,11 +24,14 @@ function App() {
 
   return (
     <Routes>
+      <Route path="/onboarding" element={<OnboardingPage />} />
       <Route element={<AppLayout onLogout={logout} />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/mitglieder" element={<MitgliederPage />} />
         <Route path="/finanzen" element={<FinanzenPage />} />
+        <Route path="/training" element={<TrainingPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/vereins-setup" element={<VereinsSetupPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

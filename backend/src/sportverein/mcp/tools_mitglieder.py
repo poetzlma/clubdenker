@@ -203,6 +203,44 @@ async def mitglied_abteilung_zuordnen(
         }
 
 
+@mcp.tool(description="Mitglied aus einer Abteilung entfernen.")
+async def mitglied_abteilung_entfernen(
+    member_id: int,
+    abteilung_id: int,
+) -> dict:
+    async with get_mcp_session() as session:
+        svc = MitgliederService(session)
+        removed = await svc.remove_department(member_id, abteilung_id)
+        await session.commit()
+        if not removed:
+            return {"error": "Zuordnung nicht gefunden."}
+        return {
+            "mitglied_id": member_id,
+            "abteilung_id": abteilung_id,
+            "message": "Abteilung erfolgreich entfernt.",
+        }
+
+
+@mcp.tool(description="Datenschutz-Einwilligung eines Mitglieds setzen (E-Mail, Foto).")
+async def datenschutz_einwilligung_setzen(
+    member_id: int,
+    einwilligung: bool,
+) -> dict:
+    async with get_mcp_session() as session:
+        svc = DatenschutzService(session)
+        try:
+            member = await svc.set_consent(member_id, einwilligung)
+        except ValueError as exc:
+            return {"error": str(exc)}
+        await session.commit()
+        return {
+            "mitglied_id": member.id,
+            "dsgvo_einwilligung": member.dsgvo_einwilligung,
+            "einwilligung_datum": member.einwilligung_datum.isoformat() if member.einwilligung_datum else None,
+            "message": "Einwilligung erfolgreich aktualisiert.",
+        }
+
+
 @mcp.tool(description="DSGVO-Auskunft: Alle gespeicherten Daten eines Mitglieds exportieren (Art. 15 DSGVO).")
 async def datenschutz_auskunft(member_id: int) -> dict:
     async with get_mcp_session() as session:
@@ -213,3 +251,44 @@ async def datenschutz_auskunft(member_id: int) -> dict:
             return {"error": str(exc)}
         await session.commit()
         return data
+
+
+@mcp.tool(description="DSGVO-Loeschfrist fuer ein Mitglied planen (Aufbewahrungsfrist in Tagen).")
+async def datenschutz_loeschfrist_planen(
+    member_id: int,
+    retention_days: int = 3650,
+) -> dict:
+    """Schedule member data deletion after retention period."""
+    async with get_mcp_session() as session:
+        svc = DatenschutzService(session)
+        try:
+            member = await svc.schedule_deletion(member_id, retention_days)
+        except ValueError as exc:
+            return {"error": str(exc)}
+        await session.commit()
+        return {
+            "mitglied_id": member.id,
+            "loesch_datum": member.loesch_datum.isoformat() if member.loesch_datum else None,
+            "message": f"Loeschfrist gesetzt auf {member.loesch_datum}.",
+        }
+
+
+@mcp.tool(description="DSGVO: Ausstehende Datenlöschungen anzeigen (Mitglieder mit abgelaufener Loeschfrist).")
+async def datenschutz_ausstehende_loeschungen() -> dict:
+    """List members pending data deletion."""
+    async with get_mcp_session() as session:
+        svc = DatenschutzService(session)
+        members = await svc.get_pending_deletions()
+        await session.commit()
+        return {
+            "ausstehend": [
+                {
+                    "mitglied_id": m.id,
+                    "name": f"{m.vorname} {m.nachname}",
+                    "loesch_datum": m.loesch_datum.isoformat() if m.loesch_datum else None,
+                    "status": m.status.value if m.status else None,
+                }
+                for m in members
+            ],
+            "count": len(members),
+        }

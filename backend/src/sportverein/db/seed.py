@@ -21,9 +21,19 @@ from sportverein.models.mitglied import (
     MitgliedStatus,
 )
 from sportverein.models.beitrag import BeitragsKategorie, SepaMandat
-from sportverein.models.finanzen import Kostenstelle
+from sportverein.models.finanzen import (
+    Kostenstelle,
+    Rechnung,
+    RechnungStatus,
+    RechnungTyp,
+    Rechnungsposition,
+    EmpfaengerTyp,
+    RechnungFormat,
+)
+from sportverein.models.vereinsstammdaten import Vereinsstammdaten
 from sportverein.models.audit import AuditLog
 from sportverein.models.ehrenamt import Aufwandsentschaedigung, AufwandTyp
+from sportverein.models.training import Anwesenheit, Trainingsgruppe, Wochentag
 from sportverein.auth.models import AdminUser, ApiToken
 
 VORNAMEN = [
@@ -211,6 +221,208 @@ async def seed() -> None:
             )
         await session.flush()
 
+        # --- Trainingsgruppen ---
+        trainingsgruppen_data = [
+            ("Herren 1. Mannschaft", abteilungen[0], "Stefan Mueller", Wochentag.dienstag, "18:30", 90, 22, "Sportplatz A"),
+            ("Herren 2. Mannschaft", abteilungen[0], "Andreas Weber", Wochentag.mittwoch, "19:00", 90, 22, "Sportplatz B"),
+            ("Jugend U17", abteilungen[0], "Frank Becker", Wochentag.montag, "17:00", 75, 18, "Sportplatz A"),
+            ("Damen Einzel", abteilungen[1], "Claudia Schmidt", Wochentag.donnerstag, "18:00", 60, 8, "Tennisplatz 1-4"),
+            ("Herren Doppel", abteilungen[1], "Peter Wagner", Wochentag.freitag, "19:00", 90, 12, "Tennisplatz 1-4"),
+            ("Schwimmtraining Erwachsene", abteilungen[2], "Monika Fischer", Wochentag.montag, "20:00", 60, 20, "Hallenbad"),
+            ("Schwimmtraining Jugend", abteilungen[2], "Heike Braun", Wochentag.mittwoch, "17:00", 60, 15, "Hallenbad"),
+            ("Lauftreff", abteilungen[3], "Wolfgang Hoffmann", Wochentag.samstag, "09:00", 120, None, "Stadtpark"),
+        ]
+        trainingsgruppen = []
+        for name, abt, trainer, tag, zeit, dauer, max_t, ort_val in trainingsgruppen_data:
+            tg = Trainingsgruppe(
+                name=name,
+                abteilung_id=abt.id,
+                trainer=trainer,
+                wochentag=tag,
+                uhrzeit=zeit,
+                dauer_minuten=dauer,
+                max_teilnehmer=max_t,
+                ort=ort_val,
+                aktiv=True,
+            )
+            session.add(tg)
+            trainingsgruppen.append(tg)
+        await session.flush()
+
+        # --- Anwesenheiten (last 12 weeks) ---
+        today = date.today()
+        anwesenheit_count = 0
+        for week_offset in range(12):
+            for tg in trainingsgruppen:
+                # Map wochentag enum to weekday int (0=Monday)
+                wochentag_map = {
+                    Wochentag.montag: 0, Wochentag.dienstag: 1, Wochentag.mittwoch: 2,
+                    Wochentag.donnerstag: 3, Wochentag.freitag: 4, Wochentag.samstag: 5,
+                    Wochentag.sonntag: 6,
+                }
+                target_day = wochentag_map[tg.wochentag]
+                # Calculate the date for this training in this past week
+                days_back = week_offset * 7
+                ref_date = today - timedelta(days=days_back)
+                # Adjust to correct weekday
+                current_day = ref_date.weekday()
+                diff = target_day - current_day
+                training_date = ref_date + timedelta(days=diff)
+                # Only use dates in the past
+                if training_date >= today:
+                    continue
+                # Pick a random subset of members for this training group
+                n_participants = random.randint(4, min(10, len(mitglieder)))
+                participants = random.sample(mitglieder, n_participants)
+                for m in participants:
+                    session.add(
+                        Anwesenheit(
+                            trainingsgruppe_id=tg.id,
+                            mitglied_id=m.id,
+                            datum=training_date,
+                            anwesend=random.random() < 0.75,
+                            notiz=None,
+                        )
+                    )
+                    anwesenheit_count += 1
+        await session.flush()
+
+        # --- Vereinsstammdaten ---
+        stammdaten = Vereinsstammdaten(
+            name="TSV Sportfreunde Musterstadt 1899 e.V.",
+            strasse="Am Sportpark 1",
+            plz="70173",
+            ort="Stuttgart",
+            steuernummer="99/815/12345",
+            ust_id=None,
+            iban="DE89370400440532013000",
+            bic="COBADEFFXXX",
+            registergericht="Amtsgericht Stuttgart",
+            registernummer="VR 12345",
+            freistellungsbescheid_datum=date(2024, 3, 15),
+            freistellungsbescheid_az="S-51/123/45678",
+        )
+        session.add(stammdaten)
+        await session.flush()
+
+        # --- Rechnungen (invoices with positionen) ---
+        rechnungen_data = [
+            {
+                "nummer": "2026-IB-0001",
+                "mitglied": mitglieder[0],
+                "typ": RechnungTyp.mitgliedsbeitrag,
+                "status": RechnungStatus.gestellt,
+                "sphaere": "ideell",
+                "beschreibung": "Mitgliedsbeitrag 2026",
+                "positionen": [
+                    ("Jahresbeitrag Erwachsene 2026", Decimal("1"), Decimal("240.00"), Decimal("0")),
+                ],
+            },
+            {
+                "nummer": "2026-IB-0002",
+                "mitglied": mitglieder[1],
+                "typ": RechnungTyp.mitgliedsbeitrag,
+                "status": RechnungStatus.bezahlt,
+                "sphaere": "ideell",
+                "beschreibung": "Mitgliedsbeitrag 2026",
+                "positionen": [
+                    ("Jahresbeitrag Jugend 2026", Decimal("1"), Decimal("120.00"), Decimal("0")),
+                ],
+            },
+            {
+                "nummer": "2026-ZB-0001",
+                "mitglied": mitglieder[2],
+                "typ": RechnungTyp.kursgebuehr,
+                "status": RechnungStatus.entwurf,
+                "sphaere": "zweckbetrieb",
+                "beschreibung": "Schwimmkurs Fruehling 2026",
+                "positionen": [
+                    ("Schwimmkurs 10er-Karte", Decimal("10"), Decimal("8.00"), Decimal("19")),
+                    ("Leihgebuehr Schwimmhilfe", Decimal("1"), Decimal("5.00"), Decimal("19")),
+                ],
+            },
+            {
+                "nummer": "2026-WG-0001",
+                "mitglied": None,
+                "typ": RechnungTyp.hallenmiete,
+                "status": RechnungStatus.gestellt,
+                "sphaere": "wirtschaftlich",
+                "beschreibung": "Hallenmiete Firma XY",
+                "empfaenger_name": "Firma XY GmbH",
+                "empfaenger_strasse": "Industriestrasse 10",
+                "empfaenger_plz": "70174",
+                "empfaenger_ort": "Stuttgart",
+                "empfaenger_typ": EmpfaengerTyp.extern,
+                "positionen": [
+                    ("Hallenmiete Sporthalle A, 3h", Decimal("3"), Decimal("50.00"), Decimal("19")),
+                ],
+            },
+        ]
+        for rd in rechnungen_data:
+            m = rd.get("mitglied")
+            brutto = Decimal("0")
+            netto = Decimal("0")
+            steuer = Decimal("0")
+            pos_objects = []
+            for idx, (desc, menge, preis, satz) in enumerate(rd["positionen"], 1):
+                gp_netto = (menge * preis).quantize(Decimal("0.01"))
+                gp_steuer = (gp_netto * satz / Decimal("100")).quantize(Decimal("0.01"))
+                gp_brutto = gp_netto + gp_steuer
+                netto += gp_netto
+                steuer += gp_steuer
+                brutto += gp_brutto
+                pos_objects.append((idx, desc, menge, preis, satz, gp_netto, gp_steuer, gp_brutto))
+
+            rechnung = Rechnung(
+                rechnungsnummer=rd["nummer"],
+                mitglied_id=m.id if m else None,
+                rechnungstyp=rd["typ"],
+                status=rd["status"],
+                empfaenger_typ=rd.get("empfaenger_typ", EmpfaengerTyp.mitglied),
+                empfaenger_name=rd.get("empfaenger_name") or (f"{m.vorname} {m.nachname}" if m else None),
+                empfaenger_strasse=rd.get("empfaenger_strasse") or (m.strasse if m else None),
+                empfaenger_plz=rd.get("empfaenger_plz") or (m.plz if m else None),
+                empfaenger_ort=rd.get("empfaenger_ort") or (m.ort if m else None),
+                betrag=brutto,
+                summe_netto=netto,
+                summe_steuer=steuer,
+                bezahlt_betrag=brutto if rd["status"] == RechnungStatus.bezahlt else Decimal("0"),
+                offener_betrag=Decimal("0") if rd["status"] == RechnungStatus.bezahlt else brutto,
+                beschreibung=rd["beschreibung"],
+                rechnungsdatum=date(2026, 1, 15),
+                faelligkeitsdatum=date(2026, 1, 29),
+                zahlungsziel_tage=14,
+                sphaere=rd["sphaere"],
+                steuerhinweis_text=(
+                    "Steuerbefreit gemaess Paragraph 4 Nr. 22a UStG (Mitgliedsbeitraege)"
+                    if rd["sphaere"] == "ideell"
+                    else None
+                ),
+                verwendungszweck=f"{rd['nummer']} {rd['beschreibung']}"[:140],
+                loeschdatum=date(2036, 1, 15),
+                format=RechnungFormat.pdf,
+            )
+            session.add(rechnung)
+            await session.flush()
+
+            for pos_nr, desc, menge, preis, satz, gp_n, gp_s, gp_b in pos_objects:
+                session.add(Rechnungsposition(
+                    rechnung_id=rechnung.id,
+                    position_nr=pos_nr,
+                    beschreibung=desc,
+                    menge=menge,
+                    einheit="x",
+                    einzelpreis_netto=preis,
+                    steuersatz=satz,
+                    steuerbefreiungsgrund=(
+                        "Paragraph 4 Nr. 22a UStG" if satz == Decimal("0") else None
+                    ),
+                    gesamtpreis_netto=gp_n,
+                    gesamtpreis_steuer=gp_s,
+                    gesamtpreis_brutto=gp_b,
+                ))
+            await session.flush()
+
         # --- AdminUser ---
         hashed_pw = _bcrypt.hashpw("admin123".encode(), _bcrypt.gensalt()).decode()
         admin = AdminUser(
@@ -262,6 +474,10 @@ async def seed() -> None:
         print("  - 20 SEPA mandates")
         print("  - 5 Kostenstellen")
         print("  - 5 Aufwandsentschaedigungen")
+        print(f"  - {len(trainingsgruppen)} training groups")
+        print(f"  - {anwesenheit_count} attendance records")
+        print("  - 1 Vereinsstammdaten")
+        print(f"  - {len(rechnungen_data)} Rechnungen with Positionen")
         print("  - 5 audit log entries")
         print("  - 1 admin user (admin@sportverein.de / admin123)")
         print(f"  - 1 API token (dev-token: {token_value})")

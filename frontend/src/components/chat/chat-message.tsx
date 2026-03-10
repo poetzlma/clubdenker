@@ -57,7 +57,7 @@ export function ChatMessage({ role, content, timestamp, toolUsed }: ChatMessageP
         >
           <span>{formattedTime}</span>
           {!isUser && toolUsed && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            <Badge variant="secondary" className="text-xs px-1.5 py-0">
               {toolUsed}
             </Badge>
           )}

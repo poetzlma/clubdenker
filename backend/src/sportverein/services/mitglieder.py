@@ -236,6 +236,72 @@ class MitgliederService:
         result = await self.session.execute(select(Abteilung).order_by(Abteilung.name))
         return list(result.scalars().all())
 
+    async def create_department(
+        self, name: str, beschreibung: str | None = None
+    ) -> Abteilung:
+        """Create a new department."""
+        dept = Abteilung(name=name, beschreibung=beschreibung)
+        self.session.add(dept)
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(
+                f"Abteilung mit Name '{name}' existiert bereits."
+            ) from exc
+        await self.session.refresh(dept)
+        return dept
+
+    async def update_department(
+        self,
+        department_id: int,
+        name: str | None = None,
+        beschreibung: str | None = ...,  # type: ignore[assignment]
+    ) -> Abteilung:
+        """Update an existing department."""
+        result = await self.session.execute(
+            select(Abteilung).where(Abteilung.id == department_id)
+        )
+        dept = result.scalar_one_or_none()
+        if dept is None:
+            raise ValueError(f"Abteilung mit ID {department_id} nicht gefunden.")
+        if name is not None:
+            dept.name = name
+        if beschreibung is not ...:
+            dept.beschreibung = beschreibung
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(
+                f"Abteilung mit Name '{name}' existiert bereits."
+            ) from exc
+        await self.session.refresh(dept)
+        return dept
+
+    async def delete_department(self, department_id: int) -> None:
+        """Delete a department. Raises if members are still assigned."""
+        result = await self.session.execute(
+            select(Abteilung).where(Abteilung.id == department_id)
+        )
+        dept = result.scalar_one_or_none()
+        if dept is None:
+            raise ValueError(f"Abteilung mit ID {department_id} nicht gefunden.")
+
+        count_result = await self.session.execute(
+            select(func.count())
+            .select_from(MitgliedAbteilung)
+            .where(MitgliedAbteilung.abteilung_id == department_id)
+        )
+        count = count_result.scalar_one()
+        if count > 0:
+            raise ValueError(
+                f"Abteilung '{dept.name}' kann nicht gelöscht werden, "
+                f"da noch {count} Mitglied(er) zugeordnet sind."
+            )
+        await self.session.delete(dept)
+        await self.session.flush()
+
     # -- stats ---------------------------------------------------------------
 
     async def get_member_stats(self) -> dict:

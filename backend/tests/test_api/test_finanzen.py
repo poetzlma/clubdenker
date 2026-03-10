@@ -116,9 +116,10 @@ async def test_create_invoice(client, session: AsyncSession):
     })
     assert resp.status_code == 201
     body = resp.json()
-    assert body["rechnungsnummer"] == "R-0001"
+    # New format: {YYYY}-{SPHARE_CODE}-{NR:04d}
+    assert body["rechnungsnummer"].endswith("-0001")
     assert body["betrag"] == 240.00
-    assert body["status"] == "offen"
+    assert body["status"] == "entwurf"
     assert body["mitglied_id"] == member.id
 
 
@@ -186,10 +187,14 @@ async def test_dunning_candidates(client, session: AsyncSession):
         rechnungsnummer="R-9999",
         mitglied_id=member.id,
         betrag=Decimal("100.00"),
+        summe_netto=Decimal("100.00"),
+        summe_steuer=Decimal("0"),
+        bezahlt_betrag=Decimal("0"),
+        offener_betrag=Decimal("100.00"),
         beschreibung="Overdue test",
         rechnungsdatum=date(2024, 1, 1),
         faelligkeitsdatum=date(2024, 6, 1),  # well in the past
-        status=RechnungStatus.offen,
+        status=RechnungStatus.entwurf,
     )
     session.add(rechnung)
     await session.flush()
@@ -210,3 +215,43 @@ async def test_401_without_auth(unauthed_client):
 
     resp3 = await unauthed_client.get("/api/finanzen/rechnungen")
     assert resp3.status_code in (401, 422)
+
+
+async def test_stelle_rechnung(client, session: AsyncSession):
+    """Test the stellen endpoint: ENTWURF -> GESTELLT."""
+    member = await _create_member(session)
+    inv_resp = await client.post("/api/finanzen/rechnungen", json={
+        "mitglied_id": member.id,
+        "betrag": 100.00,
+        "beschreibung": "Test invoice",
+        "faelligkeitsdatum": "2026-12-31",
+    })
+    rechnung_id = inv_resp.json()["id"]
+
+    resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "gestellt"
+    assert body["gestellt_am"] is not None
+
+
+async def test_storniere_rechnung(client, session: AsyncSession):
+    """Test the stornieren endpoint: creates a Stornorechnung."""
+    member = await _create_member(session)
+    inv_resp = await client.post("/api/finanzen/rechnungen", json={
+        "mitglied_id": member.id,
+        "betrag": 200.00,
+        "beschreibung": "To be cancelled",
+        "faelligkeitsdatum": "2026-12-31",
+    })
+    rechnung_id = inv_resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/finanzen/rechnungen/{rechnung_id}/stornieren",
+        json={"grund": "Fehlerhafte Rechnung"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["betrag"] == -200.00
+    assert body["rechnungstyp"] == "storno"
+    assert body["storno_von_id"] == rechnung_id

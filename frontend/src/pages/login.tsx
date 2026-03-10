@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -138,6 +139,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </Tabs>
         </CardContent>
       </Card>
+      <div className="mt-4 text-center">
+        <Button variant="link" asChild>
+          <Link to="/onboarding">Schnell-Onboarding (Infostand)</Link>
+        </Button>
+      </div>
     </div>
   )
 }

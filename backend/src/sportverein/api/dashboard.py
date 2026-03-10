@@ -1,14 +1,22 @@
-"""Dashboard router — stats and recent activity."""
+"""Dashboard router — stats, recent activity, and role-specific views."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sportverein.api.schemas import ActivityItem, DashboardStats, RecentActivityResponse
+from sportverein.api.schemas import (
+    ActivityItem,
+    DashboardStats,
+    RecentActivityResponse,
+    SchatzmeisterDashboardResponse,
+    SpartenleiterDashboardResponse,
+    VorstandDashboardResponse,
+)
 from sportverein.auth.dependencies import get_current_token, get_db_session
 from sportverein.auth.models import ApiToken
 from sportverein.services.audit import AuditService
+from sportverein.services.dashboard import DashboardService
 from sportverein.services.finanzen import FinanzenService
 from sportverein.services.mitglieder import MitgliederService
 
@@ -57,3 +65,40 @@ async def get_recent_activity(
             )
         )
     return RecentActivityResponse(items=items)
+
+
+@router.get("/vorstand", response_model=VorstandDashboardResponse)
+async def get_vorstand_dashboard(
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> VorstandDashboardResponse:
+    svc = DashboardService(session)
+    data = await svc.get_vorstand_dashboard()
+    return VorstandDashboardResponse(**data)
+
+
+@router.get("/schatzmeister", response_model=SchatzmeisterDashboardResponse)
+async def get_schatzmeister_dashboard(
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> SchatzmeisterDashboardResponse:
+    svc = DashboardService(session)
+    data = await svc.get_schatzmeister_dashboard()
+    return SchatzmeisterDashboardResponse(**data)
+
+
+@router.get(
+    "/spartenleiter/{abteilung}",
+    response_model=SpartenleiterDashboardResponse,
+)
+async def get_spartenleiter_dashboard(
+    abteilung: str,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> SpartenleiterDashboardResponse:
+    svc = DashboardService(session)
+    try:
+        data = await svc.get_spartenleiter_dashboard(abteilung)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return SpartenleiterDashboardResponse(**data)

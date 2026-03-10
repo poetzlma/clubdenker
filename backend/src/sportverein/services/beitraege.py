@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -35,6 +36,74 @@ class BeitraegeService:
         """List all fee categories."""
         result = await self.session.execute(select(BeitragsKategorie))
         return list(result.scalars().all())
+
+    async def create_category(
+        self,
+        name: str,
+        jahresbeitrag: Decimal,
+        beschreibung: str | None = None,
+    ) -> BeitragsKategorie:
+        """Create a new fee category."""
+        category = BeitragsKategorie(
+            name=name,
+            jahresbeitrag=jahresbeitrag,
+            beschreibung=beschreibung,
+        )
+        self.session.add(category)
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(
+                f"Beitragskategorie mit Name '{name}' existiert bereits."
+            ) from exc
+        await self.session.refresh(category)
+        return category
+
+    async def update_category(
+        self,
+        category_id: int,
+        jahresbeitrag: Decimal | None = None,
+        beschreibung: str | None = ...,  # type: ignore[assignment]
+    ) -> BeitragsKategorie:
+        """Update an existing fee category."""
+        result = await self.session.execute(
+            select(BeitragsKategorie).where(BeitragsKategorie.id == category_id)
+        )
+        category = result.scalar_one_or_none()
+        if category is None:
+            raise ValueError(f"Beitragskategorie mit ID {category_id} nicht gefunden.")
+        if jahresbeitrag is not None:
+            category.jahresbeitrag = jahresbeitrag
+        if beschreibung is not ...:
+            category.beschreibung = beschreibung
+        await self.session.flush()
+        await self.session.refresh(category)
+        return category
+
+    async def delete_category(self, category_id: int) -> None:
+        """Delete a fee category. Raises if members still use a matching name."""
+        result = await self.session.execute(
+            select(BeitragsKategorie).where(BeitragsKategorie.id == category_id)
+        )
+        category = result.scalar_one_or_none()
+        if category is None:
+            raise ValueError(f"Beitragskategorie mit ID {category_id} nicht gefunden.")
+
+        # Check if any member uses a BeitragKategorie enum value matching this name
+        count_result = await self.session.execute(
+            select(func.count())
+            .select_from(Mitglied)
+            .where(Mitglied.beitragskategorie == category.name)
+        )
+        count = count_result.scalar_one()
+        if count > 0:
+            raise ValueError(
+                f"Beitragskategorie '{category.name}' kann nicht gelöscht werden, "
+                f"da sie noch von {count} Mitglied(ern) verwendet wird."
+            )
+        await self.session.delete(category)
+        await self.session.flush()
 
     async def get_category_rate(self, kategorie: BeitragKategorie) -> Decimal:
         """Get annual rate for a category.
@@ -157,7 +226,7 @@ class BeitraegeService:
                 beschreibung=f"Mitgliedsbeitrag {billing_year}",
                 rechnungsdatum=date(billing_year, 1, 1),
                 faelligkeitsdatum=date(billing_year, 1, 31),
-                status=RechnungStatus.offen,
+                status=RechnungStatus.entwurf,
             )
             self.session.add(rechnung)
             await self.session.flush()
@@ -269,7 +338,12 @@ class BeitraegeService:
         today = date.today()
         result = await self.session.execute(
             select(Rechnung).where(
-                Rechnung.status == RechnungStatus.offen,
+                Rechnung.status.in_([
+                    RechnungStatus.entwurf,
+                    RechnungStatus.gestellt,
+                    RechnungStatus.faellig,
+                    RechnungStatus.teilbezahlt,
+                ]),
                 Rechnung.faelligkeitsdatum < today,
             )
         )
