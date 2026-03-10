@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -1071,7 +1071,7 @@ class ProtokollCreate(BaseModel):
     titel: str
     datum: str
     inhalt: str
-    typ: str = "sonstige"
+    typ: Literal["vorstandssitzung", "mitgliederversammlung", "abteilungssitzung", "sonstige"] = "sonstige"
     erstellt_von: str | None = None
     teilnehmer: str | None = None
     beschluesse: str | None = None

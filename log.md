@@ -16,33 +16,32 @@
 | 8 | Compliance Monitor Agent | P1 | `4d01d22` |
 | 9 | Calendar Page | P1 | `b5c95f9` |
 | 10 | Documents/Protokolle Page | P1 | `b5c95f9` |
-
-### Features In Progress
-- [ ] Trainer License Tracking (P2, agent running)
-
-### Loop 5: Calendar & Documents Verification
-
-#### Protocol CRUD Tested
-| Action | Status | Result |
-|--------|--------|--------|
-| GET /api/dokumente/protokolle | 200 | Empty list initially |
-| POST /api/dokumente/protokolle | 200 | Created "Vorstandssitzung Q1 2026" |
-| GET /api/dokumente/protokolle/1 | 200 | Returns full protocol with all fields |
-
-#### Calendar Data Verified
-- GET /api/training/gruppen returns 8 groups with wochentag, uhrzeit, ort
-- GET /api/setup/abteilungen returns 4 departments
-- Example: "Herren 1. Mannschaft" on Dienstag 18:30 at Sportplatz A
-- All groups have proper schedule data for weekly calendar display
-
-### Test Counts
-- Backend: 495 passed, 3 skipped
-- Frontend: 7 files, 40 tests passed
-- TSC: Clean
+| 11 | Trainer License Tracking | P2 | `322c115` |
 
 ### Bugs Found & Fixed
-1. FIXED: `mitglieder.geloescht_am` column missing
-2. FIXED: Dashboard frontend used mock data
+
+| # | Bug | Severity | Fixed In |
+|---|-----|----------|----------|
+| 1 | `mitglieder.geloescht_am` column missing | Critical | `9b9ba68` |
+| 2 | Dashboard frontend used mock data | Major | `a34e7e4` |
+| 3 | 5 ruff lint errors (unused imports) | Minor | `a53b35f` |
+| 4 | 4 TypeScript errors blocking production build | Major | `a53b35f` |
+| 4a | payment-overview: undefined used as index type | - | `a53b35f` |
+| 4b | payment-overview: number not assignable to MahnstufenBadge union | - | `a53b35f` |
+| 4c | anwesenheit-tab: intersection type creating 'never' | - | `a53b35f` |
+| 4d | vereins-setup: beschreibung undefined vs null | - | `a53b35f` |
+
+### Loop 6: Build & Lint Audit
+
+**Backend ruff:** 5 errors found and auto-fixed
+**Frontend production build:** Failed with 4 TS errors, all fixed, now builds clean
+**Bundle size:** 1,146 kB JS (318 kB gzipped) -- chunk size warning expected for admin app
+
+### Test Counts
+- Backend: 513 passed, 3 skipped
+- Frontend: 7 files, 40 tests passed
+- TSC: Clean
+- Production build: Success
 
 ### Completed Commits
 1. `4524d57` - Initial feature batch
@@ -51,9 +50,11 @@
 4. `237f0d7` - Ehrenamt UI tab
 5. `4d01d22` - DATEV export + Compliance Monitor
 6. `b5c95f9` - Calendar + Documents pages
+7. `322c115` - Trainer License Tracking
+8. `a53b35f` - Lint & build fixes
 
-### Remaining Features
-- [ ] Trainer License Tracking (in progress)
-- [ ] Seed data for Ehrenamt
+### Remaining (P3 / Nice-to-Have)
 - [ ] Member Self-Service Portal
 - [ ] Churn/engagement analytics
+- [ ] Seed data for Ehrenamt
+- [ ] Code splitting for bundle size

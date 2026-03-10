@@ -76,6 +76,7 @@ async def list_departments(
 @router.get("", response_model=MitgliedListResponse)
 async def list_members(
     name: str | None = None,
+    search: str | None = None,
     member_status: MitgliedStatus | None = Query(None, alias="status"),
     beitragskategorie: BeitragKategorie | None = None,
     abteilung_id: int | None = None,
@@ -88,7 +89,7 @@ async def list_members(
 ) -> MitgliedListResponse:
     svc = MitgliederService(session)
     filters = MitgliedFilter(
-        name=name,
+        name=name or search,
         status=member_status,
         beitragskategorie=beitragskategorie,
         abteilung_id=abteilung_id,
