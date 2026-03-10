@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import extract, func, select
+from sqlalchemy import case, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -1030,7 +1030,7 @@ class FinanzenService:
             select(
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag > 0, Buchung.betrag),
                             else_=Decimal("0"),
                         )
@@ -1039,7 +1039,7 @@ class FinanzenService:
                 ),
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag < 0, func.abs(Buchung.betrag)),
                             else_=Decimal("0"),
                         )
@@ -1060,7 +1060,7 @@ class FinanzenService:
                 Buchung.sphare,
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag > 0, Buchung.betrag),
                             else_=Decimal("0"),
                         )
@@ -1069,7 +1069,7 @@ class FinanzenService:
                 ),
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag < 0, func.abs(Buchung.betrag)),
                             else_=Decimal("0"),
                         )
@@ -1101,7 +1101,7 @@ class FinanzenService:
                 extract("month", Buchung.buchungsdatum).label("monat"),
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag > 0, Buchung.betrag),
                             else_=Decimal("0"),
                         )
@@ -1110,7 +1110,7 @@ class FinanzenService:
                 ),
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag < 0, func.abs(Buchung.betrag)),
                             else_=Decimal("0"),
                         )
@@ -1143,7 +1143,7 @@ class FinanzenService:
                 Kostenstelle.name,
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag > 0, Buchung.betrag),
                             else_=Decimal("0"),
                         )
@@ -1152,7 +1152,7 @@ class FinanzenService:
                 ),
                 func.coalesce(
                     func.sum(
-                        func.case(
+                        case(
                             (Buchung.betrag < 0, func.abs(Buchung.betrag)),
                             else_=Decimal("0"),
                         )
