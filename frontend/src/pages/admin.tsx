@@ -1,10 +1,16 @@
+import { TokenManagement } from "@/components/admin/token-management"
+
 export function AdminPage() {
   return (
-    <div>
-      <h2 className="text-2xl font-bold tracking-tight">Administration</h2>
-      <p className="text-muted-foreground mt-2">
-        Administrationsbereich wird hier angezeigt.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Administration</h1>
+        <p className="text-muted-foreground">
+          Verwalten Sie die Systemeinstellungen und API-Tokens.
+        </p>
+      </div>
+
+      <TokenManagement />
     </div>
   )
 }
