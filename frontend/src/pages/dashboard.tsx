@@ -7,7 +7,7 @@ import type { DashboardView } from "@/types/dashboard";
 
 export function DashboardPage() {
   const [activeView, setActiveView] = useState<DashboardView>("vorstand");
-  const [memberCount, setMemberCount] = useState(248);
+  const [memberCount, setMemberCount] = useState(0);
 
   const handleMemberCountChange = useCallback((count: number) => {
     setMemberCount(count);

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { DashboardPage } from "@/pages/dashboard"
@@ -49,6 +49,44 @@ vi.mock("recharts", () => {
   }
 })
 
+// Mock the API module
+const mockVorstandResponse = {
+  kpis: {
+    active_members: 248,
+    total_balance: 14520,
+    open_fees_count: 23,
+    open_fees_amount: 4850,
+    compliance_score: 94,
+  },
+  member_trend: [
+    { month: "2026-01", total: 240, by_department: { Fussball: 93, Tennis: 51, Fitness: 48, Leichtathletik: 33 } },
+    { month: "2026-02", total: 245, by_department: { Fussball: 94, Tennis: 52, Fitness: 48, Leichtathletik: 33 } },
+    { month: "2026-03", total: 248, by_department: { Fussball: 95, Tennis: 53, Fitness: 49, Leichtathletik: 34 } },
+  ],
+  cashflow: [
+    { month: "2026-01", income: 12500, expenses: 6800 },
+    { month: "2026-02", income: 8900, expenses: 7100 },
+    { month: "2026-03", income: 9300, expenses: 6500 },
+  ],
+  open_actions: [
+    { type: "overdue_fees", title: "Ueberfaellige Beitraege", detail: "3 Rechnungen", severity: "high" },
+  ],
+}
+
+vi.mock("@/lib/api", () => ({
+  default: {
+    get: vi.fn().mockImplementation((path: string) => {
+      if (path.includes("/api/dashboard/vorstand")) {
+        return Promise.resolve(mockVorstandResponse)
+      }
+      return Promise.resolve({})
+    }),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}))
+
 describe("DashboardPage", () => {
   it("renders top nav with view switcher", () => {
     render(
@@ -63,35 +101,47 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Spartenleiter")).toBeInTheDocument()
   })
 
-  it("renders Vorstand KPIs by default", () => {
+  it("renders Vorstand KPIs after loading", async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
     )
 
-    expect(screen.getByText("Mitglieder")).toBeInTheDocument()
+    // Initially shows loading
+    expect(screen.getByText("Laden...")).toBeInTheDocument()
+
+    // After API resolves, shows KPI labels
+    await waitFor(() => {
+      expect(screen.getByText("Mitglieder")).toBeInTheDocument()
+    })
     expect(screen.getByText("Kassenstand")).toBeInTheDocument()
     expect(screen.getByText("Offene Posten")).toBeInTheDocument()
     expect(screen.getByText("Compliance")).toBeInTheDocument()
   })
 
-  it("renders Mitgliederentwicklung chart", () => {
+  it("renders Mitgliederentwicklung chart after loading", async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
     )
 
-    expect(screen.getByText("Mitgliederentwicklung")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText("Mitgliederentwicklung")).toBeInTheDocument()
+    })
   })
 
-  it("renders interactive KPI cards with role=button", () => {
+  it("renders interactive KPI cards with role=button after loading", async () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
     )
+
+    await waitFor(() => {
+      expect(screen.getByText("Kassenstand")).toBeInTheDocument()
+    })
 
     // Vorstand view has 4 KPI cards; 3 are interactive (have href), 1 (Compliance) is not
     const buttons = screen.getAllByRole("button")

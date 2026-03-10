@@ -38,6 +38,15 @@ export const RECHNUNG_STATUS_COLORS = {
   abgeschrieben: { bg: "bg-slate-100", text: "text-slate-600", label: "Abgeschrieben" },
 } as const;
 
+// Eingangsrechnung (incoming invoice) status colors
+export const EINGANGSRECHNUNG_STATUS_COLORS = {
+  eingegangen: { bg: "bg-blue-50", text: "text-blue-700", label: "Eingegangen" },
+  geprueft: { bg: "bg-amber-50", text: "text-amber-700", label: "Geprüft" },
+  freigegeben: { bg: "bg-emerald-50", text: "text-emerald-700", label: "Freigegeben" },
+  bezahlt: { bg: "bg-green-50", text: "text-green-700", label: "Bezahlt" },
+  abgelehnt: { bg: "bg-red-50", text: "text-red-700", label: "Abgelehnt" },
+} as const;
+
 export const RECHNUNG_TYP_LABELS: Record<string, string> = {
   mitgliedsbeitrag: "Mitgliedsbeitrag",
   kursgebuehr: "Kursgebühr",

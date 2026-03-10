@@ -769,6 +769,51 @@ class AufwandMonitorResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Ehrenamt (volunteer compensation) schemas
+# ---------------------------------------------------------------------------
+
+
+class AufwandsentschaedigungCreate(BaseModel):
+    mitglied_id: int
+    betrag: float
+    datum: date
+    typ: str  # "uebungsleiter" or "ehrenamt"
+    beschreibung: str
+
+
+class AufwandsentschaedigungResponse(BaseModel):
+    id: int
+    mitglied_id: int
+    mitglied_name: str
+    betrag: float
+    datum: date
+    typ: str
+    beschreibung: str
+    created_at: datetime | None = None
+
+
+class AufwandsentschaedigungListResponse(BaseModel):
+    items: list[AufwandsentschaedigungResponse]
+    total: int
+
+
+class FreibetragSummary(BaseModel):
+    mitglied_id: int
+    mitglied_name: str
+    typ: str
+    total: float
+    limit: float
+    remaining: float
+    percent: float
+    warning: bool
+
+
+class FreibetragSummaryResponse(BaseModel):
+    year: int
+    items: list[FreibetragSummary]
+
+
+# ---------------------------------------------------------------------------
 # EÜR (Einnahmen-Überschuss-Rechnung) schemas
 # ---------------------------------------------------------------------------
 

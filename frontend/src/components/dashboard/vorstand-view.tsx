@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
@@ -18,75 +18,103 @@ import { AktionsKarte } from "./aktions-karte";
 import { ChartTooltip } from "./chart-tooltip";
 import { ClickableCard } from "./clickable-card";
 import { SPARTEN_COLORS, CHART, SEMANTIC_COLORS } from "@/constants/design";
+import api from "@/lib/api";
 import type { VorstandDashboard } from "@/types/dashboard";
 
-const MOCK_DATA: VorstandDashboard = {
-  kpis: {
-    mitglieder: 248,
-    mitgliederTrend: 3.2,
-    kassenstand: 14520,
-    kassenstandTrend: 5.1,
-    offenePosten: 23,
-    offenePostenTrend: -12.5,
-    compliance: 94,
-  },
-  memberTrend: [
-    { month: "Apr", Fussball: 82, Tennis: 45, Fitness: 38, Leichtathletik: 28 },
-    { month: "Mai", Fussball: 84, Tennis: 46, Fitness: 40, Leichtathletik: 29 },
-    { month: "Jun", Fussball: 85, Tennis: 44, Fitness: 41, Leichtathletik: 29 },
-    { month: "Jul", Fussball: 86, Tennis: 47, Fitness: 42, Leichtathletik: 30 },
-    { month: "Aug", Fussball: 88, Tennis: 48, Fitness: 43, Leichtathletik: 30 },
-    { month: "Sep", Fussball: 89, Tennis: 47, Fitness: 44, Leichtathletik: 31 },
-    { month: "Okt", Fussball: 90, Tennis: 49, Fitness: 45, Leichtathletik: 31 },
-    { month: "Nov", Fussball: 91, Tennis: 50, Fitness: 46, Leichtathletik: 32 },
-    { month: "Dez", Fussball: 92, Tennis: 50, Fitness: 47, Leichtathletik: 32 },
-    { month: "Jan", Fussball: 93, Tennis: 51, Fitness: 48, Leichtathletik: 33 },
-    { month: "Feb", Fussball: 94, Tennis: 52, Fitness: 48, Leichtathletik: 33 },
-    { month: "Mär", Fussball: 95, Tennis: 53, Fitness: 49, Leichtathletik: 34 },
-  ],
-  spartenGesundheit: [
-    { name: "Fussball", budget: 12000, used: 8400, percent: 70 },
-    { name: "Tennis", budget: 8000, used: 5200, percent: 65 },
-    { name: "Fitness", budget: 6000, used: 5100, percent: 85 },
-    { name: "Leichtathletik", budget: 4000, used: 1600, percent: 40 },
-  ],
-  cashflow: [
-    { month: "Okt", einnahmen: 8200, ausgaben: 6100 },
-    { month: "Nov", einnahmen: 7800, ausgaben: 5900 },
-    { month: "Dez", einnahmen: 9100, ausgaben: 7200 },
-    { month: "Jan", einnahmen: 12500, ausgaben: 6800 },
-    { month: "Feb", einnahmen: 8900, ausgaben: 7100 },
-    { month: "Mär", einnahmen: 9300, ausgaben: 6500 },
-  ],
-  aktionen: [
-    {
-      id: "1",
-      title: "SEPA-Einzug vorbereiten",
-      description: "Monatlicher Beitragseinzug fällig am 15. März",
-      variant: "action",
-      href: "/finanzen",
-    },
-    {
-      id: "2",
-      title: "Mahnlauf 3 Mitglieder",
-      description: "Stufe M2 erreicht - sofortige Aktion empfohlen",
-      variant: "warn",
-      href: "/finanzen",
-    },
-    {
-      id: "3",
-      title: "Jahresabschluss 2025",
-      description: "Alle Dokumente eingereicht und geprüft",
-      variant: "ok",
-    },
-    {
-      id: "4",
-      title: "Versicherungsnachweis fehlt",
-      description: "Haftpflicht für Fitness-Bereich läuft am 01.04. aus",
-      variant: "warn",
-    },
-  ],
+// Backend API response types
+interface ApiVorstandKPIs {
+  active_members: number;
+  total_balance: number;
+  open_fees_count: number;
+  open_fees_amount: number;
+  compliance_score: number;
+}
+
+interface ApiMemberTrendPoint {
+  month: string;
+  total: number;
+  by_department: Record<string, number>;
+}
+
+interface ApiCashflowPoint {
+  month: string;
+  income: number;
+  expenses: number;
+}
+
+interface ApiOpenAction {
+  type: string;
+  title: string;
+  detail: string;
+  severity: string;
+}
+
+interface ApiVorstandResponse {
+  kpis: ApiVorstandKPIs;
+  member_trend: ApiMemberTrendPoint[];
+  cashflow: ApiCashflowPoint[];
+  open_actions: ApiOpenAction[];
+}
+
+// Short German month labels
+const MONTH_LABELS: Record<string, string> = {
+  "01": "Jan", "02": "Feb", "03": "Mär", "04": "Apr",
+  "05": "Mai", "06": "Jun", "07": "Jul", "08": "Aug",
+  "09": "Sep", "10": "Okt", "11": "Nov", "12": "Dez",
 };
+
+function mapApiToVorstandDashboard(resp: ApiVorstandResponse): VorstandDashboard {
+  const kpis = {
+    mitglieder: resp.kpis.active_members,
+    mitgliederTrend: 0,
+    kassenstand: resp.kpis.total_balance,
+    kassenstandTrend: 0,
+    offenePosten: resp.kpis.open_fees_count,
+    offenePostenTrend: 0,
+    compliance: resp.kpis.compliance_score,
+  };
+
+  const memberTrend = resp.member_trend.map((pt) => {
+    const monthKey = pt.month.split("-")[1] || pt.month;
+    return {
+      month: MONTH_LABELS[monthKey] || pt.month,
+      Fussball: pt.by_department["Fussball"] ?? 0,
+      Tennis: pt.by_department["Tennis"] ?? 0,
+      Fitness: pt.by_department["Fitness"] ?? 0,
+      Leichtathletik: pt.by_department["Leichtathletik"] ?? 0,
+    };
+  });
+
+  // Derive spartenGesundheit from budget_burn if available (not in vorstand endpoint),
+  // so we fall back to computing from member trend totals per department.
+  const lastTrend = resp.member_trend[resp.member_trend.length - 1];
+  const departments = lastTrend ? Object.keys(lastTrend.by_department) : [];
+  const spartenGesundheit = departments.map((name) => ({
+    name,
+    budget: 0,
+    used: 0,
+    percent: 0,
+  }));
+
+  const cashflow = resp.cashflow.map((pt) => {
+    const monthKey = pt.month.split("-")[1] || pt.month;
+    return {
+      month: MONTH_LABELS[monthKey] || pt.month,
+      einnahmen: pt.income,
+      ausgaben: pt.expenses,
+    };
+  });
+
+  const aktionen = resp.open_actions.map((a, idx) => ({
+    id: String(idx + 1),
+    title: a.title,
+    description: a.detail,
+    variant: (a.severity === "high" ? "warn" : a.severity === "medium" ? "action" : "ok") as "warn" | "action" | "ok",
+    href: "/finanzen",
+  }));
+
+  return { kpis, memberTrend, spartenGesundheit, cashflow, aktionen };
+}
 
 interface VorstandViewProps {
   data?: VorstandDashboard | null;
@@ -94,9 +122,39 @@ interface VorstandViewProps {
 }
 
 export function VorstandView({ data, onMemberCountChange }: VorstandViewProps) {
-  const d = data ?? MOCK_DATA;
-  const [liveCount, setLiveCount] = useState(d.kpis.mitglieder);
+  const [apiData, setApiData] = useState<VorstandDashboard | null>(null);
+  const [loading, setLoading] = useState(!data);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const fetchData = useCallback(async () => {
+    if (data) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await api.get<ApiVorstandResponse>("/api/dashboard/vorstand");
+      setApiData(mapApiToVorstandDashboard(resp));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler beim Laden der Daten");
+    } finally {
+      setLoading(false);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const d = data ?? apiData;
+
+  const [liveCount, setLiveCount] = useState(0);
+
+  // Initialize liveCount from loaded data
+  useEffect(() => {
+    if (d) {
+      setLiveCount(d.kpis.mitglieder);
+    }
+  }, [d]);
 
   // Live member counter that ticks +/-1 every 3s with 15% probability
   useEffect(() => {
@@ -114,6 +172,36 @@ export function VorstandView({ data, onMemberCountChange }: VorstandViewProps) {
   useEffect(() => {
     onMemberCountChange?.(liveCount);
   }, [liveCount, onMemberCountChange]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-muted-foreground">Laden...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-2">
+        <p className="text-sm text-red-600">{error}</p>
+        <button
+          onClick={fetchData}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Erneut versuchen
+        </button>
+      </div>
+    );
+  }
+
+  if (!d) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-muted-foreground">Keine Daten verfügbar</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">

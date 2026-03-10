@@ -73,6 +73,81 @@ class EhrenamtService:
             }
         return result
 
+    async def list_compensations(
+        self, year: int, typ: AufwandTyp | str | None = None
+    ) -> list[dict]:
+        """List all compensation entries for a given year with member names."""
+        stmt = (
+            select(Aufwandsentschaedigung, Mitglied.vorname, Mitglied.nachname)
+            .join(Mitglied, Mitglied.id == Aufwandsentschaedigung.mitglied_id)
+            .where(extract("year", Aufwandsentschaedigung.datum) == year)
+            .order_by(Aufwandsentschaedigung.datum.desc())
+        )
+        if typ is not None:
+            if isinstance(typ, str):
+                typ = AufwandTyp(typ)
+            stmt = stmt.where(Aufwandsentschaedigung.typ == typ)
+
+        result = await self.session.execute(stmt)
+        entries = []
+        for row in result.all():
+            entry = row[0]
+            vorname = row[1]
+            nachname = row[2]
+            entries.append({
+                "id": entry.id,
+                "mitglied_id": entry.mitglied_id,
+                "mitglied_name": f"{vorname} {nachname}",
+                "betrag": float(entry.betrag),
+                "datum": entry.datum.isoformat(),
+                "typ": entry.typ.value if hasattr(entry.typ, "value") else str(entry.typ),
+                "beschreibung": entry.beschreibung,
+                "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            })
+        return entries
+
+    async def get_freibetrag_summary(self, year: int) -> list[dict]:
+        """Get per-member freibetrag usage summary for a given year."""
+        stmt = (
+            select(
+                Aufwandsentschaedigung.mitglied_id,
+                Aufwandsentschaedigung.typ,
+                func.sum(Aufwandsentschaedigung.betrag).label("total"),
+                Mitglied.vorname,
+                Mitglied.nachname,
+            )
+            .join(Mitglied, Mitglied.id == Aufwandsentschaedigung.mitglied_id)
+            .where(extract("year", Aufwandsentschaedigung.datum) == year)
+            .group_by(
+                Aufwandsentschaedigung.mitglied_id,
+                Aufwandsentschaedigung.typ,
+                Mitglied.vorname,
+                Mitglied.nachname,
+            )
+        )
+        result = await self.session.execute(stmt)
+        summaries = []
+        for row in result.all():
+            member_id = row[0]
+            typ = row[1]
+            total = row[2]
+            vorname = row[3]
+            nachname = row[4]
+            typ_value = typ.value if hasattr(typ, "value") else str(typ)
+            limit = _LIMITS.get(AufwandTyp(typ_value), Decimal("0"))
+            percent = float(total / limit * 100) if limit > 0 else 0.0
+            summaries.append({
+                "mitglied_id": member_id,
+                "mitglied_name": f"{vorname} {nachname}",
+                "typ": typ_value,
+                "total": float(total),
+                "limit": float(limit),
+                "remaining": float(max(limit - total, Decimal("0"))),
+                "percent": round(percent, 1),
+                "warning": percent > 80.0,
+            })
+        return summaries
+
     async def get_warnings(self, year: int) -> list[dict]:
         """Members at >80% of any limit."""
         warnings: list[dict] = []

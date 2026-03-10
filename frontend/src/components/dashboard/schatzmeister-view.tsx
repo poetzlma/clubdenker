@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
@@ -19,55 +20,168 @@ import { ChartTooltip } from "./chart-tooltip";
 import { ProgressBar } from "./progress-bar";
 import { ClickableRow } from "./clickable-row";
 import { SPARTEN_COLORS, CHART, SEMANTIC_COLORS } from "@/constants/design";
-import type { SchatzmeisterDashboard } from "@/types/dashboard";
+import api from "@/lib/api";
+import type { SchatzmeisterDashboard, OffenerPosten } from "@/types/dashboard";
 
-const MOCK_DATA: SchatzmeisterDashboard = {
-  kpis: {
-    ideell: 8420,
-    zweckbetrieb: 3210,
-    offeneForderungen: 4850,
-    offeneForderungenTrend: -8.3,
-    ueberweisungen: 12,
-  },
-  sepa: {
-    betrag: 6240,
-    anzahl: 186,
-    readiness: 82,
-    naechsterEinzug: "15.03.2026",
-  },
-  offenePosten: [
-    { id: "1", mitglied: "Schmidt, Anna", sparte: "Fussball", betrag: 180, tageUeberfaellig: 45, mahnstufe: 2 },
-    { id: "2", mitglied: "Müller, Max", sparte: "Tennis", betrag: 120, tageUeberfaellig: 30, mahnstufe: 1 },
-    { id: "3", mitglied: "Weber, Lisa", sparte: "Fitness", betrag: 90, tageUeberfaellig: 62, mahnstufe: 3 },
-    { id: "4", mitglied: "Fischer, Thomas", sparte: "Fussball", betrag: 180, tageUeberfaellig: 15, mahnstufe: 1 },
-    { id: "5", mitglied: "Wagner, Sarah", sparte: "Leichtathletik", betrag: 60, tageUeberfaellig: 8, mahnstufe: 0 },
-  ],
-  budgetBurn: [
-    { name: "Fussball", budget: 12000, used: 8400 },
-    { name: "Tennis", budget: 8000, used: 5200 },
-    { name: "Fitness", budget: 6000, used: 5100 },
-    { name: "Leichtathletik", budget: 4000, used: 1600 },
-  ],
-  liquiditaet: [
-    { month: "Okt", einnahmen: 8200, ausgaben: 6100 },
-    { month: "Nov", einnahmen: 7800, ausgaben: 5900 },
-    { month: "Dez", einnahmen: 9100, ausgaben: 7200 },
-    { month: "Jan", einnahmen: 12500, ausgaben: 6800 },
-    { month: "Feb", einnahmen: 8900, ausgaben: 7100 },
-    { month: "Mär", einnahmen: 9300, ausgaben: 6500 },
-    { month: "Apr", einnahmen: 8800, ausgaben: 6900 },
-    { month: "Mai", einnahmen: 9500, ausgaben: 7300 },
-    { month: "Jun", einnahmen: 10200, ausgaben: 7800 },
-  ],
+// Backend API response types
+interface ApiSepaHero {
+  ready_count: number;
+  total_count: number;
+  total_amount: number;
+  exceptions: number;
+}
+
+interface ApiFinanceKPIs {
+  balance_ideell: number;
+  balance_zweckbetrieb: number;
+  balance_vermoegensverwaltung: number;
+  balance_wirtschaftlich: number;
+  open_receivables: number;
+  pending_transfers: number;
+}
+
+interface ApiOffenerPosten {
+  member_name: string;
+  department: string;
+  amount: number;
+  days_overdue: number;
+  dunning_level: number;
+}
+
+interface ApiBudgetBurnItem {
+  name: string;
+  budget: number;
+  spent: number;
+  percentage: number;
+  department_color: string;
+}
+
+interface ApiLiquidityPoint {
+  month: string;
+  income: number;
+  expenses: number;
+}
+
+interface ApiSchatzmeisterResponse {
+  sepa_hero: ApiSepaHero;
+  kpis: ApiFinanceKPIs;
+  open_items: ApiOffenerPosten[];
+  budget_burn: ApiBudgetBurnItem[];
+  liquidity: ApiLiquidityPoint[];
+}
+
+const MONTH_LABELS: Record<string, string> = {
+  "01": "Jan", "02": "Feb", "03": "Mär", "04": "Apr",
+  "05": "Mai", "06": "Jun", "07": "Jul", "08": "Aug",
+  "09": "Sep", "10": "Okt", "11": "Nov", "12": "Dez",
 };
+
+function mapApiToSchatzmeisterDashboard(resp: ApiSchatzmeisterResponse): SchatzmeisterDashboard {
+  const readiness = resp.sepa_hero.total_count > 0
+    ? Math.round((resp.sepa_hero.ready_count / resp.sepa_hero.total_count) * 100)
+    : 0;
+
+  const sepa = {
+    betrag: resp.sepa_hero.total_amount,
+    anzahl: resp.sepa_hero.total_count,
+    readiness,
+    naechsterEinzug: "n/a",
+  };
+
+  const kpis = {
+    ideell: resp.kpis.balance_ideell,
+    zweckbetrieb: resp.kpis.balance_zweckbetrieb,
+    offeneForderungen: resp.kpis.open_receivables,
+    offeneForderungenTrend: 0,
+    ueberweisungen: resp.kpis.pending_transfers,
+  };
+
+  const offenePosten: OffenerPosten[] = resp.open_items.map((item, idx) => ({
+    id: String(idx + 1),
+    mitglied: item.member_name,
+    sparte: item.department,
+    betrag: item.amount,
+    tageUeberfaellig: item.days_overdue,
+    mahnstufe: Math.min(item.dunning_level, 3) as 0 | 1 | 2 | 3,
+  }));
+
+  const budgetBurn = resp.budget_burn.map((b) => ({
+    name: b.name,
+    budget: b.budget,
+    used: b.spent,
+  }));
+
+  const liquiditaet = resp.liquidity.map((pt) => {
+    const monthKey = pt.month.split("-")[1] || pt.month;
+    return {
+      month: MONTH_LABELS[monthKey] || pt.month,
+      einnahmen: pt.income,
+      ausgaben: pt.expenses,
+    };
+  });
+
+  return { kpis, sepa, offenePosten, budgetBurn, liquiditaet };
+}
 
 interface SchatzmeisterViewProps {
   data?: SchatzmeisterDashboard | null;
 }
 
 export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
-  const d = data ?? MOCK_DATA;
+  const [apiData, setApiData] = useState<SchatzmeisterDashboard | null>(null);
+  const [loading, setLoading] = useState(!data);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const fetchData = useCallback(async () => {
+    if (data) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await api.get<ApiSchatzmeisterResponse>("/api/dashboard/schatzmeister");
+      setApiData(mapApiToSchatzmeisterDashboard(resp));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler beim Laden der Daten");
+    } finally {
+      setLoading(false);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const d = data ?? apiData;
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-muted-foreground">Laden...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-2">
+        <p className="text-sm text-red-600">{error}</p>
+        <button
+          onClick={fetchData}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Erneut versuchen
+        </button>
+      </div>
+    );
+  }
+
+  if (!d) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-muted-foreground">Keine Daten verfügbar</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">

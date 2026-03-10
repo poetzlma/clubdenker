@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   PieChart,
   Pie,
@@ -12,130 +12,111 @@ import { SectionHeader } from "./section-header";
 import { ChartTooltip } from "./chart-tooltip";
 import { ClickableCard } from "./clickable-card";
 import { SPARTEN_COLORS, SPARTEN_NAMES, SEMANTIC_COLORS } from "@/constants/design";
+import api from "@/lib/api";
 import type { SpartenleiterDashboard, HeatmapCell } from "@/types/dashboard";
 
-function generateHeatmap(): HeatmapCell[] {
-  const cells: HeatmapCell[] = [];
-  for (let week = 0; week < 12; week++) {
-    for (let day = 0; day < 7; day++) {
-      cells.push({
-        week,
-        day,
-        value: Math.floor(Math.random() * 4),
-      });
-    }
-  }
-  return cells;
+// Backend API response types
+interface ApiSpartenleiterKPIs {
+  member_count: number;
+  avg_attendance_pct: number;
+  budget_utilization_pct: number;
+  risk_count: number;
 }
 
-const MOCK_DATA_BY_SPARTE: Record<string, SpartenleiterDashboard> = {
-  Fussball: {
-    kpis: {
-      mitglieder: 95,
-      mitgliederTrend: 4.2,
-      durchschnittAnwesenheit: 78,
-      anwesenheitTrend: 2.1,
-      budgetVerbrauch: 8400,
-      budgetTotal: 12000,
-      risikoMitglieder: 3,
-    },
-    heatmap: generateHeatmap(),
-    trainings: [
-      { id: "1", tag: "Mo", zeit: "18:00", gruppe: "Herren I", trainer: "M. Schmidt", kapazitaet: 22, angemeldet: 18 },
-      { id: "2", tag: "Mi", zeit: "17:30", gruppe: "Jugend A", trainer: "K. Weber", kapazitaet: 18, angemeldet: 16 },
-      { id: "3", tag: "Fr", zeit: "19:00", gruppe: "Herren II", trainer: "M. Schmidt", kapazitaet: 22, angemeldet: 14 },
-      { id: "4", tag: "Sa", zeit: "10:00", gruppe: "Bambini", trainer: "L. Fischer", kapazitaet: 15, angemeldet: 12 },
-    ],
-    risikoMitglieder: [
-      { id: "1", name: "P. Hoffmann", tageSeitLetztemTraining: 42, beitragskategorie: "erwachsene" },
-      { id: "2", name: "R. Becker", tageSeitLetztemTraining: 35, beitragskategorie: "erwachsene" },
-      { id: "3", name: "S. Klein", tageSeitLetztemTraining: 28, beitragskategorie: "jugend" },
-    ],
-    budgetSegments: [
-      { name: "Verbraucht", value: 8400, color: "#3b82f6" },
-      { name: "Gebunden", value: 1800, color: "#3b82f660" },
-      { name: "Frei", value: 1800, color: "#e5e7eb" },
-    ],
-  },
-  Tennis: {
-    kpis: {
-      mitglieder: 53,
-      mitgliederTrend: 1.9,
-      durchschnittAnwesenheit: 72,
-      anwesenheitTrend: -1.3,
-      budgetVerbrauch: 5200,
-      budgetTotal: 8000,
-      risikoMitglieder: 2,
-    },
-    heatmap: generateHeatmap(),
-    trainings: [
-      { id: "1", tag: "Di", zeit: "16:00", gruppe: "Damen", trainer: "A. Lange", kapazitaet: 12, angemeldet: 10 },
-      { id: "2", tag: "Do", zeit: "18:00", gruppe: "Herren", trainer: "B. Richter", kapazitaet: 12, angemeldet: 8 },
-      { id: "3", tag: "Sa", zeit: "09:00", gruppe: "Jugend", trainer: "A. Lange", kapazitaet: 10, angemeldet: 9 },
-    ],
-    risikoMitglieder: [
-      { id: "1", name: "M. Braun", tageSeitLetztemTraining: 38, beitragskategorie: "erwachsene" },
-      { id: "2", name: "K. Wolf", tageSeitLetztemTraining: 31, beitragskategorie: "erwachsene" },
-    ],
-    budgetSegments: [
-      { name: "Verbraucht", value: 5200, color: "#f59e0b" },
-      { name: "Gebunden", value: 1200, color: "#f59e0b60" },
-      { name: "Frei", value: 1600, color: "#e5e7eb" },
-    ],
-  },
-  Fitness: {
-    kpis: {
-      mitglieder: 49,
-      mitgliederTrend: 6.5,
-      durchschnittAnwesenheit: 85,
-      anwesenheitTrend: 3.8,
-      budgetVerbrauch: 5100,
-      budgetTotal: 6000,
-      risikoMitglieder: 1,
-    },
-    heatmap: generateHeatmap(),
-    trainings: [
-      { id: "1", tag: "Mo", zeit: "07:00", gruppe: "Frühsport", trainer: "J. Neumann", kapazitaet: 20, angemeldet: 18 },
-      { id: "2", tag: "Mi", zeit: "19:00", gruppe: "Kraft", trainer: "J. Neumann", kapazitaet: 15, angemeldet: 14 },
-      { id: "3", tag: "Fr", zeit: "18:00", gruppe: "Cardio", trainer: "S. Keller", kapazitaet: 20, angemeldet: 17 },
-    ],
-    risikoMitglieder: [
-      { id: "1", name: "H. Zimmermann", tageSeitLetztemTraining: 25, beitragskategorie: "erwachsene" },
-    ],
-    budgetSegments: [
-      { name: "Verbraucht", value: 5100, color: "#10b981" },
-      { name: "Gebunden", value: 600, color: "#10b98160" },
-      { name: "Frei", value: 300, color: "#e5e7eb" },
-    ],
-  },
-  Leichtathletik: {
-    kpis: {
-      mitglieder: 34,
-      mitgliederTrend: -2.1,
-      durchschnittAnwesenheit: 68,
-      anwesenheitTrend: -4.2,
-      budgetVerbrauch: 1600,
-      budgetTotal: 4000,
-      risikoMitglieder: 4,
-    },
-    heatmap: generateHeatmap(),
-    trainings: [
-      { id: "1", tag: "Di", zeit: "17:00", gruppe: "Sprint", trainer: "C. Fuchs", kapazitaet: 16, angemeldet: 10 },
-      { id: "2", tag: "Do", zeit: "17:00", gruppe: "Ausdauer", trainer: "C. Fuchs", kapazitaet: 16, angemeldet: 8 },
-    ],
-    risikoMitglieder: [
-      { id: "1", name: "T. Schäfer", tageSeitLetztemTraining: 55, beitragskategorie: "jugend" },
-      { id: "2", name: "N. Koch", tageSeitLetztemTraining: 48, beitragskategorie: "erwachsene" },
-      { id: "3", name: "L. Bauer", tageSeitLetztemTraining: 40, beitragskategorie: "erwachsene" },
-      { id: "4", name: "E. Werner", tageSeitLetztemTraining: 33, beitragskategorie: "jugend" },
-    ],
-    budgetSegments: [
-      { name: "Verbraucht", value: 1600, color: "#a855f7" },
-      { name: "Gebunden", value: 800, color: "#a855f760" },
-      { name: "Frei", value: 1600, color: "#e5e7eb" },
-    ],
-  },
+interface ApiHeatmapRow {
+  day: number;
+  cells: number[];
+}
+
+interface ApiTrainingItem {
+  group: string;
+  trainer: string;
+  registered: number;
+  max_participants: number;
+  weekday: string;
+  time: string;
+}
+
+interface ApiRiskMember {
+  member_id: number;
+  name: string;
+  reason: string;
+}
+
+interface ApiBudgetDonut {
+  used: number;
+  committed: number;
+  free: number;
+}
+
+interface ApiSpartenleiterResponse {
+  kpis: ApiSpartenleiterKPIs;
+  attendance_heatmap: ApiHeatmapRow[];
+  training_schedule: ApiTrainingItem[];
+  risk_members: ApiRiskMember[];
+  budget_donut: ApiBudgetDonut;
+}
+
+const WEEKDAY_SHORT: Record<string, string> = {
+  Montag: "Mo", Dienstag: "Di", Mittwoch: "Mi",
+  Donnerstag: "Do", Freitag: "Fr", Samstag: "Sa", Sonntag: "So",
 };
+
+function mapApiToSpartenleiterDashboard(
+  resp: ApiSpartenleiterResponse,
+  sparteName: string
+): SpartenleiterDashboard {
+  const sparteColor = SPARTEN_COLORS[sparteName] || "#6b7280";
+
+  // Budget: reverse-calculate total from utilization percentage
+  // If utilization is 0, we can't know total, but used=0 anyway
+  const totalBudget = resp.kpis.budget_utilization_pct > 0
+    ? Math.round((resp.budget_donut.used + resp.budget_donut.committed + resp.budget_donut.free))
+    : resp.budget_donut.used + resp.budget_donut.committed + resp.budget_donut.free;
+
+  const kpis = {
+    mitglieder: resp.kpis.member_count,
+    mitgliederTrend: 0,
+    durchschnittAnwesenheit: resp.kpis.avg_attendance_pct,
+    anwesenheitTrend: 0,
+    budgetVerbrauch: resp.budget_donut.used,
+    budgetTotal: totalBudget,
+    risikoMitglieder: resp.kpis.risk_count,
+  };
+
+  // Convert heatmap: backend gives {day, cells[12]} -> frontend expects {week, day, value}
+  const heatmap: HeatmapCell[] = [];
+  for (const row of resp.attendance_heatmap) {
+    for (let week = 0; week < row.cells.length; week++) {
+      heatmap.push({ week, day: row.day, value: row.cells[week] });
+    }
+  }
+
+  const trainings = resp.training_schedule.map((t, idx) => ({
+    id: String(idx + 1),
+    tag: WEEKDAY_SHORT[t.weekday] || t.weekday.slice(0, 2),
+    zeit: t.time,
+    gruppe: t.group,
+    trainer: t.trainer,
+    kapazitaet: t.max_participants,
+    angemeldet: t.registered,
+  }));
+
+  const risikoMitglieder = resp.risk_members.map((m) => ({
+    id: String(m.member_id),
+    name: m.name,
+    tageSeitLetztemTraining: 0,
+    beitragskategorie: m.reason,
+  }));
+
+  const budgetSegments = [
+    { name: "Verbraucht", value: resp.budget_donut.used, color: sparteColor },
+    { name: "Gebunden", value: resp.budget_donut.committed, color: `${sparteColor}60` },
+    { name: "Frei", value: resp.budget_donut.free, color: "#e5e7eb" },
+  ];
+
+  return { kpis, heatmap, trainings, risikoMitglieder, budgetSegments };
+}
 
 const DAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
@@ -145,12 +126,43 @@ interface SpartenleiterViewProps {
 
 export function SpartenleiterView({ data }: SpartenleiterViewProps) {
   const [activeSparte, setActiveSparte] = useState(SPARTEN_NAMES[0]);
-  const allData = data ?? MOCK_DATA_BY_SPARTE;
-  const d = allData[activeSparte] ?? Object.values(allData)[0];
+  const [apiCache, setApiCache] = useState<Record<string, SpartenleiterDashboard>>({});
+  const [loading, setLoading] = useState(!data);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSparteData = useCallback(async (sparte: string) => {
+    if (data) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await api.get<ApiSpartenleiterResponse>(
+        `/api/dashboard/spartenleiter/${encodeURIComponent(sparte)}`
+      );
+      const mapped = mapApiToSpartenleiterDashboard(resp, sparte);
+      setApiCache((prev) => ({ ...prev, [sparte]: mapped }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler beim Laden der Daten");
+    } finally {
+      setLoading(false);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (!data && !apiCache[activeSparte]) {
+      fetchSparteData(activeSparte);
+    }
+  }, [activeSparte, data, apiCache, fetchSparteData]);
+
+  const allData = data ?? apiCache;
+  const d = allData[activeSparte];
+
+  const handleSparteChange = (sparte: string) => {
+    setActiveSparte(sparte);
+  };
   const sparteColor = SPARTEN_COLORS[activeSparte] || "#6b7280";
 
   // Stable heatmap memoized per sparte
-  const heatmapData = useMemo(() => d.heatmap, [d.heatmap]);
+  const heatmapData = useMemo(() => d?.heatmap ?? [], [d?.heatmap]);
 
   function getHeatmapColor(value: number) {
     if (value === 0) return "#f3f4f6";
@@ -160,6 +172,41 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
       .padStart(2, "0")}`;
   }
 
+  // Render loading/error before the main content, but keep switcher visible
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex h-64 items-center justify-center">
+          <p className="text-muted-foreground">Laden...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex h-64 flex-col items-center justify-center gap-2">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => fetchSparteData(activeSparte)}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Erneut versuchen
+          </button>
+        </div>
+      );
+    }
+
+    if (!d) {
+      return (
+        <div className="flex h-64 items-center justify-center">
+          <p className="text-muted-foreground">Keine Daten verfügbar</p>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Sparten Switcher */}
@@ -167,7 +214,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
         {SPARTEN_NAMES.map((name) => (
           <button
             key={name}
-            onClick={() => setActiveSparte(name)}
+            onClick={() => handleSparteChange(name)}
             className={cn(
               "rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
               activeSparte === name
@@ -187,6 +234,8 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
           </button>
         ))}
       </div>
+
+      {renderContent() || (<>
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4">
@@ -386,6 +435,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
           </div>
         </div>
       </div>
+      </>)}
     </div>
   );
 }

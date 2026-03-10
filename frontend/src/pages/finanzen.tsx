@@ -6,6 +6,7 @@ import { SepaGenerator } from "@/components/finanzen/sepa-generator"
 import { SepaMandateTab } from "@/components/finanzen/sepa-mandate-tab"
 import { KostenstellenTab } from "@/components/finanzen/kostenstellen-tab"
 import { EuerReport } from "@/components/finanzen/euer-report"
+import { EingangsrechnungenTab } from "@/components/finanzen/eingangsrechnungen-tab"
 import { PageHeader } from "@/components/dashboard/page-header"
 
 export function FinanzenPage() {
@@ -27,6 +28,7 @@ export function FinanzenPage() {
           <TabsTrigger value="sepa-mandate">SEPA-Mandate</TabsTrigger>
           <TabsTrigger value="kostenstellen">Kostenstellen</TabsTrigger>
           <TabsTrigger value="euer">EÜR</TabsTrigger>
+          <TabsTrigger value="eingangsrechnungen">Eingangsrechnungen</TabsTrigger>
         </TabsList>
         <TabsContent value="uebersicht">
           <PaymentOverview />
@@ -48,6 +50,9 @@ export function FinanzenPage() {
         </TabsContent>
         <TabsContent value="euer">
           <EuerReport />
+        </TabsContent>
+        <TabsContent value="eingangsrechnungen">
+          <EingangsrechnungenTab />
         </TabsContent>
       </Tabs>
     </div>

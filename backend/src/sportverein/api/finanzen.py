@@ -14,6 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sportverein.api.audit_helper import log_audit
 from sportverein.api.schemas import (
+    AufwandsentschaedigungCreate,
+    AufwandsentschaedigungListResponse,
+    AufwandsentschaedigungResponse,
     BeitragslaufRequest,
     BuchungCreate,
     BuchungListResponse,
@@ -24,6 +27,8 @@ from sportverein.api.schemas import (
     EingangsrechnungStatusUpdate,
     EingangsrechnungUploadResponse,
     EuerReportResponse,
+    FreibetragSummary,
+    FreibetragSummaryResponse,
     KassenstandResponse,
     KassenstandSphare,
     KostenstelleBudgetResponse,
@@ -1156,3 +1161,110 @@ async def update_eingangsrechnung_status(
     )
     await session.commit()
     return _eingangsrechnung_to_response(rechnung)
+
+
+# -- Ehrenamt (volunteer compensation) --------------------------------------
+
+
+@router.get("/ehrenamt", response_model=AufwandsentschaedigungListResponse)
+async def list_ehrenamt(
+    year: int = Query(..., description="Jahr"),
+    typ: str | None = Query(None, description="Typ: uebungsleiter oder ehrenamt"),
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> AufwandsentschaedigungListResponse:
+    """List volunteer compensation entries for a given year."""
+    from sportverein.services.ehrenamt import EhrenamtService
+
+    svc = EhrenamtService(session)
+    items = await svc.list_compensations(year, typ=typ)
+    return AufwandsentschaedigungListResponse(
+        items=[
+            AufwandsentschaedigungResponse(
+                id=item["id"],
+                mitglied_id=item["mitglied_id"],
+                mitglied_name=item["mitglied_name"],
+                betrag=item["betrag"],
+                datum=item["datum"],
+                typ=item["typ"],
+                beschreibung=item["beschreibung"],
+                created_at=item.get("created_at"),
+            )
+            for item in items
+        ],
+        total=len(items),
+    )
+
+
+@router.post(
+    "/ehrenamt",
+    response_model=AufwandsentschaedigungResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_ehrenamt(
+    body: AufwandsentschaedigungCreate,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> AufwandsentschaedigungResponse:
+    """Create a new volunteer compensation entry."""
+    from sportverein.services.ehrenamt import EhrenamtService
+
+    svc = EhrenamtService(session)
+    try:
+        entry = await svc.create_compensation(body.model_dump())
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+    # Fetch member name
+    from sportverein.models.mitglied import Mitglied
+
+    result = await session.execute(
+        select(Mitglied.vorname, Mitglied.nachname).where(
+            Mitglied.id == entry.mitglied_id
+        )
+    )
+    m_row = result.one_or_none()
+    name = f"{m_row[0]} {m_row[1]}" if m_row else f"ID {entry.mitglied_id}"
+
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="create",
+        entity_type="aufwandsentschaedigung",
+        entity_id=entry.id,
+        details={
+            "mitglied_id": entry.mitglied_id,
+            "betrag": float(entry.betrag),
+            "typ": entry.typ.value if hasattr(entry.typ, "value") else str(entry.typ),
+        },
+    )
+    await session.commit()
+    return AufwandsentschaedigungResponse(
+        id=entry.id,
+        mitglied_id=entry.mitglied_id,
+        mitglied_name=name,
+        betrag=float(entry.betrag),
+        datum=entry.datum,
+        typ=entry.typ.value if hasattr(entry.typ, "value") else str(entry.typ),
+        beschreibung=entry.beschreibung,
+        created_at=entry.created_at,
+    )
+
+
+@router.get("/ehrenamt/freibetrag", response_model=FreibetragSummaryResponse)
+async def get_freibetrag_summary(
+    year: int = Query(..., description="Jahr"),
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> FreibetragSummaryResponse:
+    """Get freibetrag usage summary per member for a given year."""
+    from sportverein.services.ehrenamt import EhrenamtService
+
+    svc = EhrenamtService(session)
+    summaries = await svc.get_freibetrag_summary(year)
+    return FreibetragSummaryResponse(
+        year=year,
+        items=[FreibetragSummary(**s) for s in summaries],
+    )

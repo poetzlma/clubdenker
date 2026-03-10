@@ -43,12 +43,13 @@ describe("FinanzenPage", () => {
   it("renders all tabs", () => {
     renderPage()
     expect(screen.getByRole("tab", { name: /Übersicht/i })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: /Rechnungen/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /^Rechnungen$/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /Buchungsjournal/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /^SEPA$/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /SEPA-Mandate/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /EÜR/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /Kostenstellen/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /Eingangsrechnungen/i })).toBeInTheDocument()
   })
 
   it("renders KPI cards and quick actions in the overview", async () => {

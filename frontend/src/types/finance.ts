@@ -91,6 +91,33 @@ export interface RechnungCreatePayload {
 // Backward compat: RechnungWithMitglied is now identical to Rechnung
 export type RechnungWithMitglied = Rechnung;
 
+// Eingangsrechnung (incoming invoice)
+export type EingangsrechnungStatus = 'eingegangen' | 'geprueft' | 'freigegeben' | 'bezahlt' | 'abgelehnt';
+
+export interface Eingangsrechnung {
+  id: number;
+  rechnungsnummer: string;
+  aussteller_name: string;
+  aussteller_strasse?: string | null;
+  aussteller_plz?: string | null;
+  aussteller_ort?: string | null;
+  aussteller_steuernr?: string | null;
+  aussteller_ust_id?: string | null;
+  rechnungsdatum: string;
+  faelligkeitsdatum?: string | null;
+  leistungsdatum?: string | null;
+  summe_netto: number;
+  summe_steuer: number;
+  summe_brutto: number;
+  waehrung: string;
+  status: EingangsrechnungStatus;
+  kostenstelle_id?: number | null;
+  sphaere?: string | null;
+  quell_format?: string | null;
+  notiz?: string | null;
+  created_at?: string | null;
+}
+
 export interface RechnungTemplatePosition {
   beschreibung: string;
   menge: number;
@@ -174,6 +201,31 @@ export interface AufwandMonitorResult {
   }[];
   total_budget: number;
   total_spent: number;
+}
+
+// Ehrenamt (volunteer compensation)
+export type AufwandTyp = 'uebungsleiter' | 'ehrenamt';
+
+export interface Aufwandsentschaedigung {
+  id: number;
+  mitglied_id: number;
+  mitglied_name: string;
+  betrag: number;
+  datum: string;
+  typ: AufwandTyp;
+  beschreibung: string;
+  created_at?: string | null;
+}
+
+export interface FreibetragSummary {
+  mitglied_id: number;
+  mitglied_name: string;
+  typ: AufwandTyp;
+  total: number;
+  limit: number;
+  remaining: number;
+  percent: number;
+  warning: boolean;
 }
 
 export interface BuchungCreatePayload {
