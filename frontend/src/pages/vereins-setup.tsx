@@ -132,7 +132,7 @@ function AbteilungenTab() {
     } catch {
       // mock fallback: update locally
       if (editing) {
-        setItems((prev) => prev.map((i) => i.id === editing.id ? { ...i, ...payload } : i))
+        setItems((prev) => prev.map((i) => i.id === editing.id ? { ...i, name: payload.name, beschreibung: payload.beschreibung ?? null } : i))
       } else {
         const newItem: Abteilung = { id: Date.now(), name: formName, beschreibung: formBeschreibung || null, mitglieder_count: 0, created_at: new Date().toISOString() }
         setItems((prev) => [...prev, newItem])

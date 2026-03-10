@@ -243,7 +243,7 @@ export function PaymentOverview() {
         const items: Rechnung[] = data.items ?? data
         fetchedRechnungen = items.map((r) => ({
           ...r,
-          mitglied_name: mockMitgliedNames[r.mitglied_id] ?? `Mitglied #${r.mitglied_id}`,
+          mitglied_name: r.mitglied_id != null ? (mockMitgliedNames[r.mitglied_id] ?? `Mitglied #${r.mitglied_id}`) : "Unbekannt",
           mahnstufe: r.mahnstufe ?? (["mahnung_1", "mahnung_2", "mahnung_3", "faellig"].includes(r.status) ? getMahnstufe(daysOverdue(r.faelligkeitsdatum)) : 0),
         }))
       }
@@ -473,7 +473,7 @@ export function PaymentOverview() {
                     <TableBody>
                       {openInvoices.map((r) => {
                         const days = daysOverdue(r.faelligkeitsdatum)
-                        const stufe = r.mahnstufe ?? getMahnstufe(days)
+                        const stufe = (r.mahnstufe ?? getMahnstufe(days)) as 0 | 1 | 2 | 3
                         return (
                           <TableRow key={r.id} data-testid="open-invoice-row">
                             <TableCell className="font-medium">

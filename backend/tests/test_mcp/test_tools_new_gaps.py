@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from decimal import Decimal
 
 import pytest
 import pytest_asyncio
@@ -31,7 +30,6 @@ from sportverein.mcp.tools_mitglieder import (
     datenschutz_ausstehende_loeschungen,
     datenschutz_loeschfrist_planen,
 )
-from sportverein.models.finanzen import Kostenstelle
 from sportverein.models.mitglied import BeitragKategorie, Mitglied, MitgliedStatus
 
 

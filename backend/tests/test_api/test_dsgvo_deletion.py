@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date
 
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def _create_member_via_api(client: AsyncClient) -> dict:

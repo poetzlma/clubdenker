@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-import pytest
 
 from sportverein.models.finanzen import (
     Buchung,
