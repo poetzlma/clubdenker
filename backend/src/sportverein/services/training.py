@@ -1,4 +1,4 @@
-"""Training group and attendance management service."""
+"""Training group, attendance, and trainer license management service."""
 
 from __future__ import annotations
 
@@ -8,7 +8,13 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sportverein.models.training import Anwesenheit, Trainingsgruppe, Wochentag
+from sportverein.models.training import (
+    Anwesenheit,
+    Lizenztyp,
+    TrainerLizenz,
+    Trainingsgruppe,
+    Wochentag,
+)
 
 
 class TrainingService:
@@ -275,3 +281,73 @@ class TrainingService:
             "abwesend": total - present,
             "anwesenheit_pct": round(pct, 1),
         }
+
+    # -- Trainer-Lizenzen -----------------------------------------------------
+
+    async def list_licenses(
+        self,
+        mitglied_id: int | None = None,
+        expired: bool | None = None,
+    ) -> list[TrainerLizenz]:
+        """List trainer licenses, optionally filtered by member or expired status."""
+        query = select(TrainerLizenz).order_by(TrainerLizenz.ablaufdatum)
+        if mitglied_id is not None:
+            query = query.where(TrainerLizenz.mitglied_id == mitglied_id)
+        if expired is True:
+            query = query.where(TrainerLizenz.ablaufdatum < date.today())
+        elif expired is False:
+            query = query.where(TrainerLizenz.ablaufdatum >= date.today())
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def create_license(
+        self,
+        mitglied_id: int,
+        lizenztyp: Lizenztyp,
+        bezeichnung: str,
+        ausstellungsdatum: date,
+        ablaufdatum: date,
+        *,
+        lizenznummer: str | None = None,
+        ausstellende_stelle: str | None = None,
+    ) -> TrainerLizenz:
+        """Create a new trainer license record."""
+        lizenz = TrainerLizenz(
+            mitglied_id=mitglied_id,
+            lizenztyp=lizenztyp,
+            bezeichnung=bezeichnung,
+            ausstellungsdatum=ausstellungsdatum,
+            ablaufdatum=ablaufdatum,
+            lizenznummer=lizenznummer,
+            ausstellende_stelle=ausstellende_stelle,
+        )
+        self.session.add(lizenz)
+        await self.session.flush()
+        await self.session.refresh(lizenz)
+        return lizenz
+
+    async def get_expiring_licenses(self, days: int = 90) -> list[TrainerLizenz]:
+        """Find licenses expiring within the next N days (not already expired)."""
+        today = date.today()
+        deadline = today + timedelta(days=days)
+        query = (
+            select(TrainerLizenz)
+            .where(
+                TrainerLizenz.ablaufdatum >= today,
+                TrainerLizenz.ablaufdatum <= deadline,
+            )
+            .order_by(TrainerLizenz.ablaufdatum)
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def delete_license(self, license_id: int) -> None:
+        """Delete a trainer license by ID."""
+        result = await self.session.execute(
+            select(TrainerLizenz).where(TrainerLizenz.id == license_id)
+        )
+        lizenz = result.scalar_one_or_none()
+        if lizenz is None:
+            raise ValueError(f"Lizenz mit ID {license_id} nicht gefunden.")
+        await self.session.delete(lizenz)
+        await self.session.flush()

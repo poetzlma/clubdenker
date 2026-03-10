@@ -735,6 +735,40 @@ class MitgliedAnwesenheitResponse(BaseModel):
     anwesenheit_pct: float
 
 
+# ---------------------------------------------------------------------------
+# Trainer License schemas
+# ---------------------------------------------------------------------------
+
+
+class TrainerLizenzCreate(BaseModel):
+    mitglied_id: int
+    lizenztyp: str
+    bezeichnung: str
+    ausstellungsdatum: date
+    ablaufdatum: date
+    lizenznummer: str | None = None
+    ausstellende_stelle: str | None = None
+
+
+class TrainerLizenzResponse(BaseModel):
+    id: int
+    mitglied_id: int
+    lizenztyp: str
+    bezeichnung: str
+    ausstellungsdatum: date
+    ablaufdatum: date
+    lizenznummer: str | None = None
+    ausstellende_stelle: str | None = None
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class TrainerLizenzListResponse(BaseModel):
+    items: list[TrainerLizenzResponse]
+    total: int
+
+
 class BeitragseinzugRequest(BaseModel):
     year: int
     month: int

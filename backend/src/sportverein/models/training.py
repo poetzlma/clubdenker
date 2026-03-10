@@ -1,4 +1,4 @@
-"""Training group and attendance models."""
+"""Training group, attendance, and trainer license models."""
 
 from __future__ import annotations
 
@@ -21,6 +21,16 @@ class Wochentag(str, enum.Enum):
     sonntag = "sonntag"
 
 
+class Lizenztyp(str, enum.Enum):
+    trainerlizenz_c = "trainerlizenz_c"
+    trainerlizenz_b = "trainerlizenz_b"
+    trainerlizenz_a = "trainerlizenz_a"
+    erste_hilfe = "erste_hilfe"
+    jugendleiter = "jugendleiter"
+    rettungsschwimmer = "rettungsschwimmer"
+    sonstiges = "sonstiges"
+
+
 class Trainingsgruppe(TimestampMixin, Base):
     __tablename__ = "trainingsgruppen"
 
@@ -33,6 +43,18 @@ class Trainingsgruppe(TimestampMixin, Base):
     max_teilnehmer: Mapped[int | None] = mapped_column(nullable=True, default=None)
     ort: Mapped[str | None] = mapped_column(String(200), default=None)
     aktiv: Mapped[bool] = mapped_column(default=True)
+
+
+class TrainerLizenz(TimestampMixin, Base):
+    __tablename__ = "trainer_lizenzen"
+
+    mitglied_id: Mapped[int] = mapped_column(ForeignKey("mitglieder.id"))
+    lizenztyp: Mapped[Lizenztyp] = mapped_column(SQLEnum(Lizenztyp))
+    bezeichnung: Mapped[str] = mapped_column(String(300))
+    ausstellungsdatum: Mapped[date] = mapped_column(Date)
+    ablaufdatum: Mapped[date] = mapped_column(Date)
+    lizenznummer: Mapped[str | None] = mapped_column(String(100), default=None)
+    ausstellende_stelle: Mapped[str | None] = mapped_column(String(300), default=None)
 
 
 class Anwesenheit(TimestampMixin, Base):

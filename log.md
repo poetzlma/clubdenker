@@ -14,43 +14,35 @@
 | 6 | Ehrenamt UI | P1 | `237f0d7` |
 | 7 | DATEV CSV Export | P1 | `4d01d22` |
 | 8 | Compliance Monitor Agent | P1 | `4d01d22` |
+| 9 | Calendar Page | P1 | `b5c95f9` |
+| 10 | Documents/Protokolle Page | P1 | `b5c95f9` |
 
 ### Features In Progress
-- [ ] Calendar page (agent running)
-- [ ] Documents/Protokolle page (agent running)
+- [ ] Trainer License Tracking (P2, agent running)
 
-### Loop 4: Live Testing of New Features
+### Loop 5: Calendar & Documents Verification
 
-**Backend tests:** 486 passed, 3 skipped
+#### Protocol CRUD Tested
+| Action | Status | Result |
+|--------|--------|--------|
+| GET /api/dokumente/protokolle | 200 | Empty list initially |
+| POST /api/dokumente/protokolle | 200 | Created "Vorstandssitzung Q1 2026" |
+| GET /api/dokumente/protokolle/1 | 200 | Returns full protocol with all fields |
 
-#### Live API Testing
-| Endpoint | Status | Result |
-|----------|--------|--------|
-| GET /api/finanzen/mandate | 200 | 20+ SEPA mandates with member names |
-| GET /api/finanzen/kostenstellen | 200 | 6 cost centers with budgets |
-| GET /api/finanzen/ehrenamt?year=2026 | 200 | Empty (no seed data) |
-| GET /api/finanzen/ehrenamt/freibetrag?year=2026 | 200 | Empty (no seed data) |
-| GET /api/finanzen/export/datev/rechnungen?jahr=2026 | 200 | Proper CSV: semicolons, comma decimals, 4 invoices |
-| POST /api/agents/compliance-monitor | 200 | Found 1 warning: member with open invoices but no SEPA mandate |
+#### Calendar Data Verified
+- GET /api/training/gruppen returns 8 groups with wochentag, uhrzeit, ort
+- GET /api/setup/abteilungen returns 4 departments
+- Example: "Herren 1. Mannschaft" on Dienstag 18:30 at Sportplatz A
+- All groups have proper schedule data for weekly calendar display
 
-#### DATEV Export Verification
-- CSV format correct: semicolons, comma decimal separators
-- Date format: DDMM (4 digits)
-- 4 invoices exported for 2026
-- Headers: Rechnungsnummer;Datum;Kunde;Netto;USt;Brutto;Status
+### Test Counts
+- Backend: 495 passed, 3 skipped
+- Frontend: 7 files, 40 tests passed
+- TSC: Clean
 
-#### Compliance Monitor Verification
-- Found real compliance issue: 1 active member with open invoices and no SEPA mandate
-- No Gemeinnuetzigkeit warnings (Freistellungsbescheid is valid)
-- No DSGVO pending deletions (member 1 already anonymized)
-
-#### Route Corrections
-- SEPA mandates at `/api/finanzen/mandate` NOT `/api/finanzen/sepa/mandate`
-
-### Bugs Found
-1. FIXED: `mitglieder.geloescht_am` column missing (migration not applied)
-2. FIXED: Dashboard frontend used mock data (now wired to real API)
-3. NOTE: No seed data for Ehrenamt -- endpoints work but return empty
+### Bugs Found & Fixed
+1. FIXED: `mitglieder.geloescht_am` column missing
+2. FIXED: Dashboard frontend used mock data
 
 ### Completed Commits
 1. `4524d57` - Initial feature batch
@@ -58,9 +50,10 @@
 3. `a34e7e4` - Dashboard wiring + Eingangsrechnungen UI
 4. `237f0d7` - Ehrenamt UI tab
 5. `4d01d22` - DATEV export + Compliance Monitor
+6. `b5c95f9` - Calendar + Documents pages
 
-### Next Up
-- [ ] Calendar page (in progress)
-- [ ] Documents page (in progress)
-- [ ] Trainer license tracking
+### Remaining Features
+- [ ] Trainer License Tracking (in progress)
 - [ ] Seed data for Ehrenamt
+- [ ] Member Self-Service Portal
+- [ ] Churn/engagement analytics

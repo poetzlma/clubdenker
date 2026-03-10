@@ -12,13 +12,15 @@ from sportverein.api.schemas import (
     AnwesenheitResponse,
     AnwesenheitStatistik,
     MitgliedAnwesenheitResponse,
+    TrainerLizenzCreate,
+    TrainerLizenzResponse,
     TrainingsgruppeCreate,
     TrainingsgruppeResponse,
     TrainingsgruppeUpdate,
 )
 from sportverein.auth.dependencies import get_current_token, get_db_session
 from sportverein.auth.models import ApiToken
-from sportverein.models.training import Wochentag
+from sportverein.models.training import Lizenztyp, Wochentag
 from sportverein.services.training import TrainingService
 
 router = APIRouter(prefix="/api/training", tags=["training"])
@@ -206,3 +208,85 @@ async def get_mitglied_anwesenheit(
     svc = TrainingService(session)
     stats = await svc.get_mitglied_anwesenheit(mitglied_id, wochen=wochen)
     return MitgliedAnwesenheitResponse(**stats)
+
+
+# ---------------------------------------------------------------------------
+# Trainer-Lizenzen
+# ---------------------------------------------------------------------------
+
+
+def _lizenz_to_response(liz) -> TrainerLizenzResponse:  # type: ignore[no-untyped-def]
+    return TrainerLizenzResponse(
+        id=liz.id,
+        mitglied_id=liz.mitglied_id,
+        lizenztyp=liz.lizenztyp.value if hasattr(liz.lizenztyp, "value") else str(liz.lizenztyp),
+        bezeichnung=liz.bezeichnung,
+        ausstellungsdatum=liz.ausstellungsdatum,
+        ablaufdatum=liz.ablaufdatum,
+        lizenznummer=liz.lizenznummer,
+        ausstellende_stelle=liz.ausstellende_stelle,
+        created_at=liz.created_at,
+    )
+
+
+@router.get("/lizenzen", response_model=list[TrainerLizenzResponse])
+async def list_lizenzen(
+    mitglied_id: int | None = None,
+    expired: bool | None = None,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[TrainerLizenzResponse]:
+    svc = TrainingService(session)
+    lizenzen = await svc.list_licenses(mitglied_id=mitglied_id, expired=expired)
+    return [_lizenz_to_response(liz) for liz in lizenzen]
+
+
+@router.post(
+    "/lizenzen",
+    response_model=TrainerLizenzResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_lizenz(
+    body: TrainerLizenzCreate,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> TrainerLizenzResponse:
+    svc = TrainingService(session)
+    lizenz = await svc.create_license(
+        mitglied_id=body.mitglied_id,
+        lizenztyp=Lizenztyp(body.lizenztyp),
+        bezeichnung=body.bezeichnung,
+        ausstellungsdatum=body.ausstellungsdatum,
+        ablaufdatum=body.ablaufdatum,
+        lizenznummer=body.lizenznummer,
+        ausstellende_stelle=body.ausstellende_stelle,
+    )
+    await session.commit()
+    return _lizenz_to_response(lizenz)
+
+
+@router.get("/lizenzen/expiring", response_model=list[TrainerLizenzResponse])
+async def get_expiring_lizenzen(
+    days: int = Query(90, ge=1, le=365),
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[TrainerLizenzResponse]:
+    svc = TrainingService(session)
+    lizenzen = await svc.get_expiring_licenses(days=days)
+    return [_lizenz_to_response(liz) for liz in lizenzen]
+
+
+@router.delete("/lizenzen/{lizenz_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_lizenz(
+    lizenz_id: int,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    svc = TrainingService(session)
+    try:
+        await svc.delete_license(lizenz_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    await session.commit()
