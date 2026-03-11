@@ -508,8 +508,14 @@ class FinanzenService:
         if rechnung is None:
             raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
 
-        # Drafts can always be deleted
+        # Drafts can be deleted if they have no payments
         if rechnung.status == RechnungStatus.entwurf:
+            await self.session.refresh(rechnung, ["zahlungen"])
+            if rechnung.zahlungen:
+                raise ValueError(
+                    f"Entwurf hat {len(rechnung.zahlungen)} Zahlung(en) und "
+                    f"kann nicht gelöscht werden."
+                )
             await self.session.delete(rechnung)
             await self.session.flush()
             return

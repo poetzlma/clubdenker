@@ -268,7 +268,7 @@ class TestComplianceMonitorAgent:
 
         dsgvo = [f for f in result["findings"] if f["category"] == "dsgvo"]
         assert len(dsgvo) == 1
-        assert dsgvo[0]["severity"] == "critical"
+        assert dsgvo[0]["severity"] == "warning"
         assert dsgvo[0]["affected_count"] == 1
 
     async def test_missing_sepa_mandate(self, session):

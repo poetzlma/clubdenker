@@ -880,3 +880,138 @@ async def test_versende_rechnung_not_gestellt(client, session: AsyncSession):
         json={"kanal": "email_pdf", "empfaenger": "max@example.de"},
     )
     assert resp.status_code == 400
+
+
+# -- PDF / XML / SEPA export tests ------------------------------------------
+
+
+async def test_generate_invoice_pdf(client, session: AsyncSession):
+    """GET /rechnungen/{id}/pdf returns a PDF for a gestellt invoice with positionen."""
+    member = await _create_member(session)
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 119.00,
+            "beschreibung": "Test invoice",
+            "faelligkeitsdatum": "2026-12-31",
+            "positionen": [
+                {
+                    "beschreibung": "Item 1",
+                    "menge": 1,
+                    "einzelpreis_netto": 100.0,
+                    "steuersatz": 19,
+                }
+            ],
+        },
+    )
+    assert inv_resp.status_code == 201
+    rechnung_id = inv_resp.json()["id"]
+
+    # Stelle the invoice
+    stelle_resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert stelle_resp.status_code == 200
+
+    # Generate PDF
+    resp = await client.get(f"/api/finanzen/rechnungen/{rechnung_id}/pdf")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert len(resp.content) > 0
+
+
+async def test_generate_invoice_pdf_not_found(client):
+    """GET /rechnungen/{id}/pdf returns 404 for non-existent invoice."""
+    resp = await client.get("/api/finanzen/rechnungen/99999/pdf")
+    assert resp.status_code == 404
+
+
+async def test_generate_zugferd_xml(client, session: AsyncSession):
+    """GET /rechnungen/{id}/xml returns ZUGFeRD XML for a gestellt invoice."""
+    member = await _create_member(session)
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 119.00,
+            "beschreibung": "ZUGFeRD test invoice",
+            "faelligkeitsdatum": "2026-12-31",
+            "positionen": [
+                {
+                    "beschreibung": "Item 1",
+                    "menge": 1,
+                    "einzelpreis_netto": 100.0,
+                    "steuersatz": 19,
+                }
+            ],
+        },
+    )
+    assert inv_resp.status_code == 201
+    rechnung_id = inv_resp.json()["id"]
+
+    # Stelle the invoice
+    stelle_resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert stelle_resp.status_code == 200
+
+    # Generate ZUGFeRD XML
+    resp = await client.get(f"/api/finanzen/rechnungen/{rechnung_id}/xml")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/xml"
+    content = resp.content.decode("utf-8")
+    assert "<?xml" in content
+    assert "CrossIndustryInvoice" in content
+
+
+async def test_sepa_xml_generation(client, session: AsyncSession):
+    """POST /sepa with mandated member and gestellt invoice returns SEPA XML."""
+    member = await _create_member(session)
+
+    # Create SEPA mandate for the member
+    mandat_resp = await client.post(
+        "/api/finanzen/mandate",
+        json={**MANDAT_DATA, "mitglied_id": member.id},
+    )
+    assert mandat_resp.status_code == 201
+
+    # Create invoice and stelle it
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 119.00,
+            "beschreibung": "SEPA test invoice",
+            "faelligkeitsdatum": "2026-12-31",
+            "positionen": [
+                {
+                    "beschreibung": "Item 1",
+                    "menge": 1,
+                    "einzelpreis_netto": 100.0,
+                    "steuersatz": 19,
+                }
+            ],
+        },
+    )
+    assert inv_resp.status_code == 201
+    rechnung_id = inv_resp.json()["id"]
+
+    stelle_resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert stelle_resp.status_code == 200
+
+    # Generate SEPA XML
+    resp = await client.post(
+        "/api/finanzen/sepa",
+        json={"rechnungen_ids": [rechnung_id]},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["count"] == 1
+    assert "<?xml" in body["xml"]
+    assert "CstmrDrctDbtInitn" in body["xml"]
+
+
+async def test_sepa_xml_no_invoices(client):
+    """POST /sepa with empty rechnungen_ids returns 400."""
+    resp = await client.post(
+        "/api/finanzen/sepa",
+        json={"rechnungen_ids": []},
+    )
+    assert resp.status_code == 400

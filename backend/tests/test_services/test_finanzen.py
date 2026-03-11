@@ -10,6 +10,7 @@ from sportverein.models.beitrag import SepaMandat
 from sportverein.models.finanzen import (
     RechnungStatus,
     Sphare,
+    Zahlung,
     Zahlungsart,
 )
 from sportverein.models.mitglied import Mitglied, MitgliedStatus
@@ -1069,3 +1070,34 @@ class TestGetMandate:
         inactive_items, inactive_total = await svc.get_mandate(aktiv_filter=False)
         assert inactive_total == 1
         assert inactive_items[0]["mandatsreferenz"] == "MREF-I"
+
+
+@pytest.mark.asyncio
+async def test_delete_draft_invoice_with_payments(session):
+    """Deleting a draft invoice that has payments should raise ValueError."""
+    member = _make_member()
+    session.add(member)
+    await session.flush()
+
+    svc = FinanzenService(session)
+    rechnung = await svc.create_invoice(
+        mitglied_id=member.id,
+        betrag=Decimal("100.00"),
+        beschreibung="Draft with payment",
+        faelligkeitsdatum=date(2026, 12, 31),
+        sphaere="ideell",
+    )
+    await session.flush()
+
+    # Add a payment directly to the draft
+    zahlung = Zahlung(
+        rechnung_id=rechnung.id,
+        betrag=Decimal("50.00"),
+        zahlungsdatum=date(2026, 1, 15),
+        zahlungsart=Zahlungsart.ueberweisung,
+    )
+    session.add(zahlung)
+    await session.flush()
+
+    with pytest.raises(ValueError, match="Zahlung"):
+        await svc.delete_invoice(rechnung.id)

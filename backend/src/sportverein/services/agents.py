@@ -329,7 +329,7 @@ class ComplianceMonitorAgent:
         findings: list[dict[str, Any]] = []
         if pending:
             count = len(pending)
-            severity = "critical" if count > 0 else "info"
+            severity = "critical" if count >= 5 else "warning"
             findings.append(
                 {
                     "category": "dsgvo",

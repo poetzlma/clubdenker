@@ -108,7 +108,7 @@ async def test_compliance_monitor_with_findings(client, session: AsyncSession):
     body = resp.json()
     dsgvo = [f for f in body["findings"] if f["category"] == "dsgvo"]
     assert len(dsgvo) == 1
-    assert dsgvo[0]["severity"] == "critical"
+    assert dsgvo[0]["severity"] == "warning"
 
 
 async def test_aufwand_monitor_with_warning(client, session: AsyncSession):
