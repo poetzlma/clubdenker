@@ -35,7 +35,7 @@ async def run_beitragseinzug(
     agent = BeitragseinzugAgent(session)
     try:
         result = await agent.run(body.year, body.month)
-    except Exception as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return BeitragseinzugResponse(**result)

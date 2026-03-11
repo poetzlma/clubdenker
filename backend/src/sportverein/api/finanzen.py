@@ -375,7 +375,7 @@ async def create_invoice(
             else None,
             skonto_frist_tage=body.skonto_frist_tage,
         )
-    except Exception as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -533,7 +533,7 @@ async def record_payment(
             referenz=body.referenz,
             apply_skonto=body.apply_skonto,
         )
-    except Exception as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return ZahlungResponse(
@@ -674,7 +674,7 @@ async def create_cost_center(
         data["freigabelimit"] = Decimal(str(data["freigabelimit"]))
     try:
         ks = await svc.create_cost_center(data)
-    except Exception as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -775,7 +775,7 @@ async def update_vereinsstammdaten(
     data = body.model_dump(exclude_unset=True)
     try:
         stammdaten = await svc.update_vereinsstammdaten(data)
-    except Exception as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -815,7 +815,7 @@ async def create_mandat(
     svc = FinanzenService(session)
     try:
         mandat = await svc.create_mandat(body.model_dump())
-    except Exception as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -1239,7 +1239,7 @@ async def create_ehrenamt(
     svc = EhrenamtService(session)
     try:
         entry = await svc.create_compensation(body.model_dump())
-    except Exception as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     # Fetch member name

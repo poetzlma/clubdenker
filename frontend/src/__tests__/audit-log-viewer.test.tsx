@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { AuditLogViewer } from "@/components/admin/audit-log-viewer"
 
