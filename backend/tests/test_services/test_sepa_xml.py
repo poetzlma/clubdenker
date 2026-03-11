@@ -8,6 +8,8 @@ from decimal import Decimal
 
 import pytest
 
+pytestmark = pytest.mark.asyncio
+
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.mitglied import Mitglied, MitgliedStatus
 from sportverein.models.vereinsstammdaten import Vereinsstammdaten
