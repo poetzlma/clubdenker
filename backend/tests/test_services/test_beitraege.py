@@ -7,7 +7,13 @@ import pytest
 
 from sportverein.models.beitrag import BeitragsKategorie
 from sportverein.models.finanzen import RechnungStatus
-from sportverein.models.mitglied import BeitragKategorie, Mitglied, MitgliedStatus
+from sportverein.models.mitglied import (
+    Abteilung,
+    BeitragKategorie,
+    Mitglied,
+    MitgliedAbteilung,
+    MitgliedStatus,
+)
 from sportverein.services.beitraege import BeitraegeService
 
 
@@ -292,3 +298,149 @@ class TestGetDunningCandidates:
         assert levels["R-1001"] == 1
         assert levels["R-1002"] == 2
         assert levels["R-1003"] == 3
+
+
+# ── calculate_combined_fee tests ──────────────────────────────────────
+
+
+@pytest.mark.usefixtures("_seed_categories")
+class TestCalculateCombinedFee:
+    """Tests for the combined fee calculation with discounts."""
+
+    async def test_adult_no_discounts(self, session):
+        """Adult member with no departments, no family -- full base fee."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        result = await svc.calculate_combined_fee(member.id, 2026)
+
+        assert result["base_fee"] == Decimal("240.00")
+        assert result["total"] == Decimal("240.00")
+        assert result["discounts"] == []
+
+    async def test_jugend_discount(self, session):
+        """Jugend member gets 50% off base."""
+        member = _make_member(
+            email="jugend@example.com",
+            mitgliedsnummer="M002",
+            kategorie=BeitragKategorie.jugend,
+        )
+        session.add(member)
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        result = await svc.calculate_combined_fee(member.id, 2026)
+
+        assert result["base_fee"] == Decimal("120.00")
+        assert len(result["discounts"]) == 1
+        assert result["discounts"][0]["type"] == "jugend"
+        assert result["total"] == Decimal("60.00")
+
+    async def test_multi_department_discount(self, session):
+        """Member in 3 departments gets 20% multi-department discount."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        depts = [Abteilung(name=f"Sport{i}") for i in range(3)]
+        session.add_all(depts)
+        await session.flush()
+
+        for d in depts:
+            session.add(MitgliedAbteilung(mitglied_id=member.id, abteilung_id=d.id))
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        result = await svc.calculate_combined_fee(member.id, 2026)
+
+        # 2 additional departments -> 2 * 10% = 20% discount
+        discount_types = [d["type"] for d in result["discounts"]]
+        assert "multi_department" in discount_types
+        multi = next(d for d in result["discounts"] if d["type"] == "multi_department")
+        assert multi["amount"] == float(Decimal("240.00") * Decimal("0.20"))
+
+    async def test_familie_discount(self, session):
+        """Second member at same address gets 20% family discount."""
+        m1 = _make_member(
+            vorname="Hans",
+            email="hans@example.com",
+            mitgliedsnummer="M010",
+            eintrittsdatum=date(2019, 1, 1),
+        )
+        m1.strasse = "Hauptstr. 1"
+        m1.plz = "10115"
+        m1.ort = "Berlin"
+
+        m2 = _make_member(
+            vorname="Greta",
+            email="greta@example.com",
+            mitgliedsnummer="M011",
+            eintrittsdatum=date(2020, 6, 1),
+        )
+        m2.strasse = "Hauptstr. 1"
+        m2.plz = "10115"
+        m2.ort = "Berlin"
+
+        session.add_all([m1, m2])
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        # First member: no family discount
+        r1 = await svc.calculate_combined_fee(m1.id, 2026)
+        assert all(d["type"] != "familie" for d in r1["discounts"])
+
+        # Second member: 20% discount
+        r2 = await svc.calculate_combined_fee(m2.id, 2026)
+        discount_types = [d["type"] for d in r2["discounts"]]
+        assert "familie" in discount_types
+        assert r2["total"] == Decimal("192.00")  # 240 - 48
+
+    async def test_member_not_found(self, session):
+        svc = BeitraegeService(session)
+        with pytest.raises(ValueError, match="not found"):
+            await svc.calculate_combined_fee(99999, 2026)
+
+    async def test_discount_floor_zero(self, session):
+        """Total fee cannot go below zero even with stacked discounts."""
+        member = _make_member(
+            email="ehrenmitglied@example.com",
+            mitgliedsnummer="M020",
+            kategorie=BeitragKategorie.ehrenmitglied,
+        )
+        session.add(member)
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        result = await svc.calculate_combined_fee(member.id, 2026)
+        assert result["total"] == Decimal("0.00")
+
+
+# ── get_category_rate fallback tests ──────────────────────────────────
+
+
+class TestGetCategoryRate:
+    """Tests for category rate lookup with DB and fallback."""
+
+    async def test_rate_from_db(self, session):
+        """Rate is returned from DB when category exists."""
+        cat = BeitragsKategorie(name="erwachsene", jahresbeitrag=Decimal("300.00"))
+        session.add(cat)
+        await session.flush()
+
+        svc = BeitraegeService(session)
+        rate = await svc.get_category_rate(BeitragKategorie.erwachsene)
+        assert rate == Decimal("300.00")
+
+    async def test_rate_fallback_default(self, session):
+        """Fallback to default rate when no DB row."""
+        svc = BeitraegeService(session)
+        rate = await svc.get_category_rate(BeitragKategorie.erwachsene)
+        assert rate == Decimal("240.00")
+
+    async def test_rate_ehrenmitglied_fallback(self, session):
+        """Ehrenmitglied default rate is 0."""
+        svc = BeitraegeService(session)
+        rate = await svc.get_category_rate(BeitragKategorie.ehrenmitglied)
+        assert rate == Decimal("0.00")

@@ -768,3 +768,22 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 - Frontend: 120 passed
 - Total: 1091
 - Ruff: clean
+
+### Loop 37: Test Coverage Expansion -- Combined Fee, Category Rate, Health 503
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_services/test_beitraege.py` | +9 | calculate_combined_fee: adult no discount, jugend 50%, multi-dept 10%, family 20%, not found, floor zero; get_category_rate: DB, fallback, ehrenmitglied |
+| `tests/test_api/test_health.py` | +1 | Health check 503 degraded response on DB failure |
+
+#### Areas Verified (no bugs found)
+- calculate_combined_fee: all discount paths work correctly (jugend, multi-dept, family, floor at zero)
+- get_category_rate: DB lookup and default fallback both return correct values
+- Health check: 503 branch returns correct degraded payload
+
+#### Test Counts
+- Backend: 981 passed (was 971, +10 new)
+- Frontend: 120 passed
+- Total: 1101
+- Ruff: clean
