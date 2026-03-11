@@ -26,13 +26,13 @@ export function ProgressBar({
     <div className={cn("space-y-1", className)}>
       {(showLabel || label || showPercentage) && (
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-700">{label}</span>
-          <span className="tabular-nums text-gray-500">
+          <span className="text-foreground">{label}</span>
+          <span className="tabular-nums text-muted-foreground">
             {Math.round(percent)}%
           </span>
         </div>
       )}
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${percent}%`, backgroundColor: color }}

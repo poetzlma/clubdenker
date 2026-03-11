@@ -409,3 +409,39 @@ async def test_stelle_rechnung_already_gestellt(client, session):
     # Second stelle - should fail with 400
     resp2 = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
     assert resp2.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Department assignment edge cases
+# ---------------------------------------------------------------------------
+
+
+async def test_assign_nonexistent_department(client):
+    """Assigning a member to a nonexistent department returns 400."""
+    create_resp = await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "noabt@example.de"}
+    )
+    member_id = create_resp.json()["id"]
+    resp = await client.post(f"/api/mitglieder/{member_id}/abteilungen/99999")
+    assert resp.status_code == 400
+
+
+async def test_assign_duplicate_department(client, session: AsyncSession):
+    """Assigning a member to the same department twice returns 400."""
+    dept = Abteilung(name="DupTest")
+    session.add(dept)
+    await session.flush()
+    dept_id = dept.id
+
+    create_resp = await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "dup@example.de"}
+    )
+    member_id = create_resp.json()["id"]
+
+    # First assignment succeeds
+    resp1 = await client.post(f"/api/mitglieder/{member_id}/abteilungen/{dept_id}")
+    assert resp1.status_code == 201
+
+    # Duplicate assignment should fail
+    resp2 = await client.post(f"/api/mitglieder/{member_id}/abteilungen/{dept_id}")
+    assert resp2.status_code == 400

@@ -9,6 +9,7 @@ import {
   FileText,
   Shield,
   Settings,
+  Plug,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { title: "Dokumente", href: "/dokumente", icon: FileText },
   { title: "Admin", href: "/admin", icon: Shield },
   { title: "Vereins-Setup", href: "/vereins-setup", icon: Settings },
+  { title: "MCP-Setup", href: "/mcp-setup", icon: Plug },
 ]
 
 export function Sidebar() {
@@ -57,7 +59,7 @@ export function Sidebar() {
         {/* Logo / Title */}
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
           {!collapsed && (
-            <h2 className="text-lg font-bold tracking-tight">Sportverein</h2>
+            <h2 className="text-lg font-bold tracking-tight">Klubdenker</h2>
           )}
           <Button
             variant="ghost"

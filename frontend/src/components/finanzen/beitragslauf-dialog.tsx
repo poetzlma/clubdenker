@@ -28,8 +28,8 @@ interface BeitragslaufResult {
   total_amount: number
 }
 
-function formatEuro(amount: number): string {
-  return amount.toLocaleString("de-DE", {
+function formatEuro(amount: number | null | undefined): string {
+  return (amount ?? 0).toLocaleString("de-DE", {
     style: "currency",
     currency: "EUR",
   })

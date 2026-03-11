@@ -375,7 +375,9 @@ async def create_invoice(
             else None,
             skonto_frist_tage=body.skonto_frist_tage,
         )
-    except (ValueError, PermissionError) as exc:
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -387,6 +389,58 @@ async def create_invoice(
     )
     await session.commit()
     return _rechnung_to_response(rechnung)
+
+
+@router.get("/rechnungen/export")
+async def export_rechnungen_zip(
+    jahr: int = Query(..., description="Jahr fuer den PDF-Export"),
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> Response:
+    """Generate a ZIP archive of all invoice PDFs for a given year."""
+    result = await session.execute(
+        select(Rechnung.id, Rechnung.rechnungsnummer).where(
+            extract("year", Rechnung.rechnungsdatum) == jahr,
+        )
+    )
+    invoices = result.all()
+    if not invoices:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Keine Rechnungen fuer Jahr {jahr} gefunden",
+        )
+
+    pdf_svc = RechnungPdfService()
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for inv_id, inv_nummer in invoices:
+            try:
+                pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, inv_id)
+                zf.writestr(f"RE-{inv_nummer}.pdf", pdf_bytes)
+            except ValueError:
+                continue  # Skip invoices that fail to generate
+
+    return Response(
+        content=zip_buffer.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="Rechnungen-{jahr}.zip"',
+        },
+    )
+
+
+@router.get("/rechnungen/{rechnung_id}", response_model=RechnungResponse)
+async def get_invoice(
+    rechnung_id: int,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> RechnungResponse:
+    svc = FinanzenService(session)
+    result = await svc.get_invoice(rechnung_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rechnung nicht gefunden")
+    return _rechnung_to_response(result)
 
 
 @router.post("/rechnungen/{rechnung_id}/stellen", response_model=RechnungResponse)
@@ -533,7 +587,9 @@ async def record_payment(
             referenz=body.referenz,
             apply_skonto=body.apply_skonto,
         )
-    except (ValueError, PermissionError) as exc:
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return ZahlungResponse(
@@ -674,7 +730,9 @@ async def create_cost_center(
         data["freigabelimit"] = Decimal(str(data["freigabelimit"]))
     try:
         ks = await svc.create_cost_center(data)
-    except (ValueError, PermissionError) as exc:
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -715,6 +773,28 @@ async def update_cost_center(
     )
     await session.commit()
     return _kostenstelle_to_response(ks)
+
+
+@router.delete("/kostenstellen/{kostenstelle_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_cost_center(
+    kostenstelle_id: int,
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    svc = FinanzenService(session)
+    try:
+        await svc.delete_cost_center(kostenstelle_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    await log_audit(
+        session,
+        user_id=_token.admin_user_id,
+        action="delete",
+        entity_type="kostenstelle",
+        entity_id=kostenstelle_id,
+        details={},
+    )
+    await session.commit()
 
 
 # -- Leistungsverrechnung ---------------------------------------------------
@@ -775,7 +855,9 @@ async def update_vereinsstammdaten(
     data = body.model_dump(exclude_unset=True)
     try:
         stammdaten = await svc.update_vereinsstammdaten(data)
-    except (ValueError, PermissionError) as exc:
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -815,7 +897,9 @@ async def create_mandat(
     svc = FinanzenService(session)
     try:
         mandat = await svc.create_mandat(body.model_dump())
-    except (ValueError, PermissionError) as exc:
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
@@ -911,45 +995,6 @@ async def deactivate_mandat(
 
 
 # -- Rechnung PDF -----------------------------------------------------------
-
-
-@router.get("/rechnungen/export")
-async def export_rechnungen_zip(
-    jahr: int = Query(..., description="Jahr fuer den PDF-Export"),
-    _token: ApiToken = Depends(get_current_token),
-    session: AsyncSession = Depends(get_db_session),
-) -> Response:
-    """Generate a ZIP archive of all invoice PDFs for a given year."""
-    result = await session.execute(
-        select(Rechnung.id, Rechnung.rechnungsnummer).where(
-            extract("year", Rechnung.rechnungsdatum) == jahr,
-        )
-    )
-    invoices = result.all()
-    if not invoices:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Keine Rechnungen fuer Jahr {jahr} gefunden",
-        )
-
-    pdf_svc = RechnungPdfService()
-    zip_buffer = io.BytesIO()
-
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for inv_id, inv_nummer in invoices:
-            try:
-                pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, inv_id)
-                zf.writestr(f"RE-{inv_nummer}.pdf", pdf_bytes)
-            except ValueError:
-                continue  # Skip invoices that fail to generate
-
-    return Response(
-        content=zip_buffer.getvalue(),
-        media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="Rechnungen-{jahr}.zip"',
-        },
-    )
 
 
 @router.get("/rechnungen/{rechnung_id}/pdf")
@@ -1239,7 +1284,9 @@ async def create_ehrenamt(
     svc = EhrenamtService(session)
     try:
         entry = await svc.create_compensation(body.model_dump())
-    except (ValueError, PermissionError) as exc:
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     # Fetch member name

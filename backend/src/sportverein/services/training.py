@@ -70,7 +70,11 @@ class TrainingService:
             aktiv=aktiv,
         )
         self.session.add(gruppe)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(f"Ungültige Abteilung: {abteilung_id}") from exc
         await self.session.refresh(gruppe)
         return gruppe
 
@@ -321,7 +325,11 @@ class TrainingService:
             ausstellende_stelle=ausstellende_stelle,
         )
         self.session.add(lizenz)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(f"Ungültige Mitglieds-ID: {mitglied_id}") from exc
         await self.session.refresh(lizenz)
         return lizenz
 

@@ -40,7 +40,7 @@ export function ClickableRow({
     <tr
       className={cn(
         isInteractive &&
-          "cursor-pointer transition-colors hover:bg-gray-50",
+          "cursor-pointer transition-colors hover:bg-muted",
         className
       )}
       onClick={isInteractive ? handleClick : undefined}

@@ -240,7 +240,7 @@ export function VorstandView({ data, onMemberCountChange }: VorstandViewProps) {
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="col-span-2 rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader label="Mitgliederentwicklung" />
           <div className="mt-3">
             <ResponsiveContainer width="100%" height={CHART.heights.lg}>
@@ -293,7 +293,7 @@ export function VorstandView({ data, onMemberCountChange }: VorstandViewProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader
             label="Spartengesundheit"
             action="Details →"
@@ -316,7 +316,7 @@ export function VorstandView({ data, onMemberCountChange }: VorstandViewProps) {
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-5 gap-4">
-        <div className="col-span-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="col-span-3 rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader
             label="Cashflow (6 Monate)"
             action="Details →"
@@ -365,7 +365,7 @@ export function VorstandView({ data, onMemberCountChange }: VorstandViewProps) {
           </div>
         </div>
 
-        <div className="col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="col-span-2 rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader label="Offene Aktionen" />
           <div className="mt-3 space-y-2">
             {d.aktionen.map((a) => (

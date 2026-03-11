@@ -46,8 +46,8 @@ const AUFWAND_TYP_LIMITS: Record<string, number> = {
   ehrenamt: 840,
 }
 
-function formatEuro(amount: number): string {
-  return amount.toLocaleString("de-DE", {
+function formatEuro(amount: number | null | undefined): string {
+  return (amount ?? 0).toLocaleString("de-DE", {
     style: "currency",
     currency: "EUR",
   })

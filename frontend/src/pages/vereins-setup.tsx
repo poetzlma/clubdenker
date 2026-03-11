@@ -72,8 +72,8 @@ const MOCK_KOSTENSTELLEN: Kostenstelle[] = [
 
 // --- Helpers ---
 
-function formatCurrency(value: number): string {
-  return value.toLocaleString("de-DE", { style: "currency", currency: "EUR" })
+function formatCurrency(value: number | null | undefined): string {
+  return (value ?? 0).toLocaleString("de-DE", { style: "currency", currency: "EUR" })
 }
 
 // --- Abteilungen Section ---
@@ -306,7 +306,7 @@ function BeitragskategorienTab() {
   function openEdit(item: BeitragsKategorie) {
     setEditing(item)
     setFormName(item.name)
-    setFormJahresbeitrag(item.jahresbeitrag.toString())
+    setFormJahresbeitrag((item.jahresbeitrag ?? 0).toString())
     setFormBeschreibung(item.beschreibung ?? "")
     setDialogOpen(true)
   }
@@ -501,8 +501,8 @@ function KostenstellenTab() {
     setFormName(item.name)
     setFormBeschreibung(item.beschreibung ?? "")
     setFormAbteilung("")
-    setFormBudget(item.budget.toString())
-    setFormFreigabelimit(item.freigabelimit.toString())
+    setFormBudget((item.budget ?? 0).toString())
+    setFormFreigabelimit((item.freigabelimit ?? 0).toString())
     setDialogOpen(true)
   }
 

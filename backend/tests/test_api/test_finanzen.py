@@ -1091,3 +1091,172 @@ async def test_list_rechnungen_pagination(client, session: AsyncSession):
     body2 = resp2.json()
     assert body2["total"] == 3
     assert len(body2["items"]) == 1
+
+
+# -- GET /rechnungen/{id} single invoice tests --------------------------------
+
+
+async def test_get_invoice_by_id(client, session: AsyncSession):
+    """GET /rechnungen/{id} returns the invoice details."""
+    member = await _create_member(session)
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 350.00,
+            "beschreibung": "Single invoice test",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
+    assert inv_resp.status_code == 201
+    rechnung_id = inv_resp.json()["id"]
+
+    resp = await client.get(f"/api/finanzen/rechnungen/{rechnung_id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == rechnung_id
+    assert body["betrag"] == 350.00
+    assert body["beschreibung"] == "Single invoice test"
+    assert body["status"] == "entwurf"
+
+
+async def test_get_invoice_not_found(client):
+    """GET /rechnungen/{id} returns 404 for non-existent invoice."""
+    resp = await client.get("/api/finanzen/rechnungen/99999")
+    assert resp.status_code == 404
+
+
+async def test_get_invoice_requires_auth(unauthed_client):
+    """GET /rechnungen/{id} requires authentication."""
+    resp = await unauthed_client.get("/api/finanzen/rechnungen/1")
+    assert resp.status_code in (401, 422)
+
+
+# -- DELETE /kostenstellen/{id} tests -----------------------------------------
+
+
+async def test_delete_kostenstelle(client, session: AsyncSession):
+    """DELETE /kostenstellen/{id} removes the cost center."""
+    # Create a cost center
+    resp = await client.post(
+        "/api/finanzen/kostenstellen",
+        json={"name": "Temp KS", "budget": 1000.00},
+    )
+    ks_id = resp.json()["id"]
+
+    # Delete it
+    del_resp = await client.delete(f"/api/finanzen/kostenstellen/{ks_id}")
+    assert del_resp.status_code == 204
+
+    # Verify it's gone
+    list_resp = await client.get("/api/finanzen/kostenstellen")
+    ids = [k["id"] for k in list_resp.json()]
+    assert ks_id not in ids
+
+
+async def test_delete_kostenstelle_not_found(client):
+    """DELETE /kostenstellen/{id} returns 404 for non-existent cost center."""
+    resp = await client.delete("/api/finanzen/kostenstellen/99999")
+    assert resp.status_code == 404
+
+
+async def test_delete_kostenstelle_with_bookings(client, session: AsyncSession):
+    """DELETE /kostenstellen/{id} fails when bookings reference it."""
+    from sportverein.models.finanzen import Buchung, Sphare
+
+    member = await _create_member(session)
+
+    # Create cost center via API
+    ks_resp = await client.post(
+        "/api/finanzen/kostenstellen",
+        json={"name": "Linked KS", "budget": 5000.00},
+    )
+    ks_id = ks_resp.json()["id"]
+
+    # Create a booking linked to the cost center directly in DB
+    # (BuchungCreate schema doesn't expose kostenstelle_id)
+    buchung = Buchung(
+        buchungsdatum=date(2025, 1, 15),
+        betrag=100,
+        beschreibung="Linked booking",
+        konto="4000",
+        gegenkonto="1200",
+        sphare=Sphare.ideell,
+        mitglied_id=member.id,
+        kostenstelle_id=ks_id,
+    )
+    session.add(buchung)
+    await session.flush()
+
+    # Attempt delete should fail
+    del_resp = await client.delete(f"/api/finanzen/kostenstellen/{ks_id}")
+    assert del_resp.status_code in (400, 404)
+
+
+# -- GET /rechnungen/export tests --------------------------------------------
+
+
+async def test_export_rechnungen_empty_year(client):
+    """GET /rechnungen/export for a year with no invoices returns 404."""
+    resp = await client.get(
+        "/api/finanzen/rechnungen/export", params={"jahr": 1999}
+    )
+    assert resp.status_code == 404
+
+
+async def test_export_rechnungen_requires_auth(unauthed_client):
+    """GET /rechnungen/export requires authentication."""
+    resp = await unauthed_client.get(
+        "/api/finanzen/rechnungen/export", params={"jahr": 2025}
+    )
+    assert resp.status_code in (401, 422)
+
+
+# -- FK validation tests ------------------------------------------------------
+
+
+async def test_create_booking_invalid_mitglied(client):
+    """POST /buchungen with invalid mitglied_id returns 400."""
+    resp = await client.post(
+        "/api/finanzen/buchungen",
+        json={**BOOKING_DATA, "mitglied_id": 99999},
+    )
+    assert resp.status_code == 400
+
+
+async def test_create_invoice_invalid_mitglied(client):
+    """POST /rechnungen with invalid mitglied_id returns 400."""
+    resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": 99999,
+            "betrag": 100.00,
+            "beschreibung": "Test",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
+    assert resp.status_code == 400
+
+
+async def test_create_mandat_invalid_mitglied(client):
+    """POST /mandate with invalid mitglied_id returns 400."""
+    resp = await client.post(
+        "/api/finanzen/mandate",
+        json={**MANDAT_DATA, "mitglied_id": 99999},
+    )
+    assert resp.status_code == 400
+
+
+async def test_create_ehrenamt_invalid_mitglied(client):
+    """POST /ehrenamt with invalid mitglied_id returns 400."""
+    resp = await client.post(
+        "/api/finanzen/ehrenamt",
+        json={
+            "mitglied_id": 99999,
+            "betrag": 500.0,
+            "datum": "2025-06-15",
+            "typ": "uebungsleiter",
+            "beschreibung": "Test",
+        },
+    )
+    assert resp.status_code == 400

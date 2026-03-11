@@ -364,18 +364,18 @@ class TestProtokollAnlegen:
 
     @pytest.mark.asyncio
     async def test_create_protokoll_invalid_typ(self, mcp_session_factory):
-        """Invalid typ should raise an error."""
+        """Invalid typ should return an error dict."""
         with patch(
             "sportverein.db.session.async_session_factory",
             mcp_session_factory,
         ):
-            with pytest.raises(ValueError):
-                await protokoll_anlegen(
-                    titel="Fehlerhaft",
-                    inhalt="Ungueltig.",
-                    datum="2026-01-01",
-                    typ="ungueltig",
-                )
+            result = await protokoll_anlegen(
+                titel="Fehlerhaft",
+                inhalt="Ungueltig.",
+                datum="2026-01-01",
+                typ="ungueltig",
+            )
+            assert "error" in result
 
     @pytest.mark.asyncio
     async def test_create_multiple_protokolle(self, mcp_session_factory):

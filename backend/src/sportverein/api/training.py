@@ -82,16 +82,26 @@ async def create_trainingsgruppe(
     session: AsyncSession = Depends(get_db_session),
 ) -> TrainingsgruppeResponse:
     svc = TrainingService(session)
-    gruppe = await svc.create_trainingsgruppe(
-        name=body.name,
-        abteilung_id=body.abteilung_id,
-        wochentag=Wochentag(body.wochentag),
-        uhrzeit=body.uhrzeit,
-        trainer=body.trainer,
-        dauer_minuten=body.dauer_minuten,
-        max_teilnehmer=body.max_teilnehmer,
-        ort=body.ort,
-    )
+    try:
+        wochentag = Wochentag(body.wochentag)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungültiger Wochentag: {body.wochentag}. Erlaubt: {', '.join(w.value for w in Wochentag)}",
+        )
+    try:
+        gruppe = await svc.create_trainingsgruppe(
+            name=body.name,
+            abteilung_id=body.abteilung_id,
+            wochentag=wochentag,
+            uhrzeit=body.uhrzeit,
+            trainer=body.trainer,
+            dauer_minuten=body.dauer_minuten,
+            max_teilnehmer=body.max_teilnehmer,
+            ort=body.ort,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return _gruppe_to_response(gruppe)
 
@@ -106,7 +116,13 @@ async def update_trainingsgruppe(
     svc = TrainingService(session)
     updates = body.model_dump(exclude_unset=True)
     if "wochentag" in updates and updates["wochentag"] is not None:
-        updates["wochentag"] = Wochentag(updates["wochentag"])
+        try:
+            updates["wochentag"] = Wochentag(updates["wochentag"])
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ungültiger Wochentag: {updates['wochentag']}. Erlaubt: {', '.join(w.value for w in Wochentag)}",
+            )
     try:
         gruppe = await svc.update_trainingsgruppe(gruppe_id, **updates)
     except ValueError as exc:
@@ -248,15 +264,25 @@ async def create_lizenz(
     session: AsyncSession = Depends(get_db_session),
 ) -> TrainerLizenzResponse:
     svc = TrainingService(session)
-    lizenz = await svc.create_license(
-        mitglied_id=body.mitglied_id,
-        lizenztyp=Lizenztyp(body.lizenztyp),
-        bezeichnung=body.bezeichnung,
-        ausstellungsdatum=body.ausstellungsdatum,
-        ablaufdatum=body.ablaufdatum,
-        lizenznummer=body.lizenznummer,
-        ausstellende_stelle=body.ausstellende_stelle,
-    )
+    try:
+        lizenztyp = Lizenztyp(body.lizenztyp)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungültiger Lizenztyp: {body.lizenztyp}. Erlaubt: {', '.join(lt.value for lt in Lizenztyp)}",
+        )
+    try:
+        lizenz = await svc.create_license(
+            mitglied_id=body.mitglied_id,
+            lizenztyp=lizenztyp,
+            bezeichnung=body.bezeichnung,
+            ausstellungsdatum=body.ausstellungsdatum,
+            ablaufdatum=body.ablaufdatum,
+            lizenznummer=body.lizenznummer,
+            ausstellende_stelle=body.ausstellende_stelle,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return _lizenz_to_response(lizenz)
 

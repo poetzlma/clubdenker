@@ -16,20 +16,20 @@ const VARIANT_CONFIG = {
   action: {
     color: SEMANTIC_COLORS.info,
     icon: Info,
-    bg: "bg-blue-50",
-    border: "border-blue-200",
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+    border: "border-blue-200 dark:border-blue-800",
   },
   warn: {
     color: SEMANTIC_COLORS.warning,
     icon: AlertTriangle,
-    bg: "bg-amber-50",
-    border: "border-amber-200",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-amber-200 dark:border-amber-800",
   },
   ok: {
     color: SEMANTIC_COLORS.success,
     icon: CheckCircle,
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
+    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    border: "border-emerald-200 dark:border-emerald-800",
   },
 } as const;
 
@@ -78,15 +78,15 @@ export function AktionsKarte({
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: config.color }} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900">
+        <p className="text-sm font-medium text-foreground">
           {title}
         </p>
-        <p className="mt-0.5 text-xs text-gray-500">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {description}
         </p>
       </div>
       {isInteractive && (
-        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       )}
     </div>
   );

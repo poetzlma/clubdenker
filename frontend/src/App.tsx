@@ -11,6 +11,7 @@ import { TrainingPage } from "@/pages/training"
 import { KalenderPage } from "@/pages/kalender"
 import { DokumentePage } from "@/pages/dokumente"
 import { OnboardingPage } from "@/pages/onboarding"
+import { McpSetupPage } from "@/pages/mcp-setup"
 
 function App() {
   const { isAuthenticated, loginWithToken, logout } = useAuth()
@@ -36,6 +37,7 @@ function App() {
         <Route path="/dokumente" element={<DokumentePage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/vereins-setup" element={<VereinsSetupPage />} />
+        <Route path="/mcp-setup" element={<McpSetupPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

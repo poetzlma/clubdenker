@@ -74,8 +74,8 @@ const MOCK_MITGLIEDER: MitgliedOption[] = [
 
 const EINHEIT_OPTIONS = ["×", "h", "Monat", "Stück", "Kurs"]
 
-function formatEuro(amount: number): string {
-  return amount.toLocaleString("de-DE", { style: "currency", currency: "EUR" })
+function formatEuro(amount: number | null | undefined): string {
+  return (amount ?? 0).toLocaleString("de-DE", { style: "currency", currency: "EUR" })
 }
 
 function getSteuerhinweisForSphaere(sphaere: string): string {

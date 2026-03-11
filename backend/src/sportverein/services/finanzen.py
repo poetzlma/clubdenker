@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import case, extract, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -90,7 +91,11 @@ class FinanzenService:
             mitglied_id=data.get("mitglied_id"),
         )
         self.session.add(buchung)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(f"Ungültige Referenz in Buchung: {exc}") from exc
         await self.session.refresh(buchung)
         return buchung
 
@@ -317,14 +322,22 @@ class FinanzenService:
             skonto_betrag=skonto_betrag,
         )
         self.session.add(rechnung)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(f"Ungültige Referenz in Rechnung: {exc}") from exc
 
         # Attach positionen
         for pos_obj in pos_objects:
             pos_obj.rechnung_id = rechnung.id
             self.session.add(pos_obj)
         if pos_objects:
-            await self.session.flush()
+            try:
+                await self.session.flush()
+            except IntegrityError as exc:
+                await self.session.rollback()
+                raise ValueError(f"Ungültige Referenz in Rechnungsposition: {exc}") from exc
 
         await self.session.refresh(rechnung)
         return rechnung
@@ -341,7 +354,7 @@ class FinanzenService:
                 f"aktueller Status: '{rechnung.status.value}'"
             )
         rechnung.status = RechnungStatus.gestellt
-        rechnung.gestellt_am = datetime.now()
+        rechnung.gestellt_am = datetime.now(tz=timezone.utc)
         await self.session.flush()
         await self.session.refresh(rechnung)
         return rechnung
@@ -423,7 +436,7 @@ class FinanzenService:
             verwendungszweck=f"Storno {original.rechnungsnummer}",
             storno_von_id=original.id,
             loeschdatum=original.loeschdatum,
-            gestellt_am=datetime.now(),
+            gestellt_am=datetime.now(tz=timezone.utc),
             format=original.format,
         )
         self.session.add(storno)
@@ -460,6 +473,11 @@ class FinanzenService:
         await self.session.flush()
         await self.session.refresh(storno)
         return storno
+
+    async def get_invoice(self, rechnung_id: int) -> Rechnung | None:
+        """Get a single invoice by ID."""
+        result = await self.session.execute(select(Rechnung).where(Rechnung.id == rechnung_id))
+        return result.scalar_one_or_none()
 
     async def get_invoices(
         self,
@@ -538,6 +556,13 @@ class FinanzenService:
                 f"bis {rechnung.loeschdatum.isoformat()}"
             )
 
+        # Delete any linked storno invoices first (they reference this invoice)
+        storno_result = await self.session.execute(
+            select(Rechnung).where(Rechnung.storno_von_id == rechnung_id)
+        )
+        for storno in storno_result.scalars().all():
+            await self.session.delete(storno)
+
         await self.session.delete(rechnung)
         await self.session.flush()
 
@@ -573,12 +598,12 @@ class FinanzenService:
             )
 
         rechnung.versand_kanal = kanal
-        rechnung.versendet_am = datetime.now()
+        rechnung.versendet_am = datetime.now(tz=timezone.utc)
         rechnung.versendet_an = empfaenger
 
         # Set gestellt_am if not already set
         if rechnung.gestellt_am is None:
-            rechnung.gestellt_am = datetime.now()
+            rechnung.gestellt_am = datetime.now(tz=timezone.utc)
 
         await self.session.flush()
         await self.session.refresh(rechnung)
@@ -722,7 +747,7 @@ class FinanzenService:
 
         if total_paid >= rechnung.betrag:
             rechnung.status = RechnungStatus.bezahlt
-            rechnung.bezahlt_am = datetime.now()
+            rechnung.bezahlt_am = datetime.now(tz=timezone.utc)
         elif total_paid > Decimal("0"):
             rechnung.status = RechnungStatus.teilbezahlt
 
@@ -792,8 +817,8 @@ class FinanzenService:
 
         # Group Header
         grp_hdr = ET.SubElement(cstmr_ddr, "GrpHdr")
-        ET.SubElement(grp_hdr, "MsgId").text = f"MSG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        ET.SubElement(grp_hdr, "CreDtTm").text = datetime.now().isoformat()
+        ET.SubElement(grp_hdr, "MsgId").text = f"MSG-{datetime.now(tz=timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        ET.SubElement(grp_hdr, "CreDtTm").text = datetime.now(tz=timezone.utc).isoformat()
         ET.SubElement(grp_hdr, "NbOfTxs").text = str(len(rechnungen))
         ctrl_sum = sum(r.betrag for r in rechnungen)
         ET.SubElement(grp_hdr, "CtrlSum").text = str(ctrl_sum)
@@ -802,7 +827,7 @@ class FinanzenService:
 
         # Payment Information
         pmt_inf = ET.SubElement(cstmr_ddr, "PmtInf")
-        ET.SubElement(pmt_inf, "PmtInfId").text = f"PMT-{datetime.now().strftime('%Y%m%d')}"
+        ET.SubElement(pmt_inf, "PmtInfId").text = f"PMT-{datetime.now(tz=timezone.utc).strftime('%Y%m%d')}"
         ET.SubElement(pmt_inf, "PmtMtd").text = "DD"
         ET.SubElement(pmt_inf, "NbOfTxs").text = str(len(rechnungen))
         ET.SubElement(pmt_inf, "CtrlSum").text = str(ctrl_sum)
@@ -890,7 +915,11 @@ class FinanzenService:
             freigabelimit=data.get("freigabelimit"),
         )
         self.session.add(ks)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(f"Ungültige Referenz in Kostenstelle: {exc}") from exc
         await self.session.refresh(ks)
         return ks
 
@@ -1258,7 +1287,11 @@ class FinanzenService:
             aktiv=True,
         )
         self.session.add(mandat)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(f"Ungültige Mitglieds-ID für SEPA-Mandat: {exc}") from exc
         await self.session.refresh(mandat)
         return mandat
 

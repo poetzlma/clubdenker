@@ -963,3 +963,77 @@ async def test_record_attendance_invalid_gruppe(client, session):
         },
     )
     assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Enum validation
+# ---------------------------------------------------------------------------
+
+
+async def test_create_trainingsgruppe_invalid_wochentag(client, session):
+    """POST with invalid wochentag returns 400."""
+    abt = await _create_abteilung(session)
+    data = {**GRUPPE_DATA, "abteilung_id": abt.id, "wochentag": "invalid_day"}
+    resp = await client.post("/api/training/gruppen", json=data)
+    assert resp.status_code == 400
+    assert "Wochentag" in resp.json()["detail"]
+
+
+async def test_update_trainingsgruppe_invalid_wochentag(client, session):
+    """PUT with invalid wochentag returns 400."""
+    abt = await _create_abteilung(session)
+    create_resp = await client.post(
+        "/api/training/gruppen", json={**GRUPPE_DATA, "abteilung_id": abt.id}
+    )
+    gruppe_id = create_resp.json()["id"]
+
+    resp = await client.put(
+        f"/api/training/gruppen/{gruppe_id}",
+        json={"wochentag": "invalid_day"},
+    )
+    assert resp.status_code == 400
+    assert "Wochentag" in resp.json()["detail"]
+
+
+async def test_create_lizenz_invalid_lizenztyp(client, session):
+    """POST with invalid lizenztyp returns 400."""
+    m = await _create_mitglied(session)
+    resp = await client.post(
+        "/api/training/lizenzen",
+        json={
+            "mitglied_id": m.id,
+            "lizenztyp": "invalid_type",
+            "bezeichnung": "Test Lizenz",
+            "ausstellungsdatum": "2025-01-01",
+            "ablaufdatum": "2027-01-01",
+        },
+    )
+    assert resp.status_code == 400
+    assert "Lizenztyp" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# FK validation
+# ---------------------------------------------------------------------------
+
+
+async def test_create_trainingsgruppe_invalid_abteilung(client, session):
+    """POST with nonexistent abteilung_id returns 400."""
+    data = {**GRUPPE_DATA, "abteilung_id": 99999}
+    resp = await client.post("/api/training/gruppen", json=data)
+    assert resp.status_code == 400
+
+
+async def test_create_lizenz_invalid_mitglied(client, session):
+    """POST with nonexistent mitglied_id returns 400."""
+    resp = await client.post(
+        "/api/training/lizenzen",
+        json={
+            "mitglied_id": 99999,
+            "lizenztyp": "trainer_c",
+            "bezeichnung": "Test",
+            "ausstellungsdatum": "2025-01-01",
+            "ablaufdatum": "2027-01-01",
+        },
+    )
+    assert resp.status_code == 400

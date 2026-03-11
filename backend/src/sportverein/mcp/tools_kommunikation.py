@@ -72,15 +72,18 @@ async def protokoll_anlegen(
         return {"error": f"Ungültiges Datum: {effective_datum}. Format: YYYY-MM-DD"}
     async with async_session() as session:
         svc = ProtokollService(session)
-        p = await svc.create_protokoll(
-            titel=titel,
-            datum=effective_datum,
-            inhalt=inhalt,
-            typ=typ,
-            erstellt_von=erstellt_von,
-            teilnehmer=teilnehmer,
-            beschluesse=beschluesse,
-        )
+        try:
+            p = await svc.create_protokoll(
+                titel=titel,
+                datum=effective_datum,
+                inhalt=inhalt,
+                typ=typ,
+                erstellt_von=erstellt_von,
+                teilnehmer=teilnehmer,
+                beschluesse=beschluesse,
+            )
+        except ValueError as exc:
+            return {"error": str(exc)}
         await session.commit()
         return {
             "status": "success",

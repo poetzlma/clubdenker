@@ -95,7 +95,7 @@ describe("DashboardPage", () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText("VereinsOS")).toBeInTheDocument()
+    expect(screen.getByText("klubdenker.com")).toBeInTheDocument()
     expect(screen.getByText("Vorstand")).toBeInTheDocument()
     expect(screen.getByText("Schatzmeister")).toBeInTheDocument()
     expect(screen.getByText("Spartenleiter")).toBeInTheDocument()
@@ -183,6 +183,6 @@ describe("Sidebar", () => {
   })
 
   it("renders logo title", () => {
-    expect(screen.getByText("Sportverein")).toBeInTheDocument()
+    expect(screen.getByText("Klubdenker")).toBeInTheDocument()
   })
 })

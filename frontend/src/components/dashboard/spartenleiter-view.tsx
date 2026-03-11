@@ -11,7 +11,7 @@ import { KpiCard } from "./kpi-card";
 import { SectionHeader } from "./section-header";
 import { ChartTooltip } from "./chart-tooltip";
 import { ClickableCard } from "./clickable-card";
-import { SPARTEN_COLORS, SPARTEN_NAMES, SEMANTIC_COLORS } from "@/constants/design";
+import { SPARTEN_COLORS, SEMANTIC_COLORS } from "@/constants/design";
 import api from "@/lib/api";
 import type { SpartenleiterDashboard, HeatmapCell } from "@/types/dashboard";
 
@@ -124,14 +124,44 @@ interface SpartenleiterViewProps {
   data?: Record<string, SpartenleiterDashboard> | null;
 }
 
+// Default color palette for dynamically loaded Abteilungen
+const DEFAULT_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#84cc16"];
+
+function getSparteColor(name: string, index: number): string {
+  return SPARTEN_COLORS[name] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+}
+
 export function SpartenleiterView({ data }: SpartenleiterViewProps) {
-  const [activeSparte, setActiveSparte] = useState(SPARTEN_NAMES[0]);
+  const [spartenNames, setSpartenNames] = useState<string[]>([]);
+  const [activeSparte, setActiveSparte] = useState<string>("");
   const [apiCache, setApiCache] = useState<Record<string, SpartenleiterDashboard>>({});
-  const [loading, setLoading] = useState(!data);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load Abteilungen from API on mount
+  useEffect(() => {
+    if (data) {
+      const names = Object.keys(data);
+      setSpartenNames(names);
+      if (names.length > 0 && !activeSparte) setActiveSparte(names[0]);
+      setLoading(false);
+      return;
+    }
+    async function loadAbteilungen() {
+      try {
+        const abt = await api.get<{ id: number; name: string }[]>("/api/setup/abteilungen");
+        const names = abt.map((a) => a.name);
+        setSpartenNames(names);
+        if (names.length > 0) setActiveSparte((prev) => prev || names[0]);
+      } catch {
+        setSpartenNames([]);
+      }
+    }
+    loadAbteilungen();
+  }, [data, activeSparte]);
+
   const fetchSparteData = useCallback(async (sparte: string) => {
-    if (data) return;
+    if (data || !sparte) return;
     setLoading(true);
     setError(null);
     try {
@@ -148,7 +178,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
   }, [data]);
 
   useEffect(() => {
-    if (!data && !apiCache[activeSparte]) {
+    if (activeSparte && !data && !apiCache[activeSparte]) {
       fetchSparteData(activeSparte);
     }
   }, [activeSparte, data, apiCache, fetchSparteData]);
@@ -159,7 +189,8 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
   const handleSparteChange = (sparte: string) => {
     setActiveSparte(sparte);
   };
-  const sparteColor = SPARTEN_COLORS[activeSparte] || "#6b7280";
+  const sparteIndex = spartenNames.indexOf(activeSparte);
+  const sparteColor = getSparteColor(activeSparte, sparteIndex >= 0 ? sparteIndex : 0);
 
   // Stable heatmap memoized per sparte
   const heatmapData = useMemo(() => d?.heatmap ?? [], [d?.heatmap]);
@@ -207,32 +238,43 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
     return null;
   };
 
+  if (!spartenNames.length && !loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-muted-foreground">Keine Abteilungen vorhanden. Erstellen Sie Abteilungen unter Vereins-Setup.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Sparten Switcher */}
-      <div className="flex items-center gap-2">
-        {SPARTEN_NAMES.map((name) => (
+      <div className="flex flex-wrap items-center gap-2">
+        {spartenNames.map((name, idx) => {
+          const color = getSparteColor(name, idx);
+          return (
           <button
             key={name}
             onClick={() => handleSparteChange(name)}
             className={cn(
               "rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
               activeSparte === name
-                ? "text-gray-900"
-                : "border-gray-200 bg-white text-gray-500 hover:text-gray-700"
+                ? "text-foreground"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
             )}
             style={
               activeSparte === name
                 ? {
-                    borderColor: SPARTEN_COLORS[name],
-                    backgroundColor: `${SPARTEN_COLORS[name]}15`,
+                    borderColor: color,
+                    backgroundColor: `${color}15`,
                   }
                 : undefined
             }
           >
             {name}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {renderContent() || (<>
@@ -270,7 +312,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
       {/* Middle row */}
       <div className="grid grid-cols-2 gap-4">
         {/* Attendance Heatmap */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader label="Anwesenheit (12 Wochen)" />
           <div className="mt-3">
             <div className="flex gap-1">
@@ -278,7 +320,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
                 {DAY_LABELS.map((day) => (
                   <div
                     key={day}
-                    className="flex h-5 items-center text-xs text-gray-400"
+                    className="flex h-5 items-center text-xs text-muted-foreground"
                   >
                     {day}
                   </div>
@@ -304,7 +346,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
                 )}
               </div>
             </div>
-            <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
+            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
               <span>Weniger</span>
               {[0, 1, 2, 3].map((level) => (
                 <div
@@ -319,7 +361,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
         </div>
 
         {/* Training cards */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader label="Trainings diese Woche" />
           <div className="mt-3 space-y-2">
             {d.trainings.map((t) => {
@@ -329,21 +371,21 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
               return (
                 <div
                   key={t.id}
-                  className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 px-3 py-2"
+                  className="flex items-center justify-between rounded-md border border-border bg-muted px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-foreground">
                       {t.tag} {t.zeit} &middot; {t.gruppe}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Trainer: {t.trainer}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="tabular-nums text-xs text-gray-500">
+                    <span className="tabular-nums text-xs text-muted-foreground">
                       {t.angemeldet}/{t.kapazitaet}
                     </span>
-                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -368,19 +410,19 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
       {/* Bottom row */}
       <div className="grid grid-cols-2 gap-4">
         {/* Risiko-Mitglieder */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader label="Risiko-Mitglieder" />
           <div className="mt-3 space-y-2">
             {d.risikoMitglieder.map((m) => (
               <ClickableCard key={m.id} href="/mitglieder">
                 <div
-                  className="flex items-center justify-between rounded-md border border-red-100 bg-red-50 px-3 py-2"
+                  className="flex items-center justify-between rounded-md border border-red-100 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-foreground">
                       {m.name}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {m.beitragskategorie}
                     </p>
                   </div>
@@ -394,7 +436,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
         </div>
 
         {/* Budget Donut */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader label="Budget-Verteilung" />
           <div className="mt-3 flex items-center justify-center">
             <ResponsiveContainer width="100%" height={220}>
@@ -429,7 +471,7 @@ export function SpartenleiterView({ data }: SpartenleiterViewProps) {
                   className="h-2 w-2 rounded-full"
                   style={{ backgroundColor: s.color }}
                 />
-                <span className="text-gray-500">{s.name}</span>
+                <span className="text-muted-foreground">{s.name}</span>
               </div>
             ))}
           </div>

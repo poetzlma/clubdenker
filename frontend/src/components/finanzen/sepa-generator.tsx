@@ -6,8 +6,8 @@ import { CheckCircle, ChevronRight, Download, FileText } from "lucide-react"
 
 const API_BASE = "/api"
 
-function formatEuro(amount: number): string {
-  return amount.toLocaleString("de-DE", {
+function formatEuro(amount: number | null | undefined): string {
+  return (amount ?? 0).toLocaleString("de-DE", {
     style: "currency",
     currency: "EUR",
   })

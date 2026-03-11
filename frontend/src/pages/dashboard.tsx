@@ -22,7 +22,7 @@ export function DashboardPage() {
         onViewChange={setActiveView}
         memberCount={memberCount}
       />
-      <div className="flex-1 overflow-auto bg-gray-50">
+      <div className="flex-1 overflow-auto bg-muted">
         {activeView === "vorstand" && (
           <VorstandView onMemberCountChange={handleMemberCountChange} />
         )}

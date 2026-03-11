@@ -115,3 +115,43 @@ async def test_delete_protokoll(client: AsyncClient):
 async def test_requires_auth(unauthed_client: AsyncClient):
     resp = await unauthed_client.get("/api/dokumente/protokolle")
     assert resp.status_code in (401, 422)
+
+
+# ---------------------------------------------------------------------------
+# Edge cases
+# ---------------------------------------------------------------------------
+
+
+async def test_list_protokolle_invalid_typ(client: AsyncClient):
+    """GET /protokolle?typ=invalid should return 400."""
+    resp = await client.get("/api/dokumente/protokolle?typ=invalid_type")
+    assert resp.status_code == 400
+
+
+async def test_create_protokoll_invalid_typ(client: AsyncClient):
+    """POST /protokolle with invalid typ should return 400 or 422."""
+    data = {**PROTOKOLL_DATA, "typ": "invalid_type"}
+    resp = await client.post("/api/dokumente/protokolle", json=data)
+    assert resp.status_code in (400, 422)
+
+
+async def test_create_protokoll_invalid_datum(client: AsyncClient):
+    """POST /protokolle with invalid datum should return 400."""
+    data = {**PROTOKOLL_DATA, "datum": "not-a-date"}
+    resp = await client.post("/api/dokumente/protokolle", json=data)
+    assert resp.status_code == 400
+
+
+async def test_update_protokoll_not_found(client: AsyncClient):
+    """PUT /protokolle/{id} for non-existent returns 404."""
+    resp = await client.put(
+        "/api/dokumente/protokolle/9999",
+        json={"titel": "Does not exist"},
+    )
+    assert resp.status_code == 404
+
+
+async def test_delete_protokoll_not_found(client: AsyncClient):
+    """DELETE /protokolle/{id} for non-existent returns 404."""
+    resp = await client.delete("/api/dokumente/protokolle/9999")
+    assert resp.status_code == 404

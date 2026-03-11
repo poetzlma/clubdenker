@@ -1,10 +1,21 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from sportverein.api.router import api_router
 from sportverein.mcp.server import mcp
 
-app = FastAPI(title="Sportverein API")
+mcp_app = mcp.http_app(path="/")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with mcp_app.lifespan(app):
+        yield
+
+
+app = FastAPI(title="Klubdenker API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,4 +28,4 @@ app.add_middleware(
 app.include_router(api_router)
 
 # Mount the MCP server at /mcp
-app.mount("/mcp", mcp.http_app())
+app.mount("/mcp", mcp_app)

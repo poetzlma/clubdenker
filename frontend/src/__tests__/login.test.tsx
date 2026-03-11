@@ -14,9 +14,9 @@ describe("LoginPage", () => {
     )
   }
 
-  it("renders the Sportverein title", () => {
+  it("renders the Klubdenker title", () => {
     renderPage()
-    expect(screen.getByText("Sportverein")).toBeInTheDocument()
+    expect(screen.getByText("Klubdenker")).toBeInTheDocument()
   })
 
   it("renders the login description", () => {

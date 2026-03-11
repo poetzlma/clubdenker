@@ -186,16 +186,16 @@ export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
   return (
     <div className="space-y-6 p-6">
       {/* SEPA Hero */}
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-6">
+      <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
               SEPA-Lastschrifteinzug
             </p>
-            <p className="mt-1 tabular-nums text-3xl font-bold text-gray-900">
+            <p className="mt-1 tabular-nums text-3xl font-bold text-foreground">
               {d.sepa.betrag.toLocaleString("de-DE")} €
             </p>
-            <p className="mt-0.5 text-xs text-gray-500">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {d.sepa.anzahl} Mitglieder &middot; Nächster Einzug:{" "}
               {d.sepa.naechsterEinzug}
             </p>
@@ -217,7 +217,7 @@ export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
                 Einzug starten
               </button>
               <button
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-border bg-card px-4 py-2 text-xs font-medium text-foreground hover:bg-muted"
                 onClick={() => navigate("/finanzen")}
               >
                 Vorschau
@@ -260,7 +260,7 @@ export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
       {/* Middle row */}
       <div className="grid grid-cols-5 gap-4">
         {/* Offene Posten Table */}
-        <div className="col-span-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="col-span-3 rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader
             label="Offene Posten"
             action="Alle anzeigen"
@@ -269,20 +269,20 @@ export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="pb-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <tr className="border-b border-border">
+                  <th className="pb-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Mitglied
                   </th>
-                  <th className="pb-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="pb-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Sparte
                   </th>
-                  <th className="pb-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="pb-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Betrag
                   </th>
-                  <th className="pb-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="pb-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Tage
                   </th>
-                  <th className="pb-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="pb-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Stufe
                   </th>
                 </tr>
@@ -292,18 +292,18 @@ export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
                   <ClickableRow
                     key={p.id}
                     href="/mitglieder"
-                    className="border-b border-gray-50 last:border-0"
+                    className="border-b border-border/50 last:border-0"
                   >
-                    <td className="py-2.5 text-gray-700">
+                    <td className="py-2.5 text-foreground">
                       {p.mitglied}
                     </td>
                     <td className="py-2.5">
                       <SpartenChip name={p.sparte} />
                     </td>
-                    <td className="py-2.5 text-right tabular-nums text-gray-900">
+                    <td className="py-2.5 text-right tabular-nums text-foreground">
                       {p.betrag.toLocaleString("de-DE")} €
                     </td>
-                    <td className="py-2.5 text-right tabular-nums text-gray-500">
+                    <td className="py-2.5 text-right tabular-nums text-muted-foreground">
                       {p.tageUeberfaellig}
                     </td>
                     <td className="py-2.5 text-right">
@@ -317,7 +317,7 @@ export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
         </div>
 
         {/* Budget Burn */}
-        <div className="col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="col-span-2 rounded-xl border border-border bg-card p-4 shadow-sm">
           <SectionHeader label="Budget-Verbrauch" />
           <div className="mt-3">
             <ResponsiveContainer width="100%" height={CHART.heights.md}>
@@ -364,7 +364,7 @@ export function SchatzmeisterView({ data }: SchatzmeisterViewProps) {
       </div>
 
       {/* Liquidity chart - full width */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <SectionHeader label="Liquiditätsentwicklung" />
         <div className="mt-3">
           <ResponsiveContainer width="100%" height={CHART.heights.md}>

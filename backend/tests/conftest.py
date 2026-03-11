@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from sportverein.models.base import Base
@@ -17,6 +18,11 @@ from sportverein.main import app
 @pytest_asyncio.fixture()
 async def async_engine():
     engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine

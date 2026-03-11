@@ -6,8 +6,8 @@ import { UTILIZATION } from "@/constants/design"
 
 const API_BASE = "/api"
 
-function formatEuro(amount: number): string {
-  return amount.toLocaleString("de-DE", {
+function formatEuro(amount: number | null | undefined): string {
+  return (amount ?? 0).toLocaleString("de-DE", {
     style: "currency",
     currency: "EUR",
   })
@@ -107,7 +107,9 @@ export function KostenstellenTab() {
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {kostenstellen.map((ks) => {
-          const percent = ks.budget > 0 ? (ks.ausgegeben / ks.budget) * 100 : 0
+          const budget = ks.budget ?? 0
+          const ausgegeben = ks.ausgegeben ?? 0
+          const percent = budget > 0 ? (ausgegeben / budget) * 100 : 0
           return (
             <Card key={ks.id} data-testid="kostenstelle-card">
               <CardHeader className="pb-2">

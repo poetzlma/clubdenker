@@ -9,6 +9,7 @@ const pageTitles: Record<string, string> = {
   "/mitglieder": "Mitglieder",
   "/finanzen": "Finanzen",
   "/admin": "Administration",
+  "/mcp-setup": "MCP-Setup",
 }
 
 interface AppLayoutProps {
@@ -17,7 +18,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ onLogout }: AppLayoutProps) {
   const location = useLocation()
-  const title = pageTitles[location.pathname] || "Sportverein"
+  const title = pageTitles[location.pathname] || "Klubdenker"
   const [chatOpen, setChatOpen] = useState(false)
   const isDashboard = location.pathname === "/"
 

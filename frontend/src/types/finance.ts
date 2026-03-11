@@ -168,10 +168,10 @@ export interface Kostenstelle {
   id: number;
   name: string;
   beschreibung: string;
-  budget: number;
-  freigabelimit: number;
-  ausgegeben: number;
-  verfuegbar: number;
+  budget: number | null;
+  freigabelimit: number | null;
+  ausgegeben: number | null;
+  verfuegbar: number | null;
 }
 
 export interface BeitragseinzugResult {

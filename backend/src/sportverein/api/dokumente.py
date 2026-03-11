@@ -84,15 +84,18 @@ async def create_protokoll(
     session: AsyncSession = Depends(get_db_session),
 ) -> ProtokollResponse:
     svc = ProtokollService(session)
-    p = await svc.create_protokoll(
-        titel=body.titel,
-        datum=body.datum,
-        inhalt=body.inhalt,
-        typ=body.typ,
-        erstellt_von=body.erstellt_von,
-        teilnehmer=body.teilnehmer,
-        beschluesse=body.beschluesse,
-    )
+    try:
+        p = await svc.create_protokoll(
+            titel=body.titel,
+            datum=body.datum,
+            inhalt=body.inhalt,
+            typ=body.typ,
+            erstellt_von=body.erstellt_von,
+            teilnehmer=body.teilnehmer,
+            beschluesse=body.beschluesse,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return _protokoll_to_response(p)
 

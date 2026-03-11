@@ -1,8 +1,8 @@
-"""FastMCP server instance for Sportverein."""
+"""FastMCP server instance for Klubdenker."""
 
 from fastmcp import FastMCP
 
-mcp = FastMCP("Sportverein", instructions="MCP-Server für Sportvereins-Verwaltung")
+mcp = FastMCP("Klubdenker", instructions="KI-gestützter MCP-Server für Vereinsverwaltung")
 
 # Import tool and resource registrations so they are executed at import time.
 import sportverein.mcp.tools_mitglieder  # noqa: F401, E402

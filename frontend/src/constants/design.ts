@@ -2,11 +2,9 @@
 export const SPARTEN_COLORS: Record<string, string> = {
   Fussball: "#3b82f6",
   Tennis: "#f59e0b",
-  Fitness: "#10b981",
+  Schwimmen: "#10b981",
   Leichtathletik: "#a855f7",
 };
-
-export const SPARTEN_NAMES = Object.keys(SPARTEN_COLORS);
 
 // Status colors (for member status)
 export const STATUS_COLORS = {

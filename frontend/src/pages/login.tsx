@@ -75,7 +75,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Sportverein</CardTitle>
+          <CardTitle className="text-2xl">Klubdenker</CardTitle>
           <CardDescription>
             Bitte melden Sie sich an, um fortzufahren.
           </CardDescription>
@@ -93,7 +93,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@sportverein.de"
+                    placeholder="admin@klubdenker.de"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />

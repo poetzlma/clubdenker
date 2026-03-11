@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import extract, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sportverein.models.ehrenamt import Aufwandsentschaedigung, AufwandTyp
@@ -42,7 +43,11 @@ class EhrenamtService:
             beschreibung=data["beschreibung"],
         )
         self.session.add(entry)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise ValueError(f"Ungültige Mitglieds-ID: {data['mitglied_id']}") from exc
         await self.session.refresh(entry)
         return entry
 

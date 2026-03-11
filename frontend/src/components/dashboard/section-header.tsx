@@ -7,13 +7,13 @@ interface SectionHeaderProps {
 export function SectionHeader({ label, action, onAction }: SectionHeaderProps) {
   return (
     <div className="flex items-center justify-between">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
         {label}
       </h3>
       {action && (
         <button
           onClick={onAction}
-          className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
+          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
         >
           {action}
         </button>

@@ -15,7 +15,7 @@ export function LiveClock() {
   });
 
   return (
-    <span className="tabular-nums font-mono text-sm text-gray-500">
+    <span className="tabular-nums font-mono text-sm text-muted-foreground">
       {formatted}
     </span>
   );

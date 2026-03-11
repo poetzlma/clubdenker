@@ -137,7 +137,8 @@ async def create_member(
     await session.commit()
     # Re-fetch with eager-loaded relationships
     refreshed = await svc.get_member(member.id)
-    assert refreshed is not None  # just created, must exist
+    if refreshed is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Mitglied konnte nach Erstellung nicht geladen werden")
     return _member_to_response(refreshed)
 
 
@@ -177,7 +178,8 @@ async def update_member(
     await session.commit()
     # Re-fetch with abteilungen loaded
     refreshed = await svc.get_member(member_id)
-    assert refreshed is not None  # just updated, must exist
+    if refreshed is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Mitglied konnte nach Aktualisierung nicht geladen werden")
     return _member_to_response(refreshed)
 
 
@@ -204,7 +206,8 @@ async def cancel_membership(
     )
     await session.commit()
     refreshed = await svc.get_member(member_id)
-    assert refreshed is not None  # just cancelled, must exist
+    if refreshed is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Mitglied konnte nach Kuendigung nicht geladen werden")
     return _member_to_response(refreshed)
 
 
