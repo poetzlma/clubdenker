@@ -504,6 +504,21 @@ class EingangsrechnungService:
                 f"Ungültiger Status: {status}. Erlaubt: {', '.join(sorted(valid_statuses))}"
             )
 
+        # Validate state transitions
+        allowed_transitions: dict[str, set[str]] = {
+            "eingegangen": {"geprueft", "abgelehnt"},
+            "geprueft": {"freigegeben", "abgelehnt"},
+            "freigegeben": {"bezahlt", "abgelehnt"},
+            "bezahlt": set(),  # terminal state
+            "abgelehnt": {"eingegangen"},  # can be re-opened
+        }
+        current = rechnung.status.value
+        if status not in allowed_transitions.get(current, set()):
+            raise ValueError(
+                f"Ungültiger Statusübergang: {current} -> {status}. "
+                f"Erlaubt: {', '.join(sorted(allowed_transitions.get(current, set()))) or 'keine'}"
+            )
+
         rechnung.status = EingangsrechnungStatus(status)
         if notiz is not None:
             rechnung.notiz = notiz

@@ -424,12 +424,18 @@ class TestEingangsrechnungStatusAendern:
 
     @pytest.mark.asyncio
     async def test_change_to_bezahlt(self, mcp_session_factory, seed_eingangsrechnungen):
-        rechnung = seed_eingangsrechnungen[1]
-        result = await eingangsrechnung_status_aendern(
+        rechnung = seed_eingangsrechnungen[1]  # geprueft
+        # Must follow transition chain: geprueft -> freigegeben -> bezahlt
+        result1 = await eingangsrechnung_status_aendern(
+            rechnung_id=rechnung.id,
+            status="freigegeben",
+        )
+        assert result1["status"] == "freigegeben"
+        result2 = await eingangsrechnung_status_aendern(
             rechnung_id=rechnung.id,
             status="bezahlt",
         )
-        assert result["status"] == "bezahlt"
+        assert result2["status"] == "bezahlt"
 
     @pytest.mark.asyncio
     async def test_change_to_abgelehnt(self, mcp_session_factory, seed_eingangsrechnungen):

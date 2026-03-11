@@ -343,6 +343,8 @@ class TestUpdateStatus:
         svc = EingangsrechnungService(session)
         rechnung, _ = await svc.create_from_xml(session, SAMPLE_CII_XML)
 
+        # Follow transition chain: eingegangen -> geprueft -> freigegeben
+        await svc.update_status(session, rechnung.id, "geprueft")
         updated = await svc.update_status(
             session, rechnung.id, "freigegeben", notiz="Vom Vorstand freigegeben"
         )

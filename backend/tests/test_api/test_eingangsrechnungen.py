@@ -76,16 +76,25 @@ async def test_upload_then_get_detail(client):
 
 
 async def test_update_eingangsrechnung_status(client):
-    """Create an invoice then update its status to freigegeben."""
+    """Create an invoice then update through proper transition chain."""
     upload_resp = await _upload_invoice(client)
     rechnung_id = upload_resp.json()["rechnung"]["id"]
 
-    resp = await client.put(
+    # eingegangen -> geprueft
+    resp1 = await client.put(
+        f"{BASE}/{rechnung_id}/status",
+        json={"status": "geprueft"},
+    )
+    assert resp1.status_code == 200
+    assert resp1.json()["status"] == "geprueft"
+
+    # geprueft -> freigegeben
+    resp2 = await client.put(
         f"{BASE}/{rechnung_id}/status",
         json={"status": "freigegeben"},
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "freigegeben"
+    assert resp2.status_code == 200
+    assert resp2.json()["status"] == "freigegeben"
 
 
 async def test_update_status_invalid(client):
@@ -98,6 +107,20 @@ async def test_update_status_invalid(client):
         json={"status": "ungueltig"},
     )
     assert resp.status_code == 400
+
+
+async def test_update_status_invalid_transition(client):
+    """Skipping states in the transition chain returns 400."""
+    upload_resp = await _upload_invoice(client)
+    rechnung_id = upload_resp.json()["rechnung"]["id"]
+
+    # eingegangen -> bezahlt is not allowed (must go through geprueft, freigegeben)
+    resp = await client.put(
+        f"{BASE}/{rechnung_id}/status",
+        json={"status": "bezahlt"},
+    )
+    assert resp.status_code == 400
+    assert "Statusübergang" in resp.json()["detail"]
 
 
 async def test_eingangsrechnungen_require_auth(unauthed_client):
