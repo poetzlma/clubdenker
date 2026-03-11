@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Sportverein (German sports club) management system — an MCP server with REST API and React frontend. See `idea.md` for the concept and `IMPLEMENTATION_PLAN.md` for the build plan.
+Klubdenker — KI-gestützte Vereinsverwaltung with MCP server, REST API, and React frontend. See `spawn_doc/idea.md` for the concept and `spawn_doc/IMPLEMENTATION_PLAN.md` for the build plan.
 
 ## Work Strategy
 

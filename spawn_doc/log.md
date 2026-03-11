@@ -806,3 +806,180 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 - Frontend: 120 passed
 - Total: 1101
 - Ruff: clean
+
+### Loop 39: New Endpoints, Route Order Bug, API Tests
+
+#### Features Implemented
+- `GET /rechnungen/{id}` -- single invoice detail endpoint (was missing, only list existed)
+- `DELETE /kostenstellen/{id}` -- cost center deletion with booking guard
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 60 | `/rechnungen/export` route defined after `/rechnungen/{rechnung_id}` -- FastAPI matches "export" as int param, returns 422 | Major | `api/finanzen.py:951` |
+
+#### Fix Details
+- Bug #60: Moved `/rechnungen/export` route before all `/rechnungen/{rechnung_id}` routes so static paths match first
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_finanzen.py` | +8 | GET invoice by ID, 404, auth; DELETE kostenstelle, 404, with bookings; export empty year, auth |
+
+#### Test Counts
+- Backend: 989 passed (was 981, +8 new)
+- Frontend: 120 passed
+- Total: 1109
+- Ruff: clean
+
+### Loop 40: Enum Validation Bugs in Training API & MCP, Route Order Fix
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 60 | `/rechnungen/export` route defined after `/rechnungen/{rechnung_id}` -- FastAPI matches "export" as int param, returns 422 | Major | `api/finanzen.py:951` |
+| 61 | `create_trainingsgruppe` API: `Wochentag(body.wochentag)` with invalid value raises unhandled ValueError (500) | Medium | `api/training.py:88` |
+| 62 | `update_trainingsgruppe` API: `Wochentag(updates["wochentag"])` with invalid value raises unhandled ValueError (500) | Medium | `api/training.py:109` |
+| 63 | `create_lizenz` API: `Lizenztyp(body.lizenztyp)` with invalid value raises unhandled ValueError (500) | Medium | `api/training.py:253` |
+| 64 | `protokoll_anlegen` MCP tool: invalid `typ` raises unhandled ValueError instead of returning error dict | Medium | `mcp/tools_kommunikation.py:75` |
+
+#### Fix Details
+- Bug #60: Moved `/rechnungen/export` route before all `/rechnungen/{rechnung_id}` routes (fixed in Loop 39)
+- Bugs #61-63: Added try/except ValueError with descriptive error messages listing valid enum values, returns 400
+- Bug #64: Wrapped `svc.create_protokoll()` in try/except ValueError, returns `{"error": ...}` dict
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_training.py` | +3 | Invalid wochentag on create/update, invalid lizenztyp |
+| `tests/test_api/test_finanzen.py` | +8 | GET invoice by ID, 404, auth; DELETE kostenstelle, 404, with bookings; export empty year, auth |
+
+#### Updated Tests
+- `tests/test_mcp/test_tools_kommunikation.py`: Updated `test_create_protokoll_invalid_typ` to expect error dict instead of ValueError
+
+#### Test Counts
+- Backend: 992 passed (was 981, +11 new)
+- Frontend: 120 passed
+- Total: 1112
+- Ruff: clean
+
+### Loop 41: Production Assert Removal, PermissionError Status Code Fix
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 65 | `api/mitglieder.py`: 3 `assert` statements in production code (lines 140, 180, 207) -- stripped in Python `-O` mode, causing silent None propagation | Major | `api/mitglieder.py` |
+| 66 | `api/finanzen.py`: 6 endpoints catch `(ValueError, PermissionError)` but return 400 for both -- PermissionError should be 403 Forbidden | Medium | `api/finanzen.py` (6 locations) |
+
+#### Fix Details
+- Bug #65: Replaced 3 `assert refreshed is not None` with `if refreshed is None: raise HTTPException(500)` for proper production error handling
+- Bug #66: Split `except (ValueError, PermissionError)` into separate handlers: PermissionError -> 403, ValueError -> 400. Affected endpoints: create_invoice, record_payment, create_cost_center, update_vereinsstammdaten, create_mandat, create_ehrenamt
+
+#### Areas Audited (not bugs)
+- `services/protokoll.py:102`: `session.delete(obj)` is valid SQLAlchemy ORM usage (not a bug)
+- `services/agents.py`: N+1 queries are low-volume admin-only, not a production concern
+
+#### Test Counts
+- Backend: 992 passed
+- Frontend: 120 passed
+- Total: 1112
+- Ruff: clean
+
+### Loop 42: Naive Datetime Fix, Protokoll Error Handling, Dokumente Edge Case Tests
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 67 | `services/finanzen.py`: 8 `datetime.now()` calls use naive local time -- inconsistent with datenschutz fix (#56) that uses UTC | Medium | `services/finanzen.py` (8 locations) |
+| 68 | `api/dokumente.py`: `create_protokoll` endpoint has no ValueError handler -- invalid datum or typ causes 500 | Major | `api/dokumente.py:87` |
+| 69 | `api/agents.py`: `run_beitragseinzug` catches `(ValueError, PermissionError)` as 400 -- PermissionError should be 403 | Medium | `api/agents.py:38` |
+
+#### Fix Details
+- Bug #67: Changed all 8 `datetime.now()` to `datetime.now(tz=timezone.utc)` for consistency
+- Bug #68: Added try/except ValueError around `svc.create_protokoll()`, returns 400 with error message
+- Bug #69: Split exception handler to return 403 for PermissionError, 400 for ValueError
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_dokumente.py` | +5 | Invalid typ on list (400), invalid typ on create (422), invalid datum (400), update not found (404), delete not found (404) |
+
+#### Test Counts
+- Backend: 997 passed (was 992, +5 new)
+- Frontend: 120 passed
+- Total: 1117
+- Ruff: clean
+
+### Loop 43: SQLite FK Enforcement, Storno Delete FK Violation, Department Edge Cases
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 70 | SQLite foreign key enforcement OFF -- `PRAGMA foreign_keys` never set, all FK constraints silently ignored in dev/test | Critical | `db/session.py`, `tests/conftest.py` |
+| 71 | `delete_invoice()` for storniert invoices fails with IntegrityError -- linked storno invoice references original via `storno_von_id` FK | Major | `services/finanzen.py:546` |
+
+#### Fix Details
+- Bug #70: Added `@event.listens_for(engine.sync_engine, "connect")` handler that runs `PRAGMA foreign_keys=ON` for both production session.py and test conftest.py
+- Bug #71: Before deleting a storniert invoice, now also deletes any linked storno invoices that reference it via `storno_von_id`
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_mitglieder.py` | +2 | Assign nonexistent department (400), duplicate assignment (400) |
+
+#### Test Counts
+- Backend: 999 passed (was 997, +2 new)
+- Frontend: 120 passed
+- Total: 1119
+- Ruff: clean
+
+### Loop 44: FK Validation for Training Endpoints
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 72 | `create_trainingsgruppe` service: invalid `abteilung_id` causes unhandled IntegrityError (500) | Major | `services/training.py:73` |
+| 73 | `create_license` service: invalid `mitglied_id` causes unhandled IntegrityError (500) | Major | `services/training.py:328` |
+| 74 | `create_trainingsgruppe` API: no ValueError handler for service exceptions | Medium | `api/training.py:92` |
+| 75 | `create_lizenz` API: no ValueError handler for service exceptions | Medium | `api/training.py:274` |
+
+#### Fix Details
+- Bugs #72-73: Added try/except IntegrityError around `session.flush()` in both service methods, raises ValueError with descriptive message
+- Bugs #74-75: Added try/except ValueError in both API endpoints, returns 400 with error detail
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_training.py` | +2 | Create group with invalid abteilung (400), create license with invalid mitglied (400) |
+
+#### Test Counts
+- Backend: 1001 passed (was 999, +2 new)
+- Frontend: 120 passed
+- Total: 1121
+- Ruff: clean
+
+### Loop 45: Systematic FK Validation for All Create Operations
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 76 | `create_booking` invalid mitglied_id causes unhandled IntegrityError (500) | Major | `services/finanzen.py:93` |
+| 77 | `create_invoice` invalid mitglied_id causes unhandled IntegrityError (500) | Major | `services/finanzen.py:325` |
+| 78 | `create_invoice` positionen with invalid kostenstelle_id causes unhandled IntegrityError (500) | Major | `services/finanzen.py:332` |
+| 79 | `create_cost_center` invalid abteilung_id causes unhandled IntegrityError (500) | Major | `services/finanzen.py:918` |
+| 80 | `create_mandat` invalid mitglied_id causes unhandled IntegrityError (500) | Major | `services/finanzen.py:1286` |
+| 81 | `create_compensation` invalid mitglied_id causes unhandled IntegrityError (500) | Major | `services/ehrenamt.py:45` |
+
+#### Fix Details
+All 6 bugs fixed by adding `try/except IntegrityError` around `session.flush()` calls, converting to `ValueError` for consistent API error handling (400).
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_finanzen.py` | +4 | Invalid mitglied_id on booking, invoice, mandate, ehrenamt |
+
+#### Test Counts
+- Backend: 1005 passed (was 1001, +4 new)
+- Frontend: 120 passed
+- Total: 1125
+- Ruff: clean
