@@ -29,13 +29,14 @@ interface VersandDialogProps {
 }
 
 const VERSAND_KANAELE = [
-  { value: "email", label: "E-Mail" },
+  { value: "email_pdf", label: "E-Mail (PDF)" },
+  { value: "email_zugferd", label: "E-Mail (ZUGFeRD)" },
   { value: "post", label: "Post" },
   { value: "portal", label: "Portal" },
 ] as const
 
 export function VersandDialog({ open, onOpenChange, invoice, onSuccess }: VersandDialogProps) {
-  const [kanal, setKanal] = useState("email")
+  const [kanal, setKanal] = useState("email_pdf")
   const [empfaenger, setEmpfaenger] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)

@@ -177,7 +177,7 @@ export function BookingTable() {
   const fetchBuchungen = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/bookings`)
+      const res = await fetch(`${API_BASE}/finanzen/buchungen`)
       if (!res.ok) throw new Error("API error")
       const data = await res.json()
       setBuchungen(data.items ?? data)

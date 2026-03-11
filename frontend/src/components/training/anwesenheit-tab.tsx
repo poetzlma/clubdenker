@@ -79,7 +79,7 @@ export function AnwesenheitTab() {
     setLoadingMembers(true)
     try {
       const data = await api.get<{ items?: MemberEntry[] }>(
-        `/api/members?abteilung_id=${selectedGruppe.abteilung_id}`
+        `/api/mitglieder?abteilung_id=${selectedGruppe.abteilung_id}`
       )
       const memberList = Array.isArray(data) ? data : (data.items ?? [])
       setMembers(memberList)

@@ -184,12 +184,18 @@ class BeitraegeService:
 
     async def _next_rechnungsnummer(self) -> str:
         result = await self.session.execute(
-            select(Rechnung.rechnungsnummer).order_by(Rechnung.rechnungsnummer.desc()).limit(1)
+            select(Rechnung.rechnungsnummer)
+            .where(Rechnung.rechnungsnummer.like("R-%"))
+            .order_by(Rechnung.rechnungsnummer.desc())
+            .limit(1)
         )
         last = result.scalar_one_or_none()
         if last is not None:
-            num = int(last.split("-")[1])
-            return f"R-{num + 1:04d}"
+            try:
+                num = int(last.split("-")[1])
+                return f"R-{num + 1:04d}"
+            except (ValueError, IndexError):
+                pass
         return "R-0001"
 
     async def generate_fee_run(self, billing_year: int) -> list[Rechnung]:

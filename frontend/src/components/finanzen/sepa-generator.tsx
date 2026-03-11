@@ -78,7 +78,7 @@ export function SepaGenerator() {
   const fetchOpenInvoices = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/invoices?status=offen`)
+      const res = await fetch(`${API_BASE}/finanzen/rechnungen?status=offen`)
       if (!res.ok) throw new Error("API error")
       const data = await res.json()
       setInvoices(data.items ?? data)
@@ -122,7 +122,7 @@ export function SepaGenerator() {
   async function handleGenerate() {
     setGenerating(true)
     try {
-      const res = await fetch(`${API_BASE}/sepa/generate`, {
+      const res = await fetch(`${API_BASE}/finanzen/sepa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoice_ids: Array.from(selectedIds) }),

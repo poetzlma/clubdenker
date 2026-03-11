@@ -271,7 +271,11 @@ class FinanzenService:
         verwendungszweck = f"{nummer} {beschreibung}"[:140]
 
         # Auto-set loeschdatum (rechnungsdatum + 10 years retention)
-        loeschdatum = date(rd.year + 10, rd.month, rd.day)
+        try:
+            loeschdatum = date(rd.year + 10, rd.month, rd.day)
+        except ValueError:
+            # Handle Feb 29 leap year: use Feb 28 of the target year
+            loeschdatum = date(rd.year + 10, rd.month, rd.day - 1)
 
         # Auto-calculate skonto_betrag if skonto_prozent is set
         skonto_betrag: Decimal | None = None
@@ -656,7 +660,7 @@ class FinanzenService:
             raise ValueError("Zahlungsbetrag muss positiv sein.")
 
         # Check for overpayment
-        current_open = rechnung.offener_betrag or rechnung.betrag
+        current_open = rechnung.offener_betrag if rechnung.offener_betrag is not None else rechnung.betrag
         if betrag > current_open:
             raise ValueError(
                 f"Zahlungsbetrag ({betrag}) übersteigt den offenen Betrag "

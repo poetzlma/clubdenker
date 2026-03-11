@@ -1154,3 +1154,43 @@ class TestOverpaymentValidation:
 
         assert zahlung.betrag == Decimal("100.00")
         assert rechnung.status == RechnungStatus.bezahlt
+
+    async def test_record_payment_fully_paid_rejects_second_payment(self, session):
+        """Bug #29 fix: offener_betrag=0 must not fallback to betrag via 'or'."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("100.00"),
+            beschreibung="Double payment test",
+            faelligkeitsdatum=date(2024, 1, 31),
+        )
+
+        # Pay in full
+        await svc.record_payment(rechnung.id, Decimal("100.00"), "ueberweisung")
+        await session.refresh(rechnung)
+        assert rechnung.offener_betrag == Decimal("0.00")
+
+        # Second payment must be rejected
+        with pytest.raises(ValueError, match="übersteigt"):
+            await svc.record_payment(rechnung.id, Decimal("10.00"), "ueberweisung")
+
+    async def test_create_invoice_leap_year_rechnungsdatum(self, session):
+        """Bug #28 fix: invoice on Feb 29 must not crash loeschdatum calculation."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("50.00"),
+            beschreibung="Leap year test",
+            faelligkeitsdatum=date(2024, 3, 31),
+            rechnungsdatum=date(2024, 2, 29),
+        )
+        # 2034 is not a leap year, so loeschdatum should be Feb 28
+        assert rechnung.loeschdatum == date(2034, 2, 28)

@@ -287,9 +287,8 @@ class TestProtokollAnlegen:
         # The tool does a lazy import of async_session from db.session.
         # That name doesn't exist in the module, so we patch with create=True.
         with patch(
-            "sportverein.db.session.async_session",
+            "sportverein.db.session.async_session_factory",
             mcp_session_factory,
-            create=True,
         ):
             result = await protokoll_anlegen(
                 titel="Vorstandssitzung Q1/2026",
@@ -306,9 +305,8 @@ class TestProtokollAnlegen:
     @pytest.mark.asyncio
     async def test_create_protokoll_with_all_fields(self, mcp_session_factory):
         with patch(
-            "sportverein.db.session.async_session",
+            "sportverein.db.session.async_session_factory",
             mcp_session_factory,
-            create=True,
         ):
             result = await protokoll_anlegen(
                 titel="Jahreshauptversammlung 2026",
@@ -326,9 +324,8 @@ class TestProtokollAnlegen:
     async def test_create_protokoll_default_typ(self, mcp_session_factory):
         """Default typ should be 'sonstige'."""
         with patch(
-            "sportverein.db.session.async_session",
+            "sportverein.db.session.async_session_factory",
             mcp_session_factory,
-            create=True,
         ):
             result = await protokoll_anlegen(
                 titel="Besprechung",
@@ -341,9 +338,8 @@ class TestProtokollAnlegen:
     async def test_create_protokoll_default_datum(self, mcp_session_factory):
         """When datum is None, today's date should be used."""
         with patch(
-            "sportverein.db.session.async_session",
+            "sportverein.db.session.async_session_factory",
             mcp_session_factory,
-            create=True,
         ):
             result = await protokoll_anlegen(
                 titel="Spontanes Treffen",
@@ -355,9 +351,8 @@ class TestProtokollAnlegen:
     @pytest.mark.asyncio
     async def test_create_protokoll_abteilungssitzung(self, mcp_session_factory):
         with patch(
-            "sportverein.db.session.async_session",
+            "sportverein.db.session.async_session_factory",
             mcp_session_factory,
-            create=True,
         ):
             result = await protokoll_anlegen(
                 titel="Fussball-Abteilung Sitzung",
@@ -371,9 +366,8 @@ class TestProtokollAnlegen:
     async def test_create_protokoll_invalid_typ(self, mcp_session_factory):
         """Invalid typ should raise an error."""
         with patch(
-            "sportverein.db.session.async_session",
+            "sportverein.db.session.async_session_factory",
             mcp_session_factory,
-            create=True,
         ):
             with pytest.raises(ValueError):
                 await protokoll_anlegen(
@@ -388,9 +382,8 @@ class TestProtokollAnlegen:
         """Create multiple protocols and verify each gets a unique ID."""
         ids = []
         with patch(
-            "sportverein.db.session.async_session",
+            "sportverein.db.session.async_session_factory",
             mcp_session_factory,
-            create=True,
         ):
             for i in range(5):
                 result = await protokoll_anlegen(

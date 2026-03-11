@@ -95,7 +95,7 @@ export function OnboardingPage() {
     setError("")
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/api/members`, {
+      const res = await fetch(`${API_BASE}/api/mitglieder`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,11 +124,9 @@ export function OnboardingPage() {
           for (const dept of form.abteilungen) {
             try {
               await fetch(
-                `${API_BASE}/api/members/${memberId}/departments`,
+                `${API_BASE}/api/mitglieder/${memberId}/abteilungen/${encodeURIComponent(dept)}`,
                 {
                   method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ department: dept }),
                 }
               )
             } catch {
