@@ -8,8 +8,10 @@ import pytest
 
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.finanzen import (
+    Kostenstelle,
     RechnungStatus,
     Sphare,
+    VersandKanal,
     Zahlungsart,
 )
 from sportverein.models.mitglied import Mitglied, MitgliedStatus
@@ -623,3 +625,449 @@ class TestSkonto:
         assert rechnung.bezahlt_betrag == Decimal("980.00")
         assert rechnung.offener_betrag == Decimal("20.00")
         assert rechnung.status == RechnungStatus.teilbezahlt
+
+
+class TestCostCenterCRUD:
+    async def test_create_cost_center(self, session):
+        svc = FinanzenService(session)
+        ks = await svc.create_cost_center(
+            {
+                "name": "Fussball",
+                "beschreibung": "Fussball-Abteilung",
+                "budget": Decimal("5000.00"),
+                "freigabelimit": Decimal("500.00"),
+            }
+        )
+        assert ks.id is not None
+        assert ks.name == "Fussball"
+        assert ks.beschreibung == "Fussball-Abteilung"
+        assert ks.budget == Decimal("5000.00")
+        assert ks.freigabelimit == Decimal("500.00")
+
+    async def test_get_cost_centers_empty(self, session):
+        svc = FinanzenService(session)
+        result = await svc.get_cost_centers()
+        assert result == []
+
+    async def test_get_cost_centers_returns_sorted(self, session):
+        svc = FinanzenService(session)
+        await svc.create_cost_center({"name": "Turnen"})
+        await svc.create_cost_center({"name": "Fussball"})
+        await svc.create_cost_center({"name": "Handball"})
+
+        centers = await svc.get_cost_centers()
+        assert len(centers) == 3
+        assert [c.name for c in centers] == ["Fussball", "Handball", "Turnen"]
+
+    async def test_update_cost_center(self, session):
+        svc = FinanzenService(session)
+        ks = await svc.create_cost_center(
+            {"name": "Alt", "budget": Decimal("1000.00")}
+        )
+
+        updated = await svc.update_cost_center(
+            ks.id, {"name": "Neu", "budget": Decimal("2000.00")}
+        )
+        assert updated.name == "Neu"
+        assert updated.budget == Decimal("2000.00")
+
+    async def test_update_cost_center_not_found(self, session):
+        svc = FinanzenService(session)
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await svc.update_cost_center(99999, {"name": "X"})
+
+    async def test_delete_cost_center(self, session):
+        svc = FinanzenService(session)
+        ks = await svc.create_cost_center({"name": "Loeschbar"})
+
+        await svc.delete_cost_center(ks.id)
+
+        centers = await svc.get_cost_centers()
+        assert len(centers) == 0
+
+    async def test_delete_cost_center_not_found(self, session):
+        svc = FinanzenService(session)
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await svc.delete_cost_center(99999)
+
+    async def test_delete_cost_center_with_bookings_fails(self, session):
+        svc = FinanzenService(session)
+        ks = await svc.create_cost_center({"name": "MitBuchungen"})
+
+        buchung = await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 1),
+                "betrag": Decimal("100.00"),
+                "beschreibung": "Test",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        # Assign cost center directly since create_booking doesn't pass it
+        buchung.kostenstelle_id = ks.id
+        await session.flush()
+
+        with pytest.raises(ValueError, match="zugeordnete Buchungen"):
+            await svc.delete_cost_center(ks.id)
+
+
+class TestBudgetStatus:
+    async def test_budget_status_no_spending(self, session):
+        svc = FinanzenService(session)
+        ks = await svc.create_cost_center(
+            {"name": "Leer", "budget": Decimal("3000.00"), "freigabelimit": Decimal("200.00")}
+        )
+
+        status = await svc.get_budget_status(ks.id)
+        assert status["name"] == "Leer"
+        assert status["budget"] == Decimal("3000.00")
+        assert status["spent"] == Decimal("0.00")
+        assert status["remaining"] == Decimal("3000.00")
+        assert status["freigabelimit"] == Decimal("200.00")
+
+    async def test_budget_status_with_spending(self, session):
+        svc = FinanzenService(session)
+        ks = await svc.create_cost_center(
+            {"name": "Aktiv", "budget": Decimal("1000.00")}
+        )
+
+        b1 = await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 3, 1),
+                "betrag": Decimal("300.00"),
+                "beschreibung": "Ausgabe 1",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        b1.kostenstelle_id = ks.id
+
+        b2 = await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 4, 1),
+                "betrag": Decimal("150.00"),
+                "beschreibung": "Ausgabe 2",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        b2.kostenstelle_id = ks.id
+        await session.flush()
+
+        status = await svc.get_budget_status(ks.id)
+        assert status["spent"] == Decimal("450.00")
+        assert status["remaining"] == Decimal("550.00")
+
+    async def test_budget_status_not_found(self, session):
+        svc = FinanzenService(session)
+        with pytest.raises(ValueError, match="not found"):
+            await svc.get_budget_status(99999)
+
+
+class TestEuerReport:
+    async def test_euer_report_empty_year(self, session):
+        svc = FinanzenService(session)
+        report = await svc.get_euer_report(2024)
+
+        assert report["jahr"] == 2024
+        assert report["gesamt"]["einnahmen"] == 0.0
+        assert report["gesamt"]["ausgaben"] == 0.0
+        assert report["gesamt"]["ergebnis"] == 0.0
+        assert report["nach_sphare"] == []
+        assert report["nach_monat"] == []
+
+    async def test_euer_report_with_bookings_in_different_spheres(self, session):
+        svc = FinanzenService(session)
+
+        # Income in ideell sphere
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 3, 15),
+                "betrag": Decimal("500.00"),
+                "beschreibung": "Beitraege",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        # Expense in ideell sphere (negative)
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 3, 20),
+                "betrag": Decimal("-200.00"),
+                "beschreibung": "Hallenmiete",
+                "konto": "6000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        # Income in zweckbetrieb sphere
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 6, 1),
+                "betrag": Decimal("800.00"),
+                "beschreibung": "Kursgebuehren",
+                "konto": "4100",
+                "gegenkonto": "1200",
+                "sphare": "zweckbetrieb",
+            }
+        )
+
+        report = await svc.get_euer_report(2024)
+
+        assert report["gesamt"]["einnahmen"] == 1300.0
+        assert report["gesamt"]["ausgaben"] == 200.0
+        assert report["gesamt"]["ergebnis"] == 1100.0
+
+        # Check by sphere
+        by_sphere = {s["sphare"]: s for s in report["nach_sphare"]}
+        assert "ideell" in by_sphere
+        assert by_sphere["ideell"]["einnahmen"] == 500.0
+        assert by_sphere["ideell"]["ausgaben"] == 200.0
+        assert by_sphere["ideell"]["ergebnis"] == 300.0
+        assert "zweckbetrieb" in by_sphere
+        assert by_sphere["zweckbetrieb"]["einnahmen"] == 800.0
+        assert by_sphere["zweckbetrieb"]["ausgaben"] == 0.0
+
+        # Check by month
+        by_month = {m["monat"]: m for m in report["nach_monat"]}
+        assert "2024-03" in by_month
+        assert "2024-06" in by_month
+
+    async def test_euer_report_filtered_by_sphere(self, session):
+        svc = FinanzenService(session)
+
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 1),
+                "betrag": Decimal("100.00"),
+                "beschreibung": "Ideell",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 2),
+                "betrag": Decimal("200.00"),
+                "beschreibung": "Zweck",
+                "konto": "4100",
+                "gegenkonto": "1200",
+                "sphare": "zweckbetrieb",
+            }
+        )
+
+        report = await svc.get_euer_report(2024, sphare="ideell")
+        assert report["gesamt"]["einnahmen"] == 100.0
+        # Only ideell should appear
+        assert len(report["nach_sphare"]) == 1
+        assert report["nach_sphare"][0]["sphare"] == "ideell"
+
+
+class TestDeleteInvoice:
+    async def test_delete_draft_invoice(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            member.id, Decimal("100.00"), "Draft", date(2024, 1, 31)
+        )
+        assert rechnung.status == RechnungStatus.entwurf
+
+        await svc.delete_invoice(rechnung.id)
+
+        # Verify it's gone
+        invoices, total = await svc.get_invoices({})
+        assert total == 0
+
+    async def test_delete_gestellt_invoice_fails(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            member.id, Decimal("100.00"), "Gestellt", date(2024, 1, 31)
+        )
+        await svc.stelle_rechnung(rechnung.id)
+
+        with pytest.raises(PermissionError, match="nicht gelöscht"):
+            await svc.delete_invoice(rechnung.id)
+
+    async def test_delete_nonexistent_invoice_fails(self, session):
+        svc = FinanzenService(session)
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await svc.delete_invoice(99999)
+
+    async def test_delete_storniert_within_retention_fails(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            member.id, Decimal("100.00"), "Storniert", date(2024, 1, 31)
+        )
+        await svc.stelle_rechnung(rechnung.id)
+        await svc.storniere_rechnung(rechnung.id)
+
+        # Reload to get the storniert original
+        await session.refresh(rechnung)
+        # Set a future loeschdatum to simulate retention period
+        rechnung.loeschdatum = date(2099, 12, 31)
+        await session.flush()
+
+        with pytest.raises(PermissionError, match="Aufbewahrungspflicht"):
+            await svc.delete_invoice(rechnung.id)
+
+    async def test_delete_storniert_after_retention_succeeds(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            member.id, Decimal("100.00"), "Storniert alt", date(2024, 1, 31)
+        )
+        await svc.stelle_rechnung(rechnung.id)
+        await svc.storniere_rechnung(rechnung.id)
+
+        await session.refresh(rechnung)
+        # Retention has expired
+        rechnung.loeschdatum = date(2020, 1, 1)
+        await session.flush()
+
+        await svc.delete_invoice(rechnung.id)
+
+        invoices, total = await svc.get_invoices({})
+        # Only the storno-copy remains
+        for inv in invoices:
+            assert inv.id != rechnung.id
+
+
+class TestVersendeRechnung:
+    async def test_versende_gestellt_invoice(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            member.id, Decimal("100.00"), "Versand", date(2024, 1, 31)
+        )
+        await svc.stelle_rechnung(rechnung.id)
+
+        result = await svc.versende_rechnung(rechnung.id, "email_pdf", "max@example.com")
+        assert result.versand_kanal == "email_pdf"
+        assert result.versendet_an == "max@example.com"
+        assert result.versendet_am is not None
+        assert result.gestellt_am is not None
+
+    async def test_versende_draft_fails(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            member.id, Decimal("100.00"), "Draft", date(2024, 1, 31)
+        )
+
+        with pytest.raises(ValueError, match="Entwürfe können nicht versendet"):
+            await svc.versende_rechnung(rechnung.id, "email_pdf", "max@example.com")
+
+    async def test_versende_invalid_kanal(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            member.id, Decimal("100.00"), "Test", date(2024, 1, 31)
+        )
+        await svc.stelle_rechnung(rechnung.id)
+
+        with pytest.raises(ValueError, match="Ungültiger Versandkanal"):
+            await svc.versende_rechnung(rechnung.id, "brieftaube", "max@example.com")
+
+    async def test_versende_nonexistent_invoice(self, session):
+        svc = FinanzenService(session)
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await svc.versende_rechnung(99999, "email_pdf", "x@example.com")
+
+
+class TestGetMandate:
+    async def test_get_mandate_empty(self, session):
+        svc = FinanzenService(session)
+        items, total = await svc.get_mandate()
+        assert items == []
+        assert total == 0
+
+    async def test_get_mandate_returns_all(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+
+        mandat = SepaMandat(
+            mitglied_id=member.id,
+            mandatsreferenz="MREF-100",
+            iban="DE89370400440532013000",
+            bic="COBADEFFXXX",
+            kontoinhaber="Max Mustermann",
+            unterschriftsdatum=date(2023, 1, 1),
+            gueltig_ab=date(2023, 1, 1),
+            aktiv=True,
+        )
+        session.add(mandat)
+        await session.flush()
+
+        items, total = await svc.get_mandate()
+        assert total == 1
+        assert items[0]["mandatsreferenz"] == "MREF-100"
+        assert items[0]["mitglied_name"] == "Max Mustermann"
+        assert items[0]["iban"] == "DE89370400440532013000"
+        assert items[0]["aktiv"] is True
+
+    async def test_get_mandate_filter_active(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+
+        aktiv = SepaMandat(
+            mitglied_id=member.id,
+            mandatsreferenz="MREF-A",
+            iban="DE89370400440532013000",
+            kontoinhaber="Max Mustermann",
+            unterschriftsdatum=date(2023, 1, 1),
+            gueltig_ab=date(2023, 1, 1),
+            aktiv=True,
+        )
+        inaktiv = SepaMandat(
+            mitglied_id=member.id,
+            mandatsreferenz="MREF-I",
+            iban="DE89370400440532013001",
+            kontoinhaber="Max Mustermann",
+            unterschriftsdatum=date(2023, 1, 1),
+            gueltig_ab=date(2023, 1, 1),
+            aktiv=False,
+        )
+        session.add_all([aktiv, inaktiv])
+        await session.flush()
+
+        active_items, active_total = await svc.get_mandate(aktiv_filter=True)
+        assert active_total == 1
+        assert active_items[0]["mandatsreferenz"] == "MREF-A"
+
+        inactive_items, inactive_total = await svc.get_mandate(aktiv_filter=False)
+        assert inactive_total == 1
+        assert inactive_items[0]["mandatsreferenz"] == "MREF-I"

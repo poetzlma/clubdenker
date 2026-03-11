@@ -250,6 +250,21 @@ No new bugs found.
 
 No new bugs found.
 
+### Loop 19: Service Method Coverage Gap Fill
+
+#### Tests Extended
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_services/test_finanzen.py` | +26 | Cost centers CRUD, budget, EÜR, delete invoice, versende, mandate |
+| `tests/test_services/test_ehrenamt.py` | +6 | list_compensations, get_freibetrag_summary |
+| `tests/test_services/test_eingangsrechnung.py` | +2 | get_eingangsrechnung (exists + not found) |
+
+#### Test Counts
+- Backend: 750 passed (was 716, +34 new)
+- Frontend: 62 passed
+
+No new bugs found.
+
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
 - [x] Churn/engagement analytics

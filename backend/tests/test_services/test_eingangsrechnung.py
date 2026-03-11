@@ -315,6 +315,22 @@ class TestListEingangsrechnungen:
         assert items[0].rechnungsnummer == "RE-2026-001"
 
 
+class TestGetEingangsrechnung:
+    async def test_get_existing(self, session):
+        svc = EingangsrechnungService(session)
+        rechnung, _ = await svc.create_from_xml(session, SAMPLE_CII_XML)
+
+        found = await svc.get_eingangsrechnung(session, rechnung.id)
+        assert found is not None
+        assert found.id == rechnung.id
+        assert found.rechnungsnummer == "RE-2026-001"
+
+    async def test_get_not_found(self, session):
+        svc = EingangsrechnungService(session)
+        found = await svc.get_eingangsrechnung(session, 9999)
+        assert found is None
+
+
 class TestUpdateStatus:
     async def test_update_to_geprueft(self, session):
         svc = EingangsrechnungService(session)
