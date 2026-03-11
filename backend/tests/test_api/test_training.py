@@ -799,3 +799,167 @@ async def test_lizenzen_expiring_requires_auth(unauthed_client):
 async def test_mitglied_anwesenheit_requires_auth(unauthed_client):
     resp = await unauthed_client.get("/api/training/anwesenheit/mitglied/1")
     assert resp.status_code in (401, 422)
+
+
+# ---------------------------------------------------------------------------
+# Targeted attendance endpoint tests
+# ---------------------------------------------------------------------------
+
+
+async def test_record_attendance(client, session):
+    """POST attendance for a single member and verify 201 response with correct data."""
+    abt = await _create_abteilung(session)
+    m = await _create_mitglied(session)
+    create_resp = await client.post(
+        "/api/training/gruppen",
+        json={**GRUPPE_DATA, "abteilung_id": abt.id},
+    )
+    gruppe_id = create_resp.json()["id"]
+    datum = (date.today() - timedelta(days=1)).isoformat()
+
+    resp = await client.post(
+        "/api/training/anwesenheit",
+        json={
+            "trainingsgruppe_id": gruppe_id,
+            "datum": datum,
+            "teilnehmer": [{"mitglied_id": m.id, "anwesend": True, "notiz": "Gut trainiert"}],
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["trainingsgruppe_id"] == gruppe_id
+    assert data[0]["mitglied_id"] == m.id
+    assert data[0]["anwesend"] is True
+    assert data[0]["notiz"] == "Gut trainiert"
+    assert data[0]["datum"] == datum
+
+
+async def test_get_attendance_for_gruppe(client, session):
+    """GET attendance records filtered by training group returns only that group's records."""
+    abt = await _create_abteilung(session)
+    m = await _create_mitglied(session)
+    # Create two groups
+    resp1 = await client.post(
+        "/api/training/gruppen",
+        json={**GRUPPE_DATA, "abteilung_id": abt.id},
+    )
+    resp2 = await client.post(
+        "/api/training/gruppen",
+        json={**GRUPPE_DATA, "name": "Damen 1", "abteilung_id": abt.id},
+    )
+    gruppe1_id = resp1.json()["id"]
+    gruppe2_id = resp2.json()["id"]
+
+    datum = (date.today() - timedelta(days=1)).isoformat()
+
+    # Record attendance in both groups
+    await client.post(
+        "/api/training/anwesenheit",
+        json={
+            "trainingsgruppe_id": gruppe1_id,
+            "datum": datum,
+            "teilnehmer": [{"mitglied_id": m.id, "anwesend": True}],
+        },
+    )
+    await client.post(
+        "/api/training/anwesenheit",
+        json={
+            "trainingsgruppe_id": gruppe2_id,
+            "datum": datum,
+            "teilnehmer": [{"mitglied_id": m.id, "anwesend": False}],
+        },
+    )
+
+    # Filter by gruppe1
+    resp = await client.get(
+        "/api/training/anwesenheit",
+        params={"gruppe_id": gruppe1_id},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["trainingsgruppe_id"] == gruppe1_id
+    assert data[0]["anwesend"] is True
+
+
+async def test_attendance_stats(client, session):
+    """GET attendance statistics for an abteilung returns heatmap and correct counts."""
+    abt = await _create_abteilung(session)
+    m1 = await _create_mitglied(session, 1)
+    m2 = await _create_mitglied(session, 2)
+    create_resp = await client.post(
+        "/api/training/gruppen",
+        json={**GRUPPE_DATA, "abteilung_id": abt.id},
+    )
+    gruppe_id = create_resp.json()["id"]
+
+    # Record 4 sessions: m1 always present, m2 present in 2 of 4
+    for i in range(1, 5):
+        teilnehmer = [
+            {"mitglied_id": m1.id, "anwesend": True},
+            {"mitglied_id": m2.id, "anwesend": i <= 2},
+        ]
+        await client.post(
+            "/api/training/anwesenheit",
+            json={
+                "trainingsgruppe_id": gruppe_id,
+                "datum": (date.today() - timedelta(weeks=i)).isoformat(),
+                "teilnehmer": teilnehmer,
+            },
+        )
+
+    resp = await client.get(f"/api/training/anwesenheit/statistik/{abt.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "heatmap" in data
+    assert len(data["heatmap"]) == 7
+    # 4 sessions x 2 members = 8 total records; m1 present 4 + m2 present 2 = 6
+    assert data["total_sessions"] == 8
+    assert data["total_present"] == 6
+    assert data["avg_attendance_pct"] == 75.0
+
+
+async def test_member_attendance_stats(client, session):
+    """GET member attendance stats returns correct counts and percentage."""
+    abt = await _create_abteilung(session)
+    m = await _create_mitglied(session)
+    create_resp = await client.post(
+        "/api/training/gruppen",
+        json={**GRUPPE_DATA, "abteilung_id": abt.id},
+    )
+    gruppe_id = create_resp.json()["id"]
+
+    # 3 sessions: present in 2, absent in 1
+    for i in range(1, 4):
+        await client.post(
+            "/api/training/anwesenheit",
+            json={
+                "trainingsgruppe_id": gruppe_id,
+                "datum": (date.today() - timedelta(weeks=i)).isoformat(),
+                "teilnehmer": [{"mitglied_id": m.id, "anwesend": i <= 2}],
+            },
+        )
+
+    resp = await client.get(f"/api/training/anwesenheit/mitglied/{m.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["mitglied_id"] == m.id
+    assert data["total_eintraege"] == 3
+    assert data["anwesend"] == 2
+    assert data["abwesend"] == 1
+    assert data["anwesenheit_pct"] == 66.7
+
+
+async def test_record_attendance_invalid_gruppe(client, session):
+    """POST attendance for a nonexistent training group should return 400."""
+    m = await _create_mitglied(session)
+    resp = await client.post(
+        "/api/training/anwesenheit",
+        json={
+            "trainingsgruppe_id": 99999,
+            "datum": date.today().isoformat(),
+            "teilnehmer": [{"mitglied_id": m.id, "anwesend": True}],
+        },
+    )
+    assert resp.status_code == 400

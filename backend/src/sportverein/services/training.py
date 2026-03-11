@@ -119,6 +119,11 @@ class TrainingService:
         teilnehmer is a list of dicts: [{"mitglied_id": int, "anwesend": bool, "notiz": str|None}]
         Uses upsert semantics: existing records for the same (gruppe, member, date) are updated.
         """
+        # Validate that the training group exists
+        gruppe = await self.get_trainingsgruppe(trainingsgruppe_id)
+        if gruppe is None:
+            raise ValueError(f"Trainingsgruppe mit ID {trainingsgruppe_id} nicht gefunden.")
+
         results: list[Anwesenheit] = []
         for t in teilnehmer:
             mitglied_id = t["mitglied_id"]
