@@ -62,9 +62,13 @@ async def mitglieder_suchen(
 ) -> dict:
     async with get_mcp_session() as session:
         svc = MitgliederService(session)
+        try:
+            parsed_status = MitgliedStatus(status) if status else None
+        except ValueError:
+            return {"error": f"Ungültiger Status: {status}. Erlaubt: {', '.join(s.value for s in MitgliedStatus)}"}
         filters = MitgliedFilter(
             name=name,
-            status=MitgliedStatus(status) if status else None,
+            status=parsed_status,
             abteilung_id=abteilung_id,
             page=page,
             page_size=page_size,
@@ -107,6 +111,14 @@ async def mitglied_anlegen(
 ) -> dict:
     async with get_mcp_session() as session:
         svc = MitgliederService(session)
+        try:
+            parsed_status = MitgliedStatus(status)
+        except ValueError:
+            return {"error": f"Ungültiger Status: {status}. Erlaubt: {', '.join(s.value for s in MitgliedStatus)}"}
+        try:
+            parsed_kategorie = BeitragKategorie(beitragskategorie)
+        except ValueError:
+            return {"error": f"Ungültige Beitragskategorie: {beitragskategorie}. Erlaubt: {', '.join(k.value for k in BeitragKategorie)}"}
         data = MitgliedCreate(
             vorname=vorname,
             nachname=nachname,
@@ -117,8 +129,8 @@ async def mitglied_anlegen(
             plz=plz,
             ort=ort,
             eintrittsdatum=date.fromisoformat(eintrittsdatum) if eintrittsdatum else None,
-            status=MitgliedStatus(status),
-            beitragskategorie=BeitragKategorie(beitragskategorie),
+            status=parsed_status,
+            beitragskategorie=parsed_kategorie,
             notizen=notizen,
         )
         member = await svc.create_member(data)

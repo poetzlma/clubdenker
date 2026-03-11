@@ -668,6 +668,29 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 - Frontend: 120 passed
 - Total: 1091
 
+### Loop 33: PDF Null Guards, MCP Enum Validation, Training 404 Fix
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 36 | `rechnung_pdf.py`: `int(pos.menge)` crashes with TypeError if `pos.menge` is None | Major | `services/rechnung_pdf.py:463` |
+| 37 | `rechnung_pdf.py`: `_fmt_pct(pos.steuersatz)` crashes if steuersatz is None | Major | `services/rechnung_pdf.py:470` |
+| 38 | `rechnung_pdf.py`: `+= pos.gesamtpreis_steuer` crashes if tax amount is None | Major | `services/rechnung_pdf.py:524` |
+| 39 | `tools_mitglieder.py`: invalid status string in `mitglieder_suchen` raises unhandled ValueError | Medium | `mcp/tools_mitglieder.py:67` |
+| 40 | `tools_mitglieder.py`: invalid enum strings in `mitglied_anlegen` raise unhandled ValueError | Medium | `mcp/tools_mitglieder.py:120-121` |
+| 41 | `api/training.py`: `delete_trainingsgruppe` returned 400 instead of 404 for not-found group | Medium | `api/training.py:128` |
+
+#### Fix Details
+- Bugs #36-38: Added None guards with fallback to Decimal("0") or empty string for nullable position fields
+- Bugs #39-40: Added try/except ValueError with descriptive error messages listing valid enum values
+- Bug #41: Added string check to distinguish "not found" (404) from "has records" (400)
+
+#### Test Counts
+- Backend: 971 passed (existing test updated for 404 fix)
+- Frontend: 120 passed
+- Total: 1091
+- Ruff: clean
+
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
 - [x] Churn/engagement analytics

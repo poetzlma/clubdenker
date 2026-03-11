@@ -460,14 +460,14 @@ class RechnungPdfService:
                         Paragraph(str(pos.position_nr), styles["table_cell"]),
                         Paragraph(pos.beschreibung, styles["table_cell"]),
                         Paragraph(
-                            str(int(pos.menge)) if pos.menge == int(pos.menge) else str(pos.menge),
+                            str(int(pos.menge)) if pos.menge is not None and pos.menge == int(pos.menge) else str(pos.menge or ""),
                             styles["table_cell_right"],
                         ),
                         Paragraph(
-                            "\u00d7" if pos.einheit == "x" else pos.einheit, styles["table_cell"]
+                            "\u00d7" if pos.einheit == "x" else (pos.einheit or ""), styles["table_cell"]
                         ),
-                        Paragraph(_fmt_decimal(pos.einzelpreis_netto), styles["table_cell_right"]),
-                        Paragraph(_fmt_pct(pos.steuersatz), styles["table_cell_right"]),
+                        Paragraph(_fmt_decimal(pos.einzelpreis_netto or Decimal("0")), styles["table_cell_right"]),
+                        Paragraph(_fmt_pct(pos.steuersatz or Decimal("0")), styles["table_cell_right"]),
                         Paragraph(_fmt_decimal(pos.gesamtpreis_brutto), styles["table_cell_right"]),
                     ]
                 )
@@ -521,7 +521,8 @@ class RechnungPdfService:
         if positionen:
             tax_by_rate: dict[Decimal, Decimal] = defaultdict(Decimal)
             for pos in positionen:
-                tax_by_rate[pos.steuersatz] += pos.gesamtpreis_steuer
+                rate = pos.steuersatz or Decimal("0")
+                tax_by_rate[rate] += pos.gesamtpreis_steuer or Decimal("0")
             for rate in sorted(tax_by_rate.keys()):
                 totals_data.append(
                     [

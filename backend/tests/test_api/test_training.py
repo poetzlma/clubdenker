@@ -348,9 +348,9 @@ async def test_update_trainingsgruppe_deactivate(client, session):
 
 
 async def test_delete_trainingsgruppe_not_found(client):
-    """Deleting a non-existent group returns 400 (service raises ValueError)."""
+    """Deleting a non-existent group returns 404."""
     resp = await client.delete("/api/training/gruppen/99999")
-    assert resp.status_code == 400
+    assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
