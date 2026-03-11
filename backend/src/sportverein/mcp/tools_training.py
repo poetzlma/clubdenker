@@ -81,10 +81,14 @@ async def training_verwalten(
                 kwargs["max_teilnehmer"] = max_teilnehmer
             if ort is not None:
                 kwargs["ort"] = ort
+            try:
+                parsed_wochentag = Wochentag(wochentag)
+            except ValueError:
+                return {"error": f"Ungültiger Wochentag: {wochentag}. Erlaubt: {', '.join(w.value for w in Wochentag)}"}
             gruppe = await svc.create_trainingsgruppe(
                 name=name,
                 abteilung_id=abteilung_id,
-                wochentag=Wochentag(wochentag),
+                wochentag=parsed_wochentag,
                 uhrzeit=uhrzeit,
                 **kwargs,
             )
@@ -100,7 +104,10 @@ async def training_verwalten(
             if abteilung_id is not None:
                 updates["abteilung_id"] = abteilung_id
             if wochentag is not None:
-                updates["wochentag"] = Wochentag(wochentag)
+                try:
+                    updates["wochentag"] = Wochentag(wochentag)
+                except ValueError:
+                    return {"error": f"Ungültiger Wochentag: {wochentag}. Erlaubt: {', '.join(w.value for w in Wochentag)}"}
             if uhrzeit is not None:
                 updates["uhrzeit"] = uhrzeit
             if trainer is not None:
@@ -146,9 +153,13 @@ async def anwesenheit_erfassen(
     async with get_mcp_session() as session:
         svc = TrainingService(session)
         try:
+            parsed_datum = date.fromisoformat(datum)
+        except ValueError:
+            return {"error": f"Ungültiges Datum: {datum}. Format: YYYY-MM-DD"}
+        try:
             records = await svc.record_anwesenheit(
                 trainingsgruppe_id=trainingsgruppe_id,
-                datum=date.fromisoformat(datum),
+                datum=parsed_datum,
                 teilnehmer=teilnehmer,
             )
         except ValueError as exc:
@@ -183,11 +194,16 @@ async def anwesenheit_abrufen(
     """Query attendance records with optional filters."""
     async with get_mcp_session() as session:
         svc = TrainingService(session)
+        try:
+            parsed_von = date.fromisoformat(datum_von) if datum_von else None
+            parsed_bis = date.fromisoformat(datum_bis) if datum_bis else None
+        except ValueError:
+            return {"error": "Ungültiges Datum. Format: YYYY-MM-DD"}
         records = await svc.get_anwesenheit(
             trainingsgruppe_id=trainingsgruppe_id,
             mitglied_id=mitglied_id,
-            datum_von=date.fromisoformat(datum_von) if datum_von else None,
-            datum_bis=date.fromisoformat(datum_bis) if datum_bis else None,
+            datum_von=parsed_von,
+            datum_bis=parsed_bis,
         )
         await session.commit()
         return {"items": [_anwesenheit_to_dict(r) for r in records]}

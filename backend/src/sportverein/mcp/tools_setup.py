@@ -140,6 +140,8 @@ async def vereins_setup_beitragskategorien(
             if category_id is None:
                 return {"error": "category_id ist erforderlich."}
             kwargs: dict = {}
+            if name is not None:
+                kwargs["name"] = name
             if jahresbeitrag is not None:
                 kwargs["jahresbeitrag"] = Decimal(str(jahresbeitrag))
             if beschreibung is not None:

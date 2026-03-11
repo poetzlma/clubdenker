@@ -695,3 +695,30 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 - [ ] Member Self-Service Portal
 - [x] Churn/engagement analytics
 - [x] Seed data for Ehrenamt
+
+### Loop 34: MCP Input Validation, Setup HTTP Status, Severity Fix
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 42 | `tools_training.py`: `Wochentag(wochentag)` called without try/except on create and update -- invalid enum crashes MCP tool | Medium | `mcp/tools_training.py:87,103` |
+| 43 | `tools_training.py`: `date.fromisoformat()` called without error handling in anwesenheit_erfassen and anwesenheit_abrufen -- malformed date crashes MCP tool | Medium | `mcp/tools_training.py:151,189-190` |
+| 44 | `tools_setup.py`: `name` parameter silently ignored in beitragskategorie update action -- updates to name never applied | Major | `mcp/tools_setup.py:139-157` |
+| 45 | `api/setup.py`: `update_category` maps duplicate-name ValueError to HTTP 404 instead of 409 | Medium | `api/setup.py:99-102` |
+| 46 | `services/agents.py`: SEPA mandate severity inverted -- >5 missing mandates returns "info" instead of "warning" | Minor | `services/agents.py:380` |
+| 47 | (documented only) `services/dashboard.py`: spartenleiter dashboard uses mock data for heatmap/schedule | Medium | `services/dashboard.py:556-557` |
+| 48 | `api/setup.py`: `update_department` maps duplicate-name ValueError to HTTP 404 instead of 409 | Medium | `api/setup.py:207-210` |
+
+#### Fix Details
+- Bug #42: Added try/except ValueError with descriptive error listing valid Wochentag values
+- Bug #43: Moved date.fromisoformat() calls before service calls with proper error handling
+- Bug #44: Added `name` to kwargs dict when provided
+- Bug #45/#48: Changed error mapping to use 409 CONFLICT for duplicate-name errors (distinguished by "nicht gefunden" in message)
+- Bug #46: Swapped severity labels so >5 missing mandates = "warning", <=5 = "info"
+- Bug #47: Documented only -- requires larger refactor to wire real attendance data
+
+#### Test Counts
+- Backend: 971 passed
+- Frontend: 120 passed
+- Total: 1091
+- Ruff: clean

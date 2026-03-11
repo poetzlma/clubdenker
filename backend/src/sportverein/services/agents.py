@@ -377,7 +377,7 @@ class ComplianceMonitorAgent:
             findings.append(
                 {
                     "category": "sepa_mandate",
-                    "severity": "warning" if count <= 5 else "info",
+                    "severity": "info" if count <= 5 else "warning",
                     "message": f"{count} aktive(s) Mitglied(er) mit offenen Rechnungen "
                     f"ohne SEPA-Mandat.",
                     "affected_count": count,

@@ -99,7 +99,8 @@ async def update_category(
     try:
         category = await svc.update_category(category_id, **kwargs)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        code = status.HTTP_404_NOT_FOUND if "nicht gefunden" in str(exc) else status.HTTP_409_CONFLICT
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -207,7 +208,8 @@ async def update_department(
     try:
         dept = await svc.update_department(department_id, **kwargs)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        code = status.HTTP_404_NOT_FOUND if "nicht gefunden" in str(exc) else status.HTTP_409_CONFLICT
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
