@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
@@ -800,8 +800,8 @@ class TrainerLizenzListResponse(BaseModel):
 
 
 class BeitragseinzugRequest(BaseModel):
-    year: int
-    month: int
+    year: int = Field(..., ge=2000, le=2100)
+    month: int = Field(..., ge=1, le=12)
 
 
 class BeitragseinzugResponse(BaseModel):

@@ -706,3 +706,78 @@ async def test_templates_require_auth(unauthed_client):
 
     resp2 = await unauthed_client.get("/api/finanzen/rechnungen/vorlagen/quartalsbeitrag")
     assert resp2.status_code in (401, 422)
+
+
+async def test_list_bookings_invalid_sphere(client, session: AsyncSession):
+    """GET /buchungen?sphare=invalid returns 400."""
+    resp = await client.get("/api/finanzen/buchungen", params={"sphare": "invalid"})
+    assert resp.status_code == 400
+
+
+async def test_list_bookings_inverted_dates(client, session: AsyncSession):
+    """GET /buchungen with date_from > date_to should return 200 with empty results."""
+    member = await _create_member(session)
+    # Create a booking in June 2025
+    await client.post(
+        "/api/finanzen/buchungen",
+        json={
+            **BOOKING_DATA,
+            "mitglied_id": member.id,
+            "buchungsdatum": "2025-06-15",
+        },
+    )
+    # Query with inverted date range
+    resp = await client.get(
+        "/api/finanzen/buchungen",
+        params={"date_from": "2025-12-01", "date_to": "2025-01-01"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+async def test_stelle_rechnung_double_call(client, session: AsyncSession):
+    """Create invoice, stelle, stelle again should get error."""
+    member = await _create_member(session)
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 150.00,
+            "beschreibung": "Double stelle test",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
+    rechnung_id = inv_resp.json()["id"]
+
+    # First stelle succeeds
+    resp1 = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert resp1.status_code == 200
+    assert resp1.json()["status"] == "gestellt"
+
+    # Second stelle should fail
+    resp2 = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert resp2.status_code == 400
+
+
+async def test_storniere_rechnung_without_body(client, session: AsyncSession):
+    """POST stornieren without body should work (grund is optional)."""
+    member = await _create_member(session)
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 80.00,
+            "beschreibung": "Storno no body test",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
+    rechnung_id = inv_resp.json()["id"]
+
+    # Stornieren without a JSON body
+    resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stornieren")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["betrag"] == -80.00
+    assert body["rechnungstyp"] == "storno"

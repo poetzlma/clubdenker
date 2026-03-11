@@ -128,3 +128,30 @@ async def test_aufwand_monitor_with_warning(client, session: AsyncSession):
     body = resp.json()
     assert body["count"] >= 1
     assert len(body["warnings"]) >= 1
+
+
+async def test_beitragseinzug_invalid_month(client, session: AsyncSession):
+    """POST with month=13 should return 422 (Pydantic validation)."""
+    resp = await client.post(
+        "/api/agents/beitragseinzug",
+        json={"year": 2025, "month": 13},
+    )
+    assert resp.status_code == 422
+
+
+async def test_beitragseinzug_invalid_month_zero(client, session: AsyncSession):
+    """POST with month=0 should return 422."""
+    resp = await client.post(
+        "/api/agents/beitragseinzug",
+        json={"year": 2025, "month": 0},
+    )
+    assert resp.status_code == 422
+
+
+async def test_beitragseinzug_invalid_year(client, session: AsyncSession):
+    """POST with year=1900 should return 422."""
+    resp = await client.post(
+        "/api/agents/beitragseinzug",
+        json={"year": 1900, "month": 6},
+    )
+    assert resp.status_code == 422

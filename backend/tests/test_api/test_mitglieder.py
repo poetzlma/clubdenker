@@ -335,3 +335,63 @@ async def test_dsgvo_export_after_anonymization(client):
     data = resp.json()
     assert data["personal_data"]["vorname"] == "Geloescht"
     assert data["personal_data"]["nachname"] == "Geloescht"
+
+
+async def test_cancel_member_idempotent(client):
+    """Cancel a member, then cancel again with different date - verify it updates."""
+    create_resp = await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "cancel-idem@example.de"}
+    )
+    member_id = create_resp.json()["id"]
+
+    # First cancellation
+    resp1 = await client.post(
+        f"/api/mitglieder/{member_id}/kuendigen", json={"austrittsdatum": "2026-06-30"}
+    )
+    assert resp1.status_code == 200
+    assert resp1.json()["status"] == "gekuendigt"
+    assert resp1.json()["austrittsdatum"] == "2026-06-30"
+
+    # Second cancellation with different date - should update
+    resp2 = await client.post(
+        f"/api/mitglieder/{member_id}/kuendigen", json={"austrittsdatum": "2026-12-31"}
+    )
+    assert resp2.status_code == 200
+    assert resp2.json()["austrittsdatum"] == "2026-12-31"
+
+
+async def test_cancel_member_not_found(client):
+    """Cancel nonexistent member should return 404."""
+    resp = await client.post("/api/mitglieder/99999/kuendigen", json={})
+    assert resp.status_code == 404
+
+
+async def test_stelle_rechnung_already_gestellt(client, session):
+    """Create invoice, stelle it, stelle again - should return 400."""
+
+    # Create a member via API
+    create_resp = await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "stelle-twice@example.de"}
+    )
+    member_id = create_resp.json()["id"]
+
+    # Create an invoice
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member_id,
+            "betrag": 100.00,
+            "beschreibung": "Double stelle test",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
+    rechnung_id = inv_resp.json()["id"]
+
+    # First stelle - should succeed
+    resp1 = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert resp1.status_code == 200
+    assert resp1.json()["status"] == "gestellt"
+
+    # Second stelle - should fail with 400
+    resp2 = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert resp2.status_code == 400

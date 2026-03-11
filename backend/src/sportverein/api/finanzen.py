@@ -246,9 +246,14 @@ async def list_bookings(
     if mitglied_id:
         filters["mitglied_id"] = mitglied_id
 
-    bookings, total = await svc.get_bookings(
-        filters=filters or None, page=page, page_size=page_size
-    )
+    try:
+        bookings, total = await svc.get_bookings(
+            filters=filters or None, page=page, page_size=page_size
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
     return BuchungListResponse(
         items=[_buchung_to_response(b) for b in bookings],
         total=total,
