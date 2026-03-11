@@ -186,6 +186,23 @@ No new bugs found.
 - Ruff: clean
 - ESLint: clean
 
+### Loop 15: Frontend Test Coverage
+
+#### New Frontend Test Files
+| File | Tests | Coverage |
+|------|-------|----------|
+| `login.test.tsx` | 6 | Login page: title, tabs, form fields, button, onboarding link |
+| `mitglieder.test.tsx` | 5 | Mitglieder page: title, button, loading, table |
+| `training.test.tsx` | 3 | Training page: title, tabs |
+| `kalender.test.tsx` | 4 | Kalender page: title, buttons, navigation |
+| `dokumente.test.tsx` | 4 | Dokumente page: title, tabs |
+
+#### Test Counts
+- Backend: 583 passed
+- Frontend: 62 passed (was 40, +22 new tests, 12 files now)
+
+No new bugs found.
+
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
 - [ ] Churn/engagement analytics
