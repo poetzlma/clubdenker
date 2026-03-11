@@ -289,8 +289,8 @@ class ZugferdService:
                         "tax": Decimal("0"),
                         "exemption_reason": pos.steuerbefreiungsgrund,
                     }
-                tax_groups[rate]["basis"] += Decimal(str(pos.gesamtpreis_netto or 0))
-                tax_groups[rate]["tax"] += Decimal(str(pos.gesamtpreis_steuer or 0))
+                tax_groups[rate]["basis"] = Decimal(str(tax_groups[rate]["basis"])) + Decimal(str(pos.gesamtpreis_netto or 0))
+                tax_groups[rate]["tax"] = Decimal(str(tax_groups[rate]["tax"])) + Decimal(str(pos.gesamtpreis_steuer or 0))
 
             for rate in sorted(tax_groups.keys()):
                 group = tax_groups[rate]

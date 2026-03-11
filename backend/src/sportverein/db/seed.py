@@ -7,6 +7,7 @@ import hashlib
 import random
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import Any
 
 import bcrypt as _bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -492,7 +493,7 @@ async def seed() -> None:
         await session.flush()
 
         # --- Rechnungen (invoices with positionen) ---
-        rechnungen_data = [
+        rechnungen_data: list[dict[str, Any]] = [
             {
                 "nummer": "2026-IB-0001",
                 "mitglied": mitglieder[0],
@@ -550,7 +551,7 @@ async def seed() -> None:
             },
         ]
         for rd in rechnungen_data:
-            m = rd.get("mitglied")
+            m = rd.get("mitglied")  # type: ignore[assignment,no-redef]
             brutto = Decimal("0")
             netto = Decimal("0")
             steuer = Decimal("0")

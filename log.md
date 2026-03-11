@@ -203,22 +203,40 @@ No new bugs found.
 
 No new bugs found.
 
-### Loop 16: Ehrenamt Seed Data, Dashboard & Training Tests
+### Loop 16-17: Features, mypy Cleanup, MCP & Engagement Tests
 
-#### Feature Implemented
+#### Features Implemented
 - [x] Ehrenamt seed data for 2026 (was missing, only had 2025 data)
+- [x] Churn/engagement analytics endpoint (GET /api/dashboard/engagement)
 
-#### New/Extended API Tests
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 14 | 34 mypy type errors across 6 files | Major | multiple |
+| 15 | chat.py reused `svc` variable with different types | Minor | `api/chat.py` |
+| 16 | tools_kommunikation.py imported nonexistent `async_session` | Critical | `mcp/tools_kommunikation.py` |
+| 17 | MahnungResponse.mitglied_id typed as non-nullable but model is nullable | Minor | `api/schemas.py` |
+| 18 | tools_beitraege.py dict type mismatches (int/Decimal in str dict) | Minor | `mcp/tools_beitraege.py` |
+
+#### New Test Files
+| File | Tests | Coverage |
+|------|-------|----------|
+| `tests/test_mcp/test_tools_kommunikation.py` | 28 | nachricht, newsletter, dokument, protokoll tools |
+| `tests/test_mcp/test_tools_eingangsrechnung.py` | 28 | XML parsing, status changes, listing, edge cases |
+
+#### Extended Tests
 | File | New Tests | Coverage |
 |------|-----------|----------|
-| `tests/test_api/test_dashboard.py` | +5 | Vorstand, Schatzmeister, Spartenleiter dashboards (with data + 404) |
-| `tests/test_api/test_training.py` | +25 (est.) | Training API CRUD, edge cases (agent in progress) |
+| `tests/test_api/test_dashboard.py` | +9 | Vorstand, Schatzmeister, Spartenleiter, Engagement |
+| `tests/test_api/test_training.py` | +22 | Training API CRUD, edge cases |
 
-#### Test Counts (so far)
-- Backend: 613 passed (was 583)
+#### Quality
+- mypy: 0 errors (was 34)
+- Backend: 673 passed (was 583, +90 new tests)
 - Frontend: 62 passed
+- Ruff: clean
 
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
-- [ ] Churn/engagement analytics
+- [x] Churn/engagement analytics
 - [x] Seed data for Ehrenamt

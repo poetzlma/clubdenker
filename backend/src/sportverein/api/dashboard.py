@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sportverein.api.schemas import (
     ActivityItem,
     DashboardStats,
+    EngagementAnalyticsResponse,
     RecentActivityResponse,
     SchatzmeisterDashboardResponse,
     SpartenleiterDashboardResponse,
@@ -65,6 +66,16 @@ async def get_recent_activity(
             )
         )
     return RecentActivityResponse(items=items)
+
+
+@router.get("/engagement", response_model=EngagementAnalyticsResponse)
+async def get_engagement_analytics(
+    _token: ApiToken = Depends(get_current_token),
+    session: AsyncSession = Depends(get_db_session),
+) -> EngagementAnalyticsResponse:
+    svc = DashboardService(session)
+    data = await svc.get_engagement_analytics()
+    return EngagementAnalyticsResponse(**data)
 
 
 @router.get("/vorstand", response_model=VorstandDashboardResponse)

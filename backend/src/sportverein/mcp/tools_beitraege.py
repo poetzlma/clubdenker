@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from sportverein.mcp.server import mcp
 from sportverein.mcp.session import get_mcp_session
@@ -656,7 +657,7 @@ async def rechnungen_auflisten(
     """List and filter invoices."""
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
-        filters = {}
+        filters: dict[str, Any] = {}
         if status:
             filters["status"] = status
         if mitglied_id:
@@ -829,7 +830,7 @@ async def kostenstellen_verwalten(
         if action == "create":
             if not name:
                 return {"error": "Name ist erforderlich."}
-            data = {"name": name}
+            data: dict[str, Any] = {"name": name}
             if beschreibung is not None:
                 data["beschreibung"] = beschreibung
             if abteilung_id is not None:
@@ -853,7 +854,7 @@ async def kostenstellen_verwalten(
         if action == "update":
             if kostenstelle_id is None:
                 return {"error": "kostenstelle_id ist erforderlich."}
-            data = {}
+            data = {}  # type: ignore[no-redef]
             if name is not None:
                 data["name"] = name
             if beschreibung is not None:

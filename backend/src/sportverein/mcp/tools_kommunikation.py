@@ -62,7 +62,7 @@ async def protokoll_anlegen(
 ) -> dict:
     from datetime import date as date_type
 
-    from sportverein.db.session import async_session
+    from sportverein.db.session import async_session_factory as async_session
     from sportverein.services.protokoll import ProtokollService
 
     effective_datum = datum or date_type.today().isoformat()

@@ -25,6 +25,7 @@ from sportverein.models.mitglied import (
     MitgliedAbteilung,
     MitgliedStatus,
 )
+from sportverein.models.training import Anwesenheit
 
 
 class DashboardService:
@@ -748,4 +749,159 @@ class DashboardService:
             "used": round(total_spent, 2),
             "committed": committed,
             "free": free,
+        }
+
+    # -----------------------------------------------------------------------
+    # Engagement Analytics
+    # -----------------------------------------------------------------------
+
+    async def get_engagement_analytics(self) -> dict[str, Any]:
+        """Churn and engagement analytics across all members."""
+        today = date.today()
+        twelve_months_ago = today - timedelta(days=365)
+        three_months_ago = today - timedelta(days=90)
+        sixty_days_ago = today - timedelta(days=60)
+
+        # Total active members
+        active_result = await self.session.execute(
+            select(func.count())
+            .select_from(Mitglied)
+            .where(Mitglied.status == MitgliedStatus.aktiv)
+        )
+        total_active = active_result.scalar_one()
+
+        # Members who left in the last 12 months (have austrittsdatum in range)
+        left_result = await self.session.execute(
+            select(func.count())
+            .select_from(Mitglied)
+            .where(
+                Mitglied.austrittsdatum.is_not(None),
+                Mitglied.austrittsdatum >= twelve_months_ago,
+                Mitglied.austrittsdatum <= today,
+            )
+        )
+        left_count = left_result.scalar_one()
+
+        # Churn rate: left / (active + left) to represent total membership base
+        total_base = total_active + left_count
+        churn_rate = round(left_count / total_base * 100, 2) if total_base > 0 else 0.0
+        retention_rate = round(100.0 - churn_rate, 2)
+
+        # At-risk members: active members who haven't attended training in 60+ days
+        # Find active members with at least one attendance record but none in last 60 days
+        members_with_recent = (
+            select(Anwesenheit.mitglied_id)
+            .where(
+                Anwesenheit.datum >= sixty_days_ago,
+                Anwesenheit.anwesend == True,  # noqa: E712
+            )
+            .distinct()
+            .correlate(None)
+        )
+
+        # Active members who have ever attended but not recently
+        members_ever_attended = (
+            select(Anwesenheit.mitglied_id)
+            .where(Anwesenheit.anwesend == True)  # noqa: E712
+            .distinct()
+            .correlate(None)
+        )
+
+        at_risk_result = await self.session.execute(
+            select(Mitglied.id, Mitglied.vorname, Mitglied.nachname)
+            .where(
+                Mitglied.status == MitgliedStatus.aktiv,
+                Mitglied.id.in_(members_ever_attended),
+                ~Mitglied.id.in_(members_with_recent),
+            )
+            .order_by(Mitglied.nachname, Mitglied.vorname)
+        )
+        at_risk_members = [
+            {"member_id": row[0], "name": f"{row[1]} {row[2]}"}
+            for row in at_risk_result.all()
+        ]
+
+        # Engagement score: average attendance rate across active members (last 3 months)
+        # For each active member with attendance records in the period, compute present/total
+        attendance_result = await self.session.execute(
+            select(
+                func.count().filter(Anwesenheit.anwesend == True),  # noqa: E712
+                func.count(),
+            )
+            .select_from(Anwesenheit)
+            .join(Mitglied, Mitglied.id == Anwesenheit.mitglied_id)
+            .where(
+                Anwesenheit.datum >= three_months_ago,
+                Mitglied.status == MitgliedStatus.aktiv,
+            )
+        )
+        att_row = attendance_result.one()
+        total_present = att_row[0]
+        total_records = att_row[1]
+        engagement_score = (
+            round(total_present / total_records * 100, 2) if total_records > 0 else 0.0
+        )
+
+        # Monthly churn: joined and left per month for last 12 months
+        monthly_churn: list[dict[str, Any]] = []
+        for i in range(11, -1, -1):
+            month_offset = today.month - i
+            year = today.year
+            while month_offset <= 0:
+                month_offset += 12
+                year -= 1
+            m = month_offset
+            month_label = f"{year}-{m:02d}"
+
+            # Start and end of the month
+            month_start = date(year, m, 1)
+            if m == 12:
+                month_end = date(year + 1, 1, 1) - timedelta(days=1)
+            else:
+                month_end = date(year, m + 1, 1) - timedelta(days=1)
+
+            joined_result = await self.session.execute(
+                select(func.count())
+                .select_from(Mitglied)
+                .where(
+                    Mitglied.eintrittsdatum >= month_start,
+                    Mitglied.eintrittsdatum <= month_end,
+                )
+            )
+            joined = joined_result.scalar_one()
+
+            left_month_result = await self.session.execute(
+                select(func.count())
+                .select_from(Mitglied)
+                .where(
+                    Mitglied.austrittsdatum.is_not(None),
+                    Mitglied.austrittsdatum >= month_start,
+                    Mitglied.austrittsdatum <= month_end,
+                )
+            )
+            left_month = left_month_result.scalar_one()
+
+            monthly_churn.append(
+                {"month": month_label, "joined": joined, "left": left_month}
+            )
+
+        # Average membership duration (active members only)
+        # Duration = today - eintrittsdatum for each active member
+        duration_result = await self.session.execute(
+            select(Mitglied.eintrittsdatum).where(Mitglied.status == MitgliedStatus.aktiv)
+        )
+        eintrittsdaten = [row[0] for row in duration_result.all()]
+        if eintrittsdaten:
+            total_days = sum((today - d).days for d in eintrittsdaten)
+            avg_duration_months = round(total_days / len(eintrittsdaten) / 30.44, 1)
+        else:
+            avg_duration_months = 0.0
+
+        return {
+            "churn_rate": churn_rate,
+            "retention_rate": retention_rate,
+            "at_risk_members": at_risk_members,
+            "engagement_score": engagement_score,
+            "monthly_churn": monthly_churn,
+            "average_membership_duration_months": avg_duration_months,
         }

@@ -232,6 +232,36 @@ class SchatzmeisterDashboardResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Engagement Analytics schemas
+# ---------------------------------------------------------------------------
+
+
+class AtRiskMember(BaseModel):
+    member_id: int
+    name: str
+
+
+class MonthlyChurnPoint(BaseModel):
+    month: str
+    joined: int
+    left: int
+
+
+class EngagementAnalyticsResponse(BaseModel):
+    churn_rate: float
+    retention_rate: float
+    at_risk_members: list[AtRiskMember]
+    engagement_score: float
+    monthly_churn: list[MonthlyChurnPoint]
+    average_membership_duration_months: float
+
+
+# ---------------------------------------------------------------------------
+# Spartenleiter Dashboard schemas
+# ---------------------------------------------------------------------------
+
+
 class SpartenleiterKPIs(BaseModel):
     member_count: int
     avg_attendance_pct: float
@@ -539,7 +569,7 @@ class KassenstandResponse(BaseModel):
 class MahnungResponse(BaseModel):
     id: int
     rechnungsnummer: str
-    mitglied_id: int
+    mitglied_id: int | None = None
     betrag: float
     beschreibung: str
     rechnungsdatum: date

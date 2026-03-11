@@ -103,14 +103,14 @@ async def chat(
 
     # --- Finanzen / Kassenstand ---
     if re.search(r"kassenstand|finanzen|kontostand|salden|bilanz", msg):
-        svc = FinanzenService(session)
-        balance = await svc.get_balance_by_sphere()
-        total = await svc.get_total_balance()
+        fin_svc = FinanzenService(session)
+        balance = await fin_svc.get_balance_by_sphere()
+        total_balance = await fin_svc.get_total_balance()
         parts = [f"- {sphere}: {amount} €" for sphere, amount in balance.items()]
-        text = "Kassenstand nach Sphäre:\n\n" + "\n".join(parts) + f"\n\nGesamt: {total} €"
+        text = "Kassenstand nach Sphäre:\n\n" + "\n".join(parts) + f"\n\nGesamt: {total_balance} €"
         return ChatResponse(
             response=text,
-            data=_decimal_to_str({"by_sphere": balance, "total": total}),
+            data=_decimal_to_str({"by_sphere": balance, "total": total_balance}),
             tool_used="FinanzenService.get_balance_by_sphere",
         )
 
@@ -122,8 +122,8 @@ async def chat(
         if year_match:
             year = int(year_match.group())
 
-        svc = BeitraegeService(session)
-        fees = await svc.calculate_all_fees(year)
+        beitrag_svc = BeitraegeService(session)
+        fees = await beitrag_svc.calculate_all_fees(year)
         if not fees:
             return ChatResponse(
                 response=f"Keine aktiven Mitglieder für die Beitragsberechnung {year} gefunden.",
