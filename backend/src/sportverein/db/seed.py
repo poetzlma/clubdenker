@@ -304,17 +304,29 @@ async def seed() -> None:
             kostenstellen.append(ks)
         await session.flush()
 
-        # --- Aufwandsentschädigungen ---
-        sample_members = random.sample(mitglieder[:20], 5)
-        for idx, m in enumerate(sample_members):
-            typ = AufwandTyp.uebungsleiter if idx % 2 == 0 else AufwandTyp.ehrenamt
+        # --- Aufwandsentschädigungen (2026) ---
+        ehrenamt_data = [
+            # Uebungsleiterpauschale: Freibetrag 3.000 EUR/Jahr
+            (mitglieder[0], Decimal("250.00"), date(2026, 1, 15), AufwandTyp.uebungsleiter,
+             "Uebungsleiterverguetung Fussball-Jugendtraining Januar 2026"),
+            (mitglieder[0], Decimal("250.00"), date(2026, 2, 15), AufwandTyp.uebungsleiter,
+             "Uebungsleiterverguetung Fussball-Jugendtraining Februar 2026"),
+            (mitglieder[3], Decimal("200.00"), date(2026, 1, 20), AufwandTyp.uebungsleiter,
+             "Uebungsleiterverguetung Schwimmkurs Winter 2026"),
+            # Ehrenamtspauschale: Freibetrag 840 EUR/Jahr
+            (mitglieder[5], Decimal("70.00"), date(2026, 1, 31), AufwandTyp.ehrenamt,
+             "Ehrenamtspauschale Kassenpruefer Januar 2026"),
+            (mitglieder[8], Decimal("50.00"), date(2026, 2, 28), AufwandTyp.ehrenamt,
+             "Ehrenamtspauschale Platzdienst Februar 2026"),
+        ]
+        for m, betrag, datum, typ, beschreibung in ehrenamt_data:
             session.add(
                 Aufwandsentschaedigung(
                     mitglied_id=m.id,
-                    betrag=Decimal(str(random.randint(100, 500))),
-                    datum=_random_date(2025, 2025),
+                    betrag=betrag,
+                    datum=datum,
                     typ=typ,
-                    beschreibung=f"Aufwandsentschaedigung {typ.value} fuer {m.vorname} {m.nachname}",
+                    beschreibung=beschreibung,
                 )
             )
         await session.flush()

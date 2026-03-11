@@ -203,7 +203,22 @@ No new bugs found.
 
 No new bugs found.
 
+### Loop 16: Ehrenamt Seed Data, Dashboard & Training Tests
+
+#### Feature Implemented
+- [x] Ehrenamt seed data for 2026 (was missing, only had 2025 data)
+
+#### New/Extended API Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_dashboard.py` | +5 | Vorstand, Schatzmeister, Spartenleiter dashboards (with data + 404) |
+| `tests/test_api/test_training.py` | +25 (est.) | Training API CRUD, edge cases (agent in progress) |
+
+#### Test Counts (so far)
+- Backend: 613 passed (was 583)
+- Frontend: 62 passed
+
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
 - [ ] Churn/engagement analytics
-- [ ] Seed data for Ehrenamt
+- [x] Seed data for Ehrenamt
