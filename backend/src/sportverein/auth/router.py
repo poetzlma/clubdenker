@@ -81,7 +81,10 @@ async def rotate_token(
     session: AsyncSession = Depends(get_db_session),
 ) -> TokenCreateResponse:
     auth = AuthService(session)
-    plain, record = await auth.rotate_token(token_id)
+    try:
+        plain, record = await auth.rotate_token(token_id, requesting_admin_id=_token.admin_user_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     await session.commit()
     return TokenCreateResponse(token=plain, id=record.id, name=record.name)
 
@@ -93,7 +96,10 @@ async def revoke_token(
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     auth = AuthService(session)
-    ok = await auth.revoke_token(token_id)
+    try:
+        ok = await auth.revoke_token(token_id, requesting_admin_id=_token.admin_user_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
     await session.commit()

@@ -58,6 +58,8 @@ def _udt(tag: str) -> str:
 
 def _fmt_date_102(d) -> str:
     """Format date as YYYYMMDD (format='102')."""
+    if d is None:
+        return ""
     return d.strftime("%Y%m%d")
 
 

@@ -96,10 +96,12 @@ class AuthService:
         await self.session.flush()
         return token
 
-    async def rotate_token(self, token_id: int) -> tuple[str, ApiToken]:
+    async def rotate_token(self, token_id: int, *, requesting_admin_id: int | None = None) -> tuple[str, ApiToken]:
         """Deactivate old token and create a new one with the same name."""
         result = await self.session.execute(select(ApiToken).where(ApiToken.id == token_id))
         old_token = result.scalar_one()
+        if requesting_admin_id is not None and old_token.admin_user_id != requesting_admin_id:
+            raise PermissionError("Zugriff verweigert: Token gehört einem anderen Benutzer.")
         old_token.is_active = False
         await self.session.flush()
 
@@ -108,12 +110,14 @@ class AuthService:
             name=old_token.name,
         )
 
-    async def revoke_token(self, token_id: int) -> bool:
+    async def revoke_token(self, token_id: int, *, requesting_admin_id: int | None = None) -> bool:
         """Set is_active = False on a token."""
         result = await self.session.execute(select(ApiToken).where(ApiToken.id == token_id))
         token = result.scalar_one_or_none()
         if token is None:
             return False
+        if requesting_admin_id is not None and token.admin_user_id != requesting_admin_id:
+            raise PermissionError("Zugriff verweigert: Token gehört einem anderen Benutzer.")
         token.is_active = False
         await self.session.flush()
         return True

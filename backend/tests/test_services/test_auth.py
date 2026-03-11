@@ -125,3 +125,38 @@ class TestTokenLifecycle:
         assert len(tokens) == 2
         names = {t.name for t in tokens}
         assert names == {"token-1", "token-2"}
+
+    async def test_rotate_token_other_admin_rejected(self, session):
+        """Bug #34 fix: rotating another admin's token must raise PermissionError."""
+        import pytest
+
+        admin_a = await _create_admin(session, email="admin_a@example.com")
+        admin_b = await _create_admin(session, email="admin_b@example.com")
+        svc = AuthService(session)
+
+        _, token_b = await svc.create_token(admin_b.id, "b-token")
+
+        with pytest.raises(PermissionError, match="anderen Benutzer"):
+            await svc.rotate_token(token_b.id, requesting_admin_id=admin_a.id)
+
+    async def test_revoke_token_other_admin_rejected(self, session):
+        """Bug #34 fix: revoking another admin's token must raise PermissionError."""
+        import pytest
+
+        admin_a = await _create_admin(session, email="admin_a2@example.com")
+        admin_b = await _create_admin(session, email="admin_b2@example.com")
+        svc = AuthService(session)
+
+        _, token_b = await svc.create_token(admin_b.id, "b-token-2")
+
+        with pytest.raises(PermissionError, match="anderen Benutzer"):
+            await svc.revoke_token(token_b.id, requesting_admin_id=admin_a.id)
+
+    async def test_rotate_own_token_succeeds(self, session):
+        """Owner can rotate their own token."""
+        admin = await _create_admin(session, email="owner@example.com")
+        svc = AuthService(session)
+
+        _, token = await svc.create_token(admin.id, "my-token")
+        new_plain, new_token = await svc.rotate_token(token.id, requesting_admin_id=admin.id)
+        assert new_token.name == "my-token"

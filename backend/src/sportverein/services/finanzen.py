@@ -277,11 +277,11 @@ class FinanzenService:
             # Handle Feb 29 leap year: use Feb 28 of the target year
             loeschdatum = date(rd.year + 10, rd.month, rd.day - 1)
 
-        # Auto-calculate skonto_betrag if skonto_prozent is set
+        # Auto-calculate skonto_betrag (the discount amount) if skonto_prozent is set
         skonto_betrag: Decimal | None = None
         if skonto_prozent is not None:
             skonto_betrag = (
-                summe_brutto * (Decimal("1") - skonto_prozent / Decimal("100"))
+                summe_brutto * skonto_prozent / Decimal("100")
             ).quantize(Decimal("0.01"))
 
         rechnung = Rechnung(

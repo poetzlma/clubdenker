@@ -639,6 +639,34 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 | 30 | VersandDialog invalid enum "email" | Major | 31 |
 | 31 | Rechnungsnummer crash: BeitraegeService parses FinanzenService format | Critical | 31 |
 | 32 | MCP test patch targeted wrong attribute name | Major | 31 |
+| 33 | skonto_betrag stored discounted total (98 EUR) instead of discount amount (2 EUR) | Major | 32 |
+| 34 | Auth privilege escalation: any admin can rotate/revoke another admin's tokens | Critical | 32 |
+| 35 | ZUGFeRD _fmt_date_102(None) crashes on nullable faelligkeitsdatum | Major | 32 |
+
+### Loop 32: Skonto Formula, Auth Privilege Escalation, ZUGFeRD Null Guard
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 33 | `skonto_betrag` stored `brutto * (1 - rate/100)` (discounted total, e.g. 98 EUR) instead of `brutto * rate/100` (discount amount, e.g. 2 EUR) -- wrong value displayed on invoices | Major | `services/finanzen.py:283` |
+| 34 | `rotate_token` and `revoke_token` had no owner check -- any authenticated admin could rotate/revoke another admin's tokens (privilege escalation) | Critical | `auth/service.py:99-119`, `auth/router.py:77-99` |
+| 35 | `_fmt_date_102(None)` in ZUGFeRD XML generation crashes with AttributeError when `faelligkeitsdatum` is None | Major | `services/zugferd.py:59` |
+
+#### Fix Details
+- Bug #33: Changed formula from `brutto * (1 - rate/100)` to `brutto * rate / 100`
+- Bug #34: Added `requesting_admin_id` parameter to `rotate_token`/`revoke_token`, router passes caller's admin_user_id, returns 403 on mismatch
+- Bug #35: Added None guard to `_fmt_date_102()`
+
+#### New Tests
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_services/test_finanzen.py` | +2 | skonto_betrag stores correct discount amount (3% and 2%) |
+| `tests/test_services/test_auth.py` | +3 | Cross-admin rotate/revoke rejected, own-token rotate succeeds |
+
+#### Test Counts
+- Backend: 971 passed (was 966, +5 new)
+- Frontend: 120 passed
+- Total: 1091
 
 ### Remaining (P3)
 - [ ] Member Self-Service Portal

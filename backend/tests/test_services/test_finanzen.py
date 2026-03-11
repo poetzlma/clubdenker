@@ -1194,3 +1194,44 @@ class TestOverpaymentValidation:
         )
         # 2034 is not a leap year, so loeschdatum should be Feb 28
         assert rechnung.loeschdatum == date(2034, 2, 28)
+
+
+class TestSkontoStorage:
+    """Tests for skonto_betrag stored on the invoice at creation time."""
+
+    async def test_skonto_betrag_stores_discount_amount(self, session):
+        """Bug #33 fix: skonto_betrag must be the discount amount, not the discounted total."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("1000.00"),
+            beschreibung="Skonto storage test",
+            faelligkeitsdatum=date(2024, 2, 1),
+            sphaere="ideell",
+            skonto_prozent=Decimal("3.00"),
+            skonto_frist_tage=10,
+        )
+        # 3% of 1000 = 30 EUR discount, NOT 970 EUR discounted total
+        assert rechnung.skonto_betrag == Decimal("30.00")
+
+    async def test_skonto_betrag_two_percent(self, session):
+        """Verify 2% skonto on 500 EUR = 10 EUR discount."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("500.00"),
+            beschreibung="Skonto 2% test",
+            faelligkeitsdatum=date(2024, 2, 1),
+            sphaere="ideell",
+            skonto_prozent=Decimal("2.00"),
+            skonto_frist_tage=14,
+        )
+        assert rechnung.skonto_betrag == Decimal("10.00")
