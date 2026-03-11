@@ -8,12 +8,12 @@ from decimal import Decimal
 
 import pytest
 
-pytestmark = pytest.mark.asyncio
-
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.mitglied import Mitglied, MitgliedStatus
 from sportverein.models.vereinsstammdaten import Vereinsstammdaten
 from sportverein.services.finanzen import FinanzenService
+
+pytestmark = pytest.mark.asyncio
 
 NS = "urn:iso:std:iso:20022:tech:xsd:pain.008.001.02"
 NS_MAP = {"ns": NS}

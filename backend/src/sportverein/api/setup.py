@@ -94,7 +94,7 @@ async def update_category(
     kwargs: dict = {}
     if body.jahresbeitrag is not None:
         kwargs["jahresbeitrag"] = Decimal(str(body.jahresbeitrag))
-    if body.beschreibung is not ...:
+    if body.beschreibung is not None:
         kwargs["beschreibung"] = body.beschreibung
     try:
         category = await svc.update_category(category_id, **kwargs)
@@ -202,7 +202,7 @@ async def update_department(
     kwargs: dict = {}
     if body.name is not None:
         kwargs["name"] = body.name
-    if body.beschreibung is not ...:
+    if body.beschreibung is not None:
         kwargs["beschreibung"] = body.beschreibung
     try:
         dept = await svc.update_department(department_id, **kwargs)

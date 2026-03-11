@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import pytest
 
-from sportverein.models.audit import AuditLog
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.finanzen import Zahlungsart
 from sportverein.models.mitglied import Abteilung, Mitglied, MitgliedAbteilung, MitgliedStatus

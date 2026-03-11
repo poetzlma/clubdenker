@@ -661,3 +661,48 @@ async def test_list_mandate_filter_aktiv(client, session: AsyncSession):
     resp2 = await client.get("/api/finanzen/mandate", params={"aktiv": False})
     assert resp2.status_code == 200
     assert resp2.json()["total"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Rechnungsvorlagen (invoice templates)
+# ---------------------------------------------------------------------------
+
+
+async def test_list_templates(client):
+    """GET /rechnungen/vorlagen returns all templates."""
+    resp = await client.get("/api/finanzen/rechnungen/vorlagen")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body, list)
+    assert len(body) == 8
+    ids = {t["id"] for t in body}
+    assert "quartalsbeitrag" in ids
+    assert "sponsoring" in ids
+
+
+async def test_get_template_by_id(client):
+    """GET /rechnungen/vorlagen/{id} returns single template."""
+    resp = await client.get("/api/finanzen/rechnungen/vorlagen/hallenmiete")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == "hallenmiete"
+    assert body["sphaere"] == "vermoegensverwaltung"
+    assert body["zahlungsziel_tage"] == 30
+    assert len(body["positionen"]) == 1
+    assert body["positionen"][0]["steuersatz"] == 19
+
+
+async def test_get_template_not_found(client):
+    """GET /rechnungen/vorlagen/{id} returns 404 for unknown template."""
+    resp = await client.get("/api/finanzen/rechnungen/vorlagen/unknown_template")
+    assert resp.status_code == 404
+    assert "nicht gefunden" in resp.json()["detail"]
+
+
+async def test_templates_require_auth(unauthed_client):
+    """Template endpoints require auth."""
+    resp = await unauthed_client.get("/api/finanzen/rechnungen/vorlagen")
+    assert resp.status_code in (401, 422)
+
+    resp2 = await unauthed_client.get("/api/finanzen/rechnungen/vorlagen/quartalsbeitrag")
+    assert resp2.status_code in (401, 422)
