@@ -16,5 +16,13 @@ dist/
 # Env
 .env
 
+# Claude Code
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# MCP local config
+.mcp.json
+.mcp copy.json
+
 # OS
 .DS_Store
