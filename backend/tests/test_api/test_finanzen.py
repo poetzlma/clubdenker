@@ -781,3 +781,102 @@ async def test_storniere_rechnung_without_body(client, session: AsyncSession):
     body = resp.json()
     assert body["betrag"] == -80.00
     assert body["rechnungstyp"] == "storno"
+
+
+# -- Ehrenamt (volunteer compensation) tests --------------------------------
+
+
+async def test_list_ehrenamt_empty(client):
+    """GET /ehrenamt returns empty list when no data exists."""
+    resp = await client.get("/api/finanzen/ehrenamt", params={"year": 2025})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+async def test_create_ehrenamt(client, session: AsyncSession):
+    """POST /ehrenamt creates a new volunteer compensation entry."""
+    member = await _create_member(session)
+    resp = await client.post(
+        "/api/finanzen/ehrenamt",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 500.0,
+            "datum": "2025-06-15",
+            "typ": "uebungsleiter",
+            "beschreibung": "Trainerstunden Juni",
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["mitglied_id"] == member.id
+    assert body["betrag"] == 500.0
+    assert body["typ"] == "uebungsleiter"
+    assert body["beschreibung"] == "Trainerstunden Juni"
+    assert body["id"] is not None
+
+
+async def test_get_freibetrag_summary(client, session: AsyncSession):
+    """GET /ehrenamt/freibetrag returns summary for a given year."""
+    resp = await client.get("/api/finanzen/ehrenamt/freibetrag", params={"year": 2025})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["year"] == 2025
+    assert isinstance(body["items"], list)
+
+
+# -- Versand (dispatch) tests -----------------------------------------------
+
+
+async def test_versende_rechnung(client, session: AsyncSession):
+    """POST /rechnungen/{id}/versenden records dispatch for a gestellt invoice."""
+    member = await _create_member(session)
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 120.00,
+            "beschreibung": "Versand test",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
+    rechnung_id = inv_resp.json()["id"]
+
+    # Stelle the invoice first
+    stelle_resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
+    assert stelle_resp.status_code == 200
+
+    # Now versenden
+    resp = await client.post(
+        f"/api/finanzen/rechnungen/{rechnung_id}/versenden",
+        json={"kanal": "email_pdf", "empfaenger": "max@example.de"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == rechnung_id
+    assert body["versand_kanal"] == "email_pdf"
+    assert body["versendet_an"] == "max@example.de"
+    assert body["versendet_am"] is not None
+
+
+async def test_versende_rechnung_not_gestellt(client, session: AsyncSession):
+    """POST /rechnungen/{id}/versenden fails for an invoice still in entwurf."""
+    member = await _create_member(session)
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 90.00,
+            "beschreibung": "Draft versand test",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
+    rechnung_id = inv_resp.json()["id"]
+
+    # Try to versenden without stellen first -- should fail
+    resp = await client.post(
+        f"/api/finanzen/rechnungen/{rechnung_id}/versenden",
+        json={"kanal": "email_pdf", "empfaenger": "max@example.de"},
+    )
+    assert resp.status_code == 400
