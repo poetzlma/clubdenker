@@ -119,16 +119,21 @@ async def mitglied_anlegen(
             parsed_kategorie = BeitragKategorie(beitragskategorie)
         except ValueError:
             return {"error": f"Ungültige Beitragskategorie: {beitragskategorie}. Erlaubt: {', '.join(k.value for k in BeitragKategorie)}"}
+        try:
+            parsed_geburtsdatum = date.fromisoformat(geburtsdatum)
+            parsed_eintrittsdatum = date.fromisoformat(eintrittsdatum) if eintrittsdatum else None
+        except ValueError:
+            return {"error": "Ungültiges Datum. Format: YYYY-MM-DD"}
         data = MitgliedCreate(
             vorname=vorname,
             nachname=nachname,
             email=email,
-            geburtsdatum=date.fromisoformat(geburtsdatum),
+            geburtsdatum=parsed_geburtsdatum,
             telefon=telefon,
             strasse=strasse,
             plz=plz,
             ort=ort,
-            eintrittsdatum=date.fromisoformat(eintrittsdatum) if eintrittsdatum else None,
+            eintrittsdatum=parsed_eintrittsdatum,
             status=parsed_status,
             beitragskategorie=parsed_kategorie,
             notizen=notizen,
@@ -165,7 +170,10 @@ async def mitglied_aktualisieren(
         if telefon is not None:
             update_fields["telefon"] = telefon
         if geburtsdatum is not None:
-            update_fields["geburtsdatum"] = date.fromisoformat(geburtsdatum)
+            try:
+                update_fields["geburtsdatum"] = date.fromisoformat(geburtsdatum)
+            except ValueError:
+                return {"error": "Ungültiges Geburtsdatum. Format: YYYY-MM-DD"}
         if strasse is not None:
             update_fields["strasse"] = strasse
         if plz is not None:
@@ -192,7 +200,10 @@ async def mitglied_kuendigen(
 ) -> dict:
     async with get_mcp_session() as session:
         svc = MitgliederService(session)
-        dt = date.fromisoformat(austrittsdatum) if austrittsdatum else None
+        try:
+            dt = date.fromisoformat(austrittsdatum) if austrittsdatum else None
+        except ValueError:
+            return {"error": "Ungültiges Austrittsdatum. Format: YYYY-MM-DD"}
         member = await svc.cancel_member(member_id, austrittsdatum=dt)
         await session.commit()
         return _mitglied_to_dict(member)

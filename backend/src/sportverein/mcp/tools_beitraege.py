@@ -22,6 +22,16 @@ from sportverein.services.rechnung_templates import RechnungTemplateService
 from sportverein.services.zugferd import ZugferdService
 
 
+def _parse_date(value: str | None, field_name: str = "Datum") -> date | None:
+    """Parse an ISO date string, returning None for None input. Raises ValueError on invalid format."""
+    if value is None:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise ValueError(f"Ungültiges {field_name}: {value}. Format: YYYY-MM-DD")
+
+
 @mcp.tool(description="Beitraege berechnen fuer ein Mitglied oder alle Mitglieder fuer ein Jahr.")
 async def beitraege_berechnen(
     billing_year: int,
@@ -78,12 +88,17 @@ async def rechnung_erstellen(
 ) -> dict:
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
+        try:
+            parsed_faellig = _parse_date(faelligkeitsdatum, "Fälligkeitsdatum")
+            parsed_rechnung = _parse_date(rechnungsdatum, "Rechnungsdatum")
+        except ValueError as exc:
+            return {"error": str(exc)}
         rechnung = await svc.create_invoice(
             mitglied_id=mitglied_id,
             betrag=Decimal(str(betrag)) if betrag is not None else None,
             beschreibung=beschreibung,
-            faelligkeitsdatum=date.fromisoformat(faelligkeitsdatum) if faelligkeitsdatum else None,
-            rechnungsdatum=date.fromisoformat(rechnungsdatum) if rechnungsdatum else None,
+            faelligkeitsdatum=parsed_faellig,
+            rechnungsdatum=parsed_rechnung,
             rechnungstyp=rechnungstyp,
             empfaenger_typ=empfaenger_typ,
             empfaenger_name=empfaenger_name,
@@ -248,9 +263,13 @@ async def buchung_anlegen(
 ) -> dict:
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
+        try:
+            parsed_buchungsdatum = _parse_date(buchungsdatum, "Buchungsdatum")
+        except ValueError as exc:
+            return {"error": str(exc)}
         buchung = await svc.create_booking(
             {
-                "buchungsdatum": date.fromisoformat(buchungsdatum),
+                "buchungsdatum": parsed_buchungsdatum,
                 "betrag": Decimal(str(betrag)),
                 "beschreibung": beschreibung,
                 "konto": konto,
@@ -311,11 +330,15 @@ async def aufwandsentschaedigung(
     async with get_mcp_session() as session:
         svc = EhrenamtService(session)
         if betrag is not None and typ is not None and beschreibung is not None:
+            try:
+                parsed_datum = _parse_date(datum, "Datum") or date.today()
+            except ValueError as exc:
+                return {"error": str(exc)}
             entry = await svc.create_compensation(
                 {
                     "mitglied_id": member_id,
                     "betrag": Decimal(str(betrag)),
-                    "datum": date.fromisoformat(datum) if datum else date.today(),
+                    "datum": parsed_datum,
                     "typ": typ,
                     "beschreibung": beschreibung,
                 }
@@ -723,17 +746,21 @@ async def sepa_mandate_verwalten(
                 return {
                     "error": "mitglied_id, iban, kontoinhaber und mandatsreferenz sind erforderlich."
                 }
+            try:
+                parsed_unterschrift = _parse_date(unterschriftsdatum, "Unterschriftsdatum") or date.today()
+                parsed_gueltig_ab = _parse_date(gueltig_ab, "Gültig ab") or date.today()
+                parsed_gueltig_bis = _parse_date(gueltig_bis, "Gültig bis")
+            except ValueError as exc:
+                return {"error": str(exc)}
             data = {
                 "mitglied_id": mitglied_id,
                 "iban": iban,
                 "bic": bic,
                 "kontoinhaber": kontoinhaber,
                 "mandatsreferenz": mandatsreferenz,
-                "unterschriftsdatum": date.fromisoformat(unterschriftsdatum)
-                if unterschriftsdatum
-                else date.today(),
-                "gueltig_ab": date.fromisoformat(gueltig_ab) if gueltig_ab else date.today(),
-                "gueltig_bis": date.fromisoformat(gueltig_bis) if gueltig_bis else None,
+                "unterschriftsdatum": parsed_unterschrift,
+                "gueltig_ab": parsed_gueltig_ab,
+                "gueltig_bis": parsed_gueltig_bis,
             }
             try:
                 mandat = await svc.create_mandat(data)
@@ -761,12 +788,15 @@ async def sepa_mandate_verwalten(
                 data["kontoinhaber"] = kontoinhaber
             if mandatsreferenz is not None:
                 data["mandatsreferenz"] = mandatsreferenz
-            if unterschriftsdatum is not None:
-                data["unterschriftsdatum"] = date.fromisoformat(unterschriftsdatum)
-            if gueltig_ab is not None:
-                data["gueltig_ab"] = date.fromisoformat(gueltig_ab)
-            if gueltig_bis is not None:
-                data["gueltig_bis"] = date.fromisoformat(gueltig_bis)
+            try:
+                if unterschriftsdatum is not None:
+                    data["unterschriftsdatum"] = _parse_date(unterschriftsdatum, "Unterschriftsdatum")
+                if gueltig_ab is not None:
+                    data["gueltig_ab"] = _parse_date(gueltig_ab, "Gültig ab")
+                if gueltig_bis is not None:
+                    data["gueltig_bis"] = _parse_date(gueltig_bis, "Gültig bis")
+            except ValueError as exc:
+                return {"error": str(exc)}
             try:
                 mandat = await svc.update_mandat(mandat_id, data)
             except ValueError as exc:

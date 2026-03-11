@@ -787,3 +787,22 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 - Frontend: 120 passed
 - Total: 1101
 - Ruff: clean
+
+### Loop 38: Systematic Date Parsing Guards Across All MCP Tools
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 58 | `tools_beitraege.py`: 10 unguarded `date.fromisoformat()` calls across rechnung_erstellen, buchung_anlegen, aufwandsentschaedigung, sepa_mandate_verwalten (create + update) | Medium | `mcp/tools_beitraege.py` |
+| 59 | `tools_mitglieder.py`: 4 unguarded `date.fromisoformat()` calls in mitglied_anlegen, mitglied_aktualisieren, mitglied_kuendigen | Medium | `mcp/tools_mitglieder.py` |
+
+#### Fix Details
+- Added `_parse_date()` helper in tools_beitraege.py for reusable date parsing with descriptive error messages
+- Wrapped all 10 date parsing calls in tools_beitraege.py with try/except returning structured error dicts
+- Wrapped all 4 date parsing calls in tools_mitglieder.py with try/except
+
+#### Test Counts
+- Backend: 981 passed
+- Frontend: 120 passed
+- Total: 1101
+- Ruff: clean
