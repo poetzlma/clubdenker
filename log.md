@@ -161,6 +161,31 @@ No new bugs found.
 - TSC: clean
 - Ruff: clean
 
+### Loop 14: Test Coverage Expansion & Bug Fix
+
+#### Bug Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 13 | `calculate_member_fee()` uses `scalar_one()` -- crashes with 500 on invalid member ID | Major | `services/beitraege.py:144` |
+
+#### New Test Files Created
+| File | Tests | Coverage |
+|------|-------|----------|
+| `tests/test_api/test_chat.py` | 16 | Chat endpoint: fallback, stats, search, finance, beitrag queries |
+| `tests/test_services/test_protokoll.py` | 21 | ProtokollService: list, create, get, update, delete, filters, pagination |
+
+#### Existing Test Files Extended
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_api/test_finanzen.py` | +17 | Vereinsstammdaten, invoice delete, skonto, EÜR, SEPA mandate CRUD |
+| `tests/test_api/test_mitglieder.py` | +11 | DSGVO: data export, anonymization, consent, 404 handling |
+
+#### Test Counts
+- Backend: 583 passed (was 517, +66 new tests)
+- Frontend: 40 passed (7 files)
+- Ruff: clean
+- ESLint: clean
+
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
 - [ ] Churn/engagement analytics

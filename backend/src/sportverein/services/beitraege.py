@@ -141,7 +141,9 @@ class BeitraegeService:
     async def calculate_member_fee(self, member_id: int, billing_year: int) -> dict:
         """Calculate fee for a single member for a given year."""
         result = await self.session.execute(select(Mitglied).where(Mitglied.id == member_id))
-        member = result.scalar_one()
+        member = result.scalar_one_or_none()
+        if member is None:
+            raise ValueError(f"Mitglied {member_id} nicht gefunden")
 
         jahresbeitrag = await self.get_category_rate(member.beitragskategorie)
         prorata = self.calculate_prorata(jahresbeitrag, member.eintrittsdatum, billing_year)
