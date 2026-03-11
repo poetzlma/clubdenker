@@ -746,3 +746,25 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 - Frontend: 120 passed
 - Total: 1091
 - Ruff: clean
+
+### Loop 36: Seed Data Collision, Protokoll Validation, Datenschutz Timezone
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 54 | Seed script generates duplicate attendance dates when target weekday is ahead of ref_date -- IntegrityError crash | Major | `db/seed.py:456` |
+| 55 | `create_protokoll` accepts any string as datum -- non-ISO dates corrupt sort order | Medium | `services/protokoll.py:60` |
+| 56 | `delete_member_data` uses naive `datetime.now()` for geloescht_am -- incompatible with timezone-aware comparisons | Minor | `services/datenschutz.py:219` |
+| 57 | `dashboard_spartenleiter` MCP tool abandons dirty session on ValueError | Minor | `mcp/tools_dashboard.py:111-112` |
+
+#### Fix Details
+- Bug #54: Always go backwards when adjusting to target weekday (if diff > 0, subtract 7)
+- Bug #55: Added date.fromisoformat() validation in create_protokoll service
+- Bug #56: Changed datetime.now() to datetime.now(tz=timezone.utc)
+- Bug #57: Added session.rollback() before returning error dict
+
+#### Test Counts
+- Backend: 971 passed
+- Frontend: 120 passed
+- Total: 1091
+- Ruff: clean

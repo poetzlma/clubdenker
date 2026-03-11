@@ -451,9 +451,11 @@ async def seed() -> None:
                 # Calculate the date for this training in this past week
                 days_back = week_offset * 7
                 ref_date = today - timedelta(days=days_back)
-                # Adjust to correct weekday
+                # Adjust to correct weekday (always go backwards to avoid collisions)
                 current_day = ref_date.weekday()
                 diff = target_day - current_day
+                if diff > 0:
+                    diff -= 7
                 training_date = ref_date + timedelta(days=diff)
                 # Only use dates in the past
                 if training_date >= today:

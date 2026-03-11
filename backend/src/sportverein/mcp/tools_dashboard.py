@@ -109,6 +109,7 @@ async def dashboard_spartenleiter(abteilung: str) -> dict:
         try:
             data = await svc.get_spartenleiter_dashboard(abteilung)
         except ValueError as exc:
+            await session.rollback()
             return {"error": str(exc)}
         await session.commit()
 

@@ -65,6 +65,13 @@ class ProtokollService:
         beschluesse: str | None = None,
     ) -> Protokoll:
         """Create a new protocol."""
+        from datetime import date as date_type
+
+        # Validate datum is a valid ISO date to ensure correct sort order
+        try:
+            date_type.fromisoformat(datum)
+        except ValueError:
+            raise ValueError(f"Ungültiges Datum: {datum}. Format: YYYY-MM-DD")
         protokoll = Protokoll(
             titel=titel,
             datum=datum,

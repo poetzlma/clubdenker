@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -216,7 +216,7 @@ class DatenschutzService:
         member.dsgvo_einwilligung = False
         member.einwilligung_datum = None
         member.status = MitgliedStatus.gekuendigt
-        member.geloescht_am = datetime.now()
+        member.geloescht_am = datetime.now(tz=timezone.utc)
 
         # Log the deletion in audit trail
         from sportverein.services.audit import AuditService
