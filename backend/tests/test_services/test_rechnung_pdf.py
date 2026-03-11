@@ -230,6 +230,261 @@ class TestRechnungPdfGeneration:
         assert pdf_bytes[:5] == b"%PDF-"
 
 
+class TestRechnungPdfEdgeCases:
+    """Edge case tests for PDF generation."""
+
+    async def test_pdf_with_very_long_description(self, session):
+        """Test PDF generation with a very long beschreibung that may wrap."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        long_desc = (
+            "Dies ist eine sehr ausfuehrliche Rechnungsbeschreibung, die ueber "
+            "mehrere Zeilen gehen sollte und verschiedene Details zur erbrachten "
+            "Leistung enthaelt. " * 10
+        )
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung=long_desc,
+            rechnungstyp="sonstige",
+            sphaere="ideell",
+            positionen=[
+                {
+                    "beschreibung": "Position mit extrem langem Beschreibungstext der "
+                    "ueber die normale Spaltenbreite hinausgeht und "
+                    "umgebrochen werden muss damit alles passt " * 3,
+                    "menge": 1,
+                    "einheit": "x",
+                    "einzelpreis_netto": "99.99",
+                    "steuersatz": "0",
+                },
+            ],
+        )
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+
+    async def test_pdf_with_many_positionen(self, session):
+        """Test PDF with many line items (potential page overflow)."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        positionen = [
+            {
+                "beschreibung": f"Position Nr. {i} - Testleistung",
+                "menge": i,
+                "einheit": "Stk",
+                "einzelpreis_netto": f"{10.00 + i:.2f}",
+                "steuersatz": "19" if i % 2 == 0 else "0",
+            }
+            for i in range(1, 31)
+        ]
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Rechnung mit 30 Positionen",
+            rechnungstyp="sonstige",
+            sphaere="wirtschaftlich",
+            positionen=positionen,
+        )
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+        # With 30 line items this should produce a multi-page PDF
+        assert len(pdf_bytes) > 1000
+
+    async def test_pdf_with_no_positionen(self, session):
+        """Test PDF generation with betrag only (empty positionen list)."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("42.50"),
+            beschreibung="Einfache Rechnung",
+        )
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+
+    async def test_pdf_with_zero_amount(self, session):
+        """Test PDF with a zero-amount position."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Nullrechnung",
+            rechnungstyp="sonstige",
+            sphaere="ideell",
+            positionen=[
+                {
+                    "beschreibung": "Kostenlose Leistung",
+                    "menge": 1,
+                    "einheit": "x",
+                    "einzelpreis_netto": "0.00",
+                    "steuersatz": "0",
+                },
+            ],
+        )
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+
+    async def test_pdf_with_fractional_quantities(self, session):
+        """Test PDF with non-integer quantities (e.g. 1.5 hours)."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Stundenabrechnung",
+            rechnungstyp="sonstige",
+            sphaere="wirtschaftlich",
+            positionen=[
+                {
+                    "beschreibung": "Trainerstunden",
+                    "menge": 1.5,
+                    "einheit": "h",
+                    "einzelpreis_netto": "45.00",
+                    "steuersatz": "19",
+                },
+                {
+                    "beschreibung": "Materialkosten",
+                    "menge": 0.25,
+                    "einheit": "x",
+                    "einzelpreis_netto": "120.00",
+                    "steuersatz": "19",
+                },
+            ],
+        )
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+
+    async def test_pdf_without_stammdaten_fallback(self, session):
+        """Test PDF uses defaults when no Vereinsstammdaten exist."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("25.00"),
+            beschreibung="Rechnung ohne Stammdaten",
+        )
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+
+    async def test_pdf_storno_with_multiple_positionen(self, session):
+        """Test storno PDF with multiple line items."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        original = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Original mit mehreren Positionen",
+            rechnungstyp="sonstige",
+            sphaere="wirtschaftlich",
+            positionen=[
+                {
+                    "beschreibung": "Position A",
+                    "menge": 2,
+                    "einheit": "Stk",
+                    "einzelpreis_netto": "50.00",
+                    "steuersatz": "19",
+                },
+                {
+                    "beschreibung": "Position B",
+                    "menge": 1,
+                    "einheit": "h",
+                    "einzelpreis_netto": "80.00",
+                    "steuersatz": "7",
+                },
+            ],
+        )
+        await svc.stelle_rechnung(original.id)
+        storno = await svc.storniere_rechnung(original.id, grund="Doppelte Rechnung")
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, storno.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+
+    async def test_pdf_special_characters_in_description(self, session):
+        """Test PDF handles special characters and umlauts correctly."""
+        await _create_stammdaten(session)
+        member = _make_member(
+            vorname="Hans-Juergen",
+            nachname="Mueller-Luedenscheidt",
+        )
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Gebuehr fuer Aerobic-Kurs & Sauna (50% Ermaessigung)",
+            rechnungstyp="sonstige",
+            sphaere="ideell",
+            positionen=[
+                {
+                    "beschreibung": "Aerobic-Kurs inkl. Geraete <Premium>",
+                    "menge": 1,
+                    "einheit": "Kurs",
+                    "einzelpreis_netto": "75.00",
+                    "steuersatz": "0",
+                },
+            ],
+        )
+
+        pdf_svc = RechnungPdfService()
+        pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung.id)
+
+        assert len(pdf_bytes) > 0
+        assert pdf_bytes[:5] == b"%PDF-"
+
+
 class TestRechnungPdfApiEndpoint:
     async def test_pdf_endpoint_returns_pdf(self, client, session):
         """Test that the API endpoint returns PDF content-type."""

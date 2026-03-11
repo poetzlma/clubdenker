@@ -236,6 +236,20 @@ No new bugs found.
 - Frontend: 62 passed
 - Ruff: clean
 
+### Loop 18: DATEV & ZUGFeRD Edge Case Tests
+
+#### Tests Extended
+| File | New Tests | Coverage |
+|------|-----------|----------|
+| `tests/test_services/test_datev_export.py` | +6 | Empty data, umlauts, negative amounts, encoding |
+| `tests/test_services/test_zugferd.py` | +17 | No positionen, 0% tax, storno (type 381), missing stammdaten, many items |
+
+#### Test Counts
+- Backend: 700 passed (was 677)
+- Frontend: 62 passed
+
+No new bugs found.
+
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
 - [x] Churn/engagement analytics

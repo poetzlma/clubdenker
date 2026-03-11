@@ -481,6 +481,236 @@ class TestZugferdXmlGeneration:
             await zugferd_svc.generate_zugferd_xml(session, 99999)
 
 
+class TestZugferdEdgeCases:
+    """Edge case tests for ZUGFeRD XML generation."""
+
+    async def test_invoice_without_positionen(self, session):
+        """Invoice created with betrag only (no positionen) should still produce valid XML."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("75.00"),
+            beschreibung="Einfache Rechnung ohne Positionen",
+        )
+
+        zugferd_svc = ZugferdService()
+        xml_bytes = await zugferd_svc.generate_zugferd_xml(session, rechnung.id)
+
+        root = _parse_xml(xml_bytes)
+        assert root.tag == f"{{{_NS['rsm']}}}CrossIndustryInvoice"
+
+        txn = root.find("rsm:SupplyChainTradeTransaction", _NS)
+        # No line items expected
+        line_items = txn.findall("ram:IncludedSupplyChainTradeLineItem", _NS)
+        assert len(line_items) == 0
+
+        # Should still have a tax summary (fallback exempt entry)
+        settlement = txn.find("ram:ApplicableHeaderTradeSettlement", _NS)
+        tax_els = settlement.findall("ram:ApplicableTradeTax", _NS)
+        assert len(tax_els) == 1
+        assert tax_els[0].find("ram:CategoryCode", _NS).text == "E"
+        assert tax_els[0].find("ram:RateApplicablePercent", _NS).text == "0.00"
+
+        # Grand total should equal the betrag
+        summation = settlement.find(
+            "ram:SpecifiedTradeSettlementHeaderMonetarySummation", _NS
+        )
+        assert summation.find("ram:GrandTotalAmount", _NS).text == "75.00"
+
+    async def test_invoice_with_zero_percent_tax_no_exemption_reason(self, session):
+        """0% tax without steuerbefreiungsgrund should not emit ExemptionReason."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Beitrag ohne Befreiungsgrund",
+            rechnungstyp="mitgliedsbeitrag",
+            sphaere="ideell",
+            positionen=[
+                {
+                    "beschreibung": "Beitrag",
+                    "menge": 1,
+                    "einheit": "x",
+                    "einzelpreis_netto": "60.00",
+                    "steuersatz": "0",
+                    # No steuerbefreiungsgrund
+                },
+            ],
+        )
+
+        zugferd_svc = ZugferdService()
+        xml_bytes = await zugferd_svc.generate_zugferd_xml(session, rechnung.id)
+        root = _parse_xml(xml_bytes)
+
+        settlement = root.find(
+            "rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement", _NS
+        )
+        tax_el = settlement.find("ram:ApplicableTradeTax", _NS)
+        assert tax_el.find("ram:CategoryCode", _NS).text == "E"
+        # No ExemptionReason element when not provided
+        assert tax_el.find("ram:ExemptionReason", _NS) is None
+
+    async def test_storno_invoice_has_negative_amounts(self, session):
+        """Storno invoice XML should have TypeCode 381 and correct amounts."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        original = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Original Rechnung",
+            rechnungstyp="sonstige",
+            sphaere="wirtschaftlich",
+            positionen=[
+                {
+                    "beschreibung": "Leistung",
+                    "menge": 3,
+                    "einheit": "Stk",
+                    "einzelpreis_netto": "20.00",
+                    "steuersatz": "19",
+                },
+            ],
+        )
+        await svc.stelle_rechnung(original.id)
+        storno = await svc.storniere_rechnung(original.id, grund="Fehler")
+
+        zugferd_svc = ZugferdService()
+        xml_bytes = await zugferd_svc.generate_zugferd_xml(session, storno.id)
+        root = _parse_xml(xml_bytes)
+
+        # TypeCode 381 for credit note
+        type_code = root.find("rsm:ExchangedDocument/ram:TypeCode", _NS)
+        assert type_code.text == "381"
+
+        # Verify XML is well-formed
+        assert root.tag == f"{{{_NS['rsm']}}}CrossIndustryInvoice"
+
+    async def test_missing_stammdaten_uses_defaults(self, session):
+        """Invoice without Vereinsstammdaten should use fallback seller name."""
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("30.00"),
+            beschreibung="Ohne Stammdaten",
+        )
+
+        zugferd_svc = ZugferdService()
+        xml_bytes = await zugferd_svc.generate_zugferd_xml(session, rechnung.id)
+        root = _parse_xml(xml_bytes)
+
+        # Seller should use default name
+        seller_name = root.find(
+            "rsm:SupplyChainTradeTransaction/"
+            "ram:ApplicableHeaderTradeAgreement/"
+            "ram:SellerTradeParty/ram:Name",
+            _NS,
+        )
+        assert seller_name.text == "Sportverein e.V."
+
+        # No tax registration elements
+        seller = root.find(
+            "rsm:SupplyChainTradeTransaction/"
+            "ram:ApplicableHeaderTradeAgreement/"
+            "ram:SellerTradeParty",
+            _NS,
+        )
+        tax_regs = seller.findall("ram:SpecifiedTaxRegistration", _NS)
+        assert len(tax_regs) == 0
+
+        # No SEPA payment means (no IBAN)
+        settlement = root.find(
+            "rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement", _NS
+        )
+        means = settlement.find("ram:SpecifiedTradeSettlementPaymentMeans", _NS)
+        assert means is None
+
+    async def test_reduced_tax_rate_7_percent(self, session):
+        """7% reduced tax rate should produce CategoryCode S."""
+        await _create_stammdaten(session)
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            beschreibung="Ermaessigter Satz",
+            rechnungstyp="sonstige",
+            sphaere="zweckbetrieb",
+            positionen=[
+                {
+                    "beschreibung": "Sportveranstaltung",
+                    "menge": 1,
+                    "einheit": "x",
+                    "einzelpreis_netto": "200.00",
+                    "steuersatz": "7",
+                },
+            ],
+        )
+
+        zugferd_svc = ZugferdService()
+        xml_bytes = await zugferd_svc.generate_zugferd_xml(session, rechnung.id)
+        root = _parse_xml(xml_bytes)
+
+        settlement = root.find(
+            "rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement", _NS
+        )
+        tax_el = settlement.find("ram:ApplicableTradeTax", _NS)
+        assert tax_el.find("ram:CategoryCode", _NS).text == "S"
+        assert tax_el.find("ram:RateApplicablePercent", _NS).text == "7.00"
+        assert tax_el.find("ram:CalculatedAmount", _NS).text == "14.00"
+        assert tax_el.find("ram:BasisAmount", _NS).text == "200.00"
+
+        summation = settlement.find(
+            "ram:SpecifiedTradeSettlementHeaderMonetarySummation", _NS
+        )
+        assert summation.find("ram:GrandTotalAmount", _NS).text == "214.00"
+        assert summation.find("ram:TaxTotalAmount", _NS).text == "14.00"
+
+    async def test_buyer_without_address_fields(self, session):
+        """Buyer with no street/plz/ort should still produce valid XML."""
+        await _create_stammdaten(session)
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            empfaenger_name="Externe Firma",
+            empfaenger_typ="extern",
+            betrag=Decimal("100.00"),
+            beschreibung="Externe Rechnung",
+        )
+
+        zugferd_svc = ZugferdService()
+        xml_bytes = await zugferd_svc.generate_zugferd_xml(session, rechnung.id)
+        root = _parse_xml(xml_bytes)
+
+        buyer = root.find(
+            "rsm:SupplyChainTradeTransaction/"
+            "ram:ApplicableHeaderTradeAgreement/"
+            "ram:BuyerTradeParty",
+            _NS,
+        )
+        assert buyer.find("ram:Name", _NS).text == "Externe Firma"
+
+        # Address should still have CountryID DE at minimum
+        addr = buyer.find("ram:PostalTradeAddress", _NS)
+        assert addr.find("ram:CountryID", _NS).text == "DE"
+
+
 class TestZugferdApiEndpoint:
     async def test_xml_endpoint_returns_xml(self, client, session):
         """Test that the API endpoint returns XML content-type."""
