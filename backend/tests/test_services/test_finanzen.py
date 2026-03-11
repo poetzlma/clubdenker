@@ -8,10 +8,8 @@ import pytest
 
 from sportverein.models.beitrag import SepaMandat
 from sportverein.models.finanzen import (
-    Kostenstelle,
     RechnungStatus,
     Sphare,
-    VersandKanal,
     Zahlungsart,
 )
 from sportverein.models.mitglied import Mitglied, MitgliedStatus

@@ -265,6 +265,26 @@ No new bugs found.
 
 No new bugs found.
 
+### Loop 20: Security Tests & SEPA XML Validation
+
+#### New Test Files
+| File | Tests | Coverage |
+|------|-------|----------|
+| `tests/test_api/test_security.py` | 64 | Auth edge cases, XSS, SQL injection, input validation, IDOR, path traversal |
+| (in test_finanzen.py) | +39 | SEPA XML: pain.008 structure, NbOfTxs, CtrlSum, mandates, BIC, umlauts |
+
+#### Security Findings
+- No XSS vulnerabilities found (Pydantic + FastAPI properly escape/validate)
+- No SQL injection vulnerabilities (SQLAlchemy parameterized queries)
+- Auth properly rejects: missing token, empty token, malformed bearer, revoked tokens
+- SEPA XML handles missing mandates gracefully (UNKNOWN fallback)
+
+#### Test Counts
+- Backend: 853 passed (was 750, +103 new)
+- Frontend: 62 passed
+- Ruff: clean
+- mypy: clean
+
 ### Remaining (P3)
 - [ ] Member Self-Service Portal
 - [x] Churn/engagement analytics
