@@ -98,9 +98,7 @@ class AuthService:
 
     async def rotate_token(self, token_id: int) -> tuple[str, ApiToken]:
         """Deactivate old token and create a new one with the same name."""
-        result = await self.session.execute(
-            select(ApiToken).where(ApiToken.id == token_id)
-        )
+        result = await self.session.execute(select(ApiToken).where(ApiToken.id == token_id))
         old_token = result.scalar_one()
         old_token.is_active = False
         await self.session.flush()
@@ -112,9 +110,7 @@ class AuthService:
 
     async def revoke_token(self, token_id: int) -> bool:
         """Set is_active = False on a token."""
-        result = await self.session.execute(
-            select(ApiToken).where(ApiToken.id == token_id)
-        )
+        result = await self.session.execute(select(ApiToken).where(ApiToken.id == token_id))
         token = result.scalar_one_or_none()
         if token is None:
             return False

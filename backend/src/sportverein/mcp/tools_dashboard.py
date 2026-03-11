@@ -28,9 +28,7 @@ async def dashboard_vorstand() -> dict:
             "--- Mitgliederentwicklung (letzte 3 Monate) ---",
         ]
         for point in data["member_trend"][-3:]:
-            dept_str = ", ".join(
-                f"{k}: {v}" for k, v in point["by_department"].items()
-            )
+            dept_str = ", ".join(f"{k}: {v}" for k, v in point["by_department"].items())
             lines.append(f"  {point['month']}: {point['total']} gesamt ({dept_str})")
 
         lines.append("")
@@ -44,7 +42,9 @@ async def dashboard_vorstand() -> dict:
             lines.append("")
             lines.append("--- Offene Aktionen ---")
             for action in data["open_actions"]:
-                lines.append(f"  [{action['severity'].upper()}] {action['title']}: {action['detail']}")
+                lines.append(
+                    f"  [{action['severity'].upper()}] {action['title']}: {action['detail']}"
+                )
 
         return {"summary": "\n".join(lines), "data": data}
 

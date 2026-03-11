@@ -86,9 +86,7 @@ async def vereins_setup_abteilungen(
         return {"error": f"Unbekannte Aktion: {action}"}
 
 
-@mcp.tool(
-    description="Beitragskategorien und Jahresbeiträge verwalten"
-)
+@mcp.tool(description="Beitragskategorien und Jahresbeiträge verwalten")
 async def vereins_setup_beitragskategorien(
     action: str = "list",
     category_id: int | None = None,

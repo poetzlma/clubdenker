@@ -1071,7 +1071,9 @@ class ProtokollCreate(BaseModel):
     titel: str
     datum: str
     inhalt: str
-    typ: Literal["vorstandssitzung", "mitgliederversammlung", "abteilungssitzung", "sonstige"] = "sonstige"
+    typ: Literal["vorstandssitzung", "mitgliederversammlung", "abteilungssitzung", "sonstige"] = (
+        "sonstige"
+    )
     erstellt_von: str | None = None
     teilnehmer: str | None = None
     beschluesse: str | None = None

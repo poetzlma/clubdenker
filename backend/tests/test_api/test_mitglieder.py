@@ -44,11 +44,14 @@ async def test_list_members_empty(client):
 async def test_list_members_pagination(client):
     # Create 3 members
     for i in range(3):
-        await client.post("/api/mitglieder", json={
-            **MEMBER_DATA,
-            "email": f"member{i}@example.de",
-            "vorname": f"Member{i}",
-        })
+        await client.post(
+            "/api/mitglieder",
+            json={
+                **MEMBER_DATA,
+                "email": f"member{i}@example.de",
+                "vorname": f"Member{i}",
+            },
+        )
 
     resp = await client.get("/api/mitglieder", params={"page": 1, "page_size": 2})
     assert resp.status_code == 200
@@ -64,8 +67,12 @@ async def test_list_members_pagination(client):
 
 
 async def test_list_members_filter_by_name(client):
-    await client.post("/api/mitglieder", json={**MEMBER_DATA, "email": "search1@example.de", "vorname": "Alice"})
-    await client.post("/api/mitglieder", json={**MEMBER_DATA, "email": "search2@example.de", "vorname": "Bob"})
+    await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "search1@example.de", "vorname": "Alice"}
+    )
+    await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "search2@example.de", "vorname": "Bob"}
+    )
 
     resp = await client.get("/api/mitglieder", params={"name": "Alice"})
     data = resp.json()
@@ -117,10 +124,14 @@ async def test_cancel_member(client):
 
 
 async def test_cancel_member_with_date(client):
-    create_resp = await client.post("/api/mitglieder", json={**MEMBER_DATA, "email": "cancel2@example.de"})
+    create_resp = await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "cancel2@example.de"}
+    )
     member_id = create_resp.json()["id"]
 
-    resp = await client.post(f"/api/mitglieder/{member_id}/kuendigen", json={"austrittsdatum": "2026-12-31"})
+    resp = await client.post(
+        f"/api/mitglieder/{member_id}/kuendigen", json={"austrittsdatum": "2026-12-31"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["austrittsdatum"] == "2026-12-31"
@@ -134,7 +145,9 @@ async def test_department_assignment(client, session: AsyncSession):
     dept_id = dept.id
 
     # Create a member
-    create_resp = await client.post("/api/mitglieder", json={**MEMBER_DATA, "email": "dept@example.de"})
+    create_resp = await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "dept@example.de"}
+    )
     member_id = create_resp.json()["id"]
 
     # Assign department
@@ -152,7 +165,9 @@ async def test_department_assignment(client, session: AsyncSession):
 
 
 async def test_remove_department_not_found(client):
-    create_resp = await client.post("/api/mitglieder", json={**MEMBER_DATA, "email": "nodept@example.de"})
+    create_resp = await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "nodept@example.de"}
+    )
     member_id = create_resp.json()["id"]
 
     resp = await client.delete(f"/api/mitglieder/{member_id}/abteilungen/99999")

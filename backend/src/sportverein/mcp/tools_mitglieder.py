@@ -236,12 +236,16 @@ async def datenschutz_einwilligung_setzen(
         return {
             "mitglied_id": member.id,
             "dsgvo_einwilligung": member.dsgvo_einwilligung,
-            "einwilligung_datum": member.einwilligung_datum.isoformat() if member.einwilligung_datum else None,
+            "einwilligung_datum": member.einwilligung_datum.isoformat()
+            if member.einwilligung_datum
+            else None,
             "message": "Einwilligung erfolgreich aktualisiert.",
         }
 
 
-@mcp.tool(description="DSGVO-Auskunft: Alle gespeicherten Daten eines Mitglieds exportieren (Art. 15 DSGVO).")
+@mcp.tool(
+    description="DSGVO-Auskunft: Alle gespeicherten Daten eines Mitglieds exportieren (Art. 15 DSGVO)."
+)
 async def datenschutz_auskunft(member_id: int) -> dict:
     async with get_mcp_session() as session:
         svc = DatenschutzService(session)
@@ -273,7 +277,9 @@ async def datenschutz_loeschfrist_planen(
         }
 
 
-@mcp.tool(description="DSGVO: Personenbezogene Daten eines Mitglieds anonymisieren (Art. 17 DSGVO Recht auf Loeschung).")
+@mcp.tool(
+    description="DSGVO: Personenbezogene Daten eines Mitglieds anonymisieren (Art. 17 DSGVO Recht auf Loeschung)."
+)
 async def datenschutz_mitglied_loeschen(member_id: int) -> dict:
     """Anonymize a member's personal data for DSGVO compliance."""
     async with get_mcp_session() as session:
@@ -290,7 +296,9 @@ async def datenschutz_mitglied_loeschen(member_id: int) -> dict:
         }
 
 
-@mcp.tool(description="DSGVO: Ausstehende Datenlöschungen anzeigen (Mitglieder mit abgelaufener Loeschfrist).")
+@mcp.tool(
+    description="DSGVO: Ausstehende Datenlöschungen anzeigen (Mitglieder mit abgelaufener Loeschfrist)."
+)
 async def datenschutz_ausstehende_loeschungen() -> dict:
     """List members pending data deletion."""
     async with get_mcp_session() as session:

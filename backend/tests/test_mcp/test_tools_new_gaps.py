@@ -51,9 +51,7 @@ async def mcp_engine():
 
 @pytest_asyncio.fixture()
 async def mcp_session_factory(mcp_engine):
-    factory = async_sessionmaker(
-        mcp_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(mcp_engine, class_=AsyncSession, expire_on_commit=False)
     set_session_factory(factory)
     yield factory
     set_session_factory(None)
@@ -277,9 +275,7 @@ class TestKostenstellenVerwalten:
 
     @pytest.mark.asyncio
     async def test_update(self, mcp_session_factory):
-        created = await kostenstellen_verwalten(
-            action="create", name="Tennis", budget=3000.0
-        )
+        created = await kostenstellen_verwalten(action="create", name="Tennis", budget=3000.0)
         result = await kostenstellen_verwalten(
             action="update",
             kostenstelle_id=created["id"],
@@ -295,12 +291,8 @@ class TestKostenstellenVerwalten:
 
     @pytest.mark.asyncio
     async def test_delete(self, mcp_session_factory):
-        created = await kostenstellen_verwalten(
-            action="create", name="Temporaer"
-        )
-        result = await kostenstellen_verwalten(
-            action="delete", kostenstelle_id=created["id"]
-        )
+        created = await kostenstellen_verwalten(action="create", name="Temporaer")
+        result = await kostenstellen_verwalten(action="delete", kostenstelle_id=created["id"])
         assert "message" in result
 
         # Verify it's gone
@@ -315,9 +307,7 @@ class TestKostenstellenVerwalten:
 
     @pytest.mark.asyncio
     async def test_delete_nonexistent(self, mcp_session_factory):
-        result = await kostenstellen_verwalten(
-            action="delete", kostenstelle_id=9999
-        )
+        result = await kostenstellen_verwalten(action="delete", kostenstelle_id=9999)
         assert "error" in result
 
     @pytest.mark.asyncio
@@ -327,12 +317,8 @@ class TestKostenstellenVerwalten:
 
     @pytest.mark.asyncio
     async def test_list_after_create(self, mcp_session_factory):
-        await kostenstellen_verwalten(
-            action="create", name="KS-A", budget=1000.0
-        )
-        await kostenstellen_verwalten(
-            action="create", name="KS-B", budget=2000.0
-        )
+        await kostenstellen_verwalten(action="create", name="KS-A", budget=1000.0)
+        await kostenstellen_verwalten(action="create", name="KS-B", budget=2000.0)
         result = await kostenstellen_verwalten(action="list")
         assert len(result["items"]) == 2
 
@@ -355,9 +341,7 @@ class TestDatenschutzLoeschfrist:
         assert result["loesch_datum"] == expected
 
     @pytest.mark.asyncio
-    async def test_schedule_deletion_default_retention(
-        self, mcp_session_factory, sample_member
-    ):
+    async def test_schedule_deletion_default_retention(self, mcp_session_factory, sample_member):
         result = await datenschutz_loeschfrist_planen(
             member_id=sample_member.id,
         )

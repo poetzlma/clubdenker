@@ -54,9 +54,7 @@ class BeitraegeService:
             await self.session.flush()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ValueError(
-                f"Beitragskategorie mit Name '{name}' existiert bereits."
-            ) from exc
+            raise ValueError(f"Beitragskategorie mit Name '{name}' existiert bereits.") from exc
         await self.session.refresh(category)
         return category
 
@@ -138,17 +136,11 @@ class BeitraegeService:
 
         # Joined during the billing year
         remaining_months = 12 - eintrittsdatum.month + 1
-        return (jahresbeitrag * Decimal(remaining_months) / Decimal(12)).quantize(
-            Decimal("0.01")
-        )
+        return (jahresbeitrag * Decimal(remaining_months) / Decimal(12)).quantize(Decimal("0.01"))
 
-    async def calculate_member_fee(
-        self, member_id: int, billing_year: int
-    ) -> dict:
+    async def calculate_member_fee(self, member_id: int, billing_year: int) -> dict:
         """Calculate fee for a single member for a given year."""
-        result = await self.session.execute(
-            select(Mitglied).where(Mitglied.id == member_id)
-        )
+        result = await self.session.execute(select(Mitglied).where(Mitglied.id == member_id))
         member = result.scalar_one()
 
         jahresbeitrag = await self.get_category_rate(member.beitragskategorie)
@@ -173,9 +165,7 @@ class BeitraegeService:
         fees = []
         for member in members:
             jahresbeitrag = await self.get_category_rate(member.beitragskategorie)
-            prorata = self.calculate_prorata(
-                jahresbeitrag, member.eintrittsdatum, billing_year
-            )
+            prorata = self.calculate_prorata(jahresbeitrag, member.eintrittsdatum, billing_year)
             fees.append(
                 {
                     "member_id": member.id,
@@ -192,9 +182,7 @@ class BeitraegeService:
 
     async def _next_rechnungsnummer(self) -> str:
         result = await self.session.execute(
-            select(Rechnung.rechnungsnummer)
-            .order_by(Rechnung.rechnungsnummer.desc())
-            .limit(1)
+            select(Rechnung.rechnungsnummer).order_by(Rechnung.rechnungsnummer.desc()).limit(1)
         )
         last = result.scalar_one_or_none()
         if last is not None:
@@ -212,9 +200,7 @@ class BeitraegeService:
         invoices: list[Rechnung] = []
         for member in members:
             jahresbeitrag = await self.get_category_rate(member.beitragskategorie)
-            prorata = self.calculate_prorata(
-                jahresbeitrag, member.eintrittsdatum, billing_year
-            )
+            prorata = self.calculate_prorata(jahresbeitrag, member.eintrittsdatum, billing_year)
             if prorata <= Decimal("0.00"):
                 continue
 
@@ -235,9 +221,7 @@ class BeitraegeService:
 
         return invoices
 
-    async def calculate_combined_fee(
-        self, member_id: int, billing_year: int
-    ) -> dict:
+    async def calculate_combined_fee(self, member_id: int, billing_year: int) -> dict:
         """Calculate combined fee with discounts.
 
         Formula: Grundbeitrag + Sum(Spartenbeitraege) * Rabattfaktor
@@ -249,9 +233,7 @@ class BeitraegeService:
         result = await self.session.execute(
             select(Mitglied)
             .where(Mitglied.id == member_id)
-            .options(
-                selectinload(Mitglied.abteilungen).selectinload(MitgliedAbteilung.abteilung)
-            )
+            .options(selectinload(Mitglied.abteilungen).selectinload(MitgliedAbteilung.abteilung))
         )
         member = result.scalar_one_or_none()
         if member is None:
@@ -266,11 +248,13 @@ class BeitraegeService:
         # Jugend discount: 50% off base
         if member.beitragskategorie == BeitragKategorie.jugend:
             discount_amount = base_fee * Decimal("0.50")
-            discounts.append({
-                "type": "jugend",
-                "description": "Jugendrabatt 50%",
-                "amount": discount_amount,
-            })
+            discounts.append(
+                {
+                    "type": "jugend",
+                    "description": "Jugendrabatt 50%",
+                    "amount": discount_amount,
+                }
+            )
 
         # Department fees and multi-department discount
         dept_count = len(member.abteilungen) if member.abteilungen else 0
@@ -279,19 +263,23 @@ class BeitraegeService:
         for idx, ma in enumerate(member.abteilungen or []):
             dept_name = ma.abteilung.name if ma.abteilung else str(ma.abteilung_id)
             dept_fee = Decimal("0.00")  # included in base
-            department_fees.append({
-                "abteilung": dept_name,
-                "fee": dept_fee,
-            })
+            department_fees.append(
+                {
+                    "abteilung": dept_name,
+                    "fee": dept_fee,
+                }
+            )
 
         if dept_count > 1:
             additional = dept_count - 1
             discount_amount = base_fee * Decimal("0.10") * Decimal(str(additional))
-            discounts.append({
-                "type": "multi_department",
-                "description": f"Mehrspartenrabatt ({additional} weitere Abteilungen, je 10%)",
-                "amount": discount_amount,
-            })
+            discounts.append(
+                {
+                    "type": "multi_department",
+                    "description": f"Mehrspartenrabatt ({additional} weitere Abteilungen, je 10%)",
+                    "amount": discount_amount,
+                }
+            )
 
         # Familie discount: members at same address get 20% off from 2nd member
         if member.strasse and member.plz and member.ort:
@@ -308,11 +296,13 @@ class BeitraegeService:
             family_ids = [row[0] for row in family_result.all()]
             if len(family_ids) > 1 and member.id != family_ids[0]:
                 discount_amount = base_fee * Decimal("0.20")
-                discounts.append({
-                    "type": "familie",
-                    "description": "Familienrabatt 20% (ab 2. Mitglied gleiche Adresse)",
-                    "amount": discount_amount,
-                })
+                discounts.append(
+                    {
+                        "type": "familie",
+                        "description": "Familienrabatt 20% (ab 2. Mitglied gleiche Adresse)",
+                        "amount": discount_amount,
+                    }
+                )
 
         total_discounts = sum(d["amount"] for d in discounts)
         total = max(base_fee - total_discounts, Decimal("0.00"))
@@ -322,9 +312,7 @@ class BeitraegeService:
             "name": f"{member.vorname} {member.nachname}",
             "base_fee": base_fee,
             "department_fees": department_fees,
-            "discounts": [
-                {**d, "amount": float(d["amount"])} for d in discounts
-            ],
+            "discounts": [{**d, "amount": float(d["amount"])} for d in discounts],
             "total": total,
         }
 
@@ -338,12 +326,14 @@ class BeitraegeService:
         today = date.today()
         result = await self.session.execute(
             select(Rechnung).where(
-                Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                ]),
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                    ]
+                ),
                 Rechnung.faelligkeitsdatum < today,
             )
         )
@@ -361,14 +351,16 @@ class BeitraegeService:
             else:
                 continue
 
-            candidates.append({
-                "rechnung_id": rechnung.id,
-                "mitglied_id": rechnung.mitglied_id,
-                "rechnungsnummer": rechnung.rechnungsnummer,
-                "betrag": rechnung.betrag,
-                "faelligkeitsdatum": rechnung.faelligkeitsdatum,
-                "days_overdue": days_overdue,
-                "mahnstufe": level,
-            })
+            candidates.append(
+                {
+                    "rechnung_id": rechnung.id,
+                    "mitglied_id": rechnung.mitglied_id,
+                    "rechnungsnummer": rechnung.rechnungsnummer,
+                    "betrag": rechnung.betrag,
+                    "faelligkeitsdatum": rechnung.faelligkeitsdatum,
+                    "days_overdue": days_overdue,
+                    "mahnstufe": level,
+                }
+            )
 
         return candidates

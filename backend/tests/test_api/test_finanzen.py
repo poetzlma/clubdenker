@@ -93,12 +93,24 @@ async def test_get_balance(client, session: AsyncSession):
 
     # Create bookings in different spheres
     member = await _create_member(session)
-    await client.post("/api/finanzen/buchungen", json={
-        **BOOKING_DATA, "mitglied_id": member.id, "sphare": "ideell", "betrag": 100.0,
-    })
-    await client.post("/api/finanzen/buchungen", json={
-        **BOOKING_DATA, "mitglied_id": member.id, "sphare": "zweckbetrieb", "betrag": 200.0,
-    })
+    await client.post(
+        "/api/finanzen/buchungen",
+        json={
+            **BOOKING_DATA,
+            "mitglied_id": member.id,
+            "sphare": "ideell",
+            "betrag": 100.0,
+        },
+    )
+    await client.post(
+        "/api/finanzen/buchungen",
+        json={
+            **BOOKING_DATA,
+            "mitglied_id": member.id,
+            "sphare": "zweckbetrieb",
+            "betrag": 200.0,
+        },
+    )
 
     resp2 = await client.get("/api/finanzen/kassenstand")
     body2 = resp2.json()
@@ -108,12 +120,15 @@ async def test_get_balance(client, session: AsyncSession):
 
 async def test_create_invoice(client, session: AsyncSession):
     member = await _create_member(session)
-    resp = await client.post("/api/finanzen/rechnungen", json={
-        "mitglied_id": member.id,
-        "betrag": 240.00,
-        "beschreibung": "Jahresbeitrag 2025",
-        "faelligkeitsdatum": "2025-03-31",
-    })
+    resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 240.00,
+            "beschreibung": "Jahresbeitrag 2025",
+            "faelligkeitsdatum": "2025-03-31",
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     # New format: {YYYY}-{SPHARE_CODE}-{NR:04d}
@@ -126,20 +141,26 @@ async def test_create_invoice(client, session: AsyncSession):
 async def test_record_payment(client, session: AsyncSession):
     member = await _create_member(session)
     # Create invoice
-    inv_resp = await client.post("/api/finanzen/rechnungen", json={
-        "mitglied_id": member.id,
-        "betrag": 240.00,
-        "beschreibung": "Jahresbeitrag 2025",
-        "faelligkeitsdatum": "2025-03-31",
-    })
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 240.00,
+            "beschreibung": "Jahresbeitrag 2025",
+            "faelligkeitsdatum": "2025-03-31",
+        },
+    )
     rechnung_id = inv_resp.json()["id"]
 
     # Record payment
-    resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/zahlungen", json={
-        "betrag": 240.00,
-        "zahlungsart": "ueberweisung",
-        "referenz": "TX-12345",
-    })
+    resp = await client.post(
+        f"/api/finanzen/rechnungen/{rechnung_id}/zahlungen",
+        json={
+            "betrag": 240.00,
+            "zahlungsart": "ueberweisung",
+            "referenz": "TX-12345",
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert body["betrag"] == 240.00
@@ -150,17 +171,23 @@ async def test_record_payment(client, session: AsyncSession):
 async def test_sepa_generation(client, session: AsyncSession):
     member = await _create_member(session)
     # Create invoice
-    inv_resp = await client.post("/api/finanzen/rechnungen", json={
-        "mitglied_id": member.id,
-        "betrag": 240.00,
-        "beschreibung": "Jahresbeitrag 2025",
-        "faelligkeitsdatum": "2025-03-31",
-    })
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 240.00,
+            "beschreibung": "Jahresbeitrag 2025",
+            "faelligkeitsdatum": "2025-03-31",
+        },
+    )
     rechnung_id = inv_resp.json()["id"]
 
-    resp = await client.post("/api/finanzen/sepa", json={
-        "rechnungen_ids": [rechnung_id],
-    })
+    resp = await client.post(
+        "/api/finanzen/sepa",
+        json={
+            "rechnungen_ids": [rechnung_id],
+        },
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["count"] == 1
@@ -170,9 +197,12 @@ async def test_sepa_generation(client, session: AsyncSession):
 
 async def test_fee_run(client, session: AsyncSession):
     member = await _create_member(session)
-    resp = await client.post("/api/finanzen/beitragslaeufe", json={
-        "billing_year": 2025,
-    })
+    resp = await client.post(
+        "/api/finanzen/beitragslaeufe",
+        json={
+            "billing_year": 2025,
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert len(body) >= 1
@@ -220,12 +250,15 @@ async def test_401_without_auth(unauthed_client):
 async def test_stelle_rechnung(client, session: AsyncSession):
     """Test the stellen endpoint: ENTWURF -> GESTELLT."""
     member = await _create_member(session)
-    inv_resp = await client.post("/api/finanzen/rechnungen", json={
-        "mitglied_id": member.id,
-        "betrag": 100.00,
-        "beschreibung": "Test invoice",
-        "faelligkeitsdatum": "2026-12-31",
-    })
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 100.00,
+            "beschreibung": "Test invoice",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
     rechnung_id = inv_resp.json()["id"]
 
     resp = await client.post(f"/api/finanzen/rechnungen/{rechnung_id}/stellen")
@@ -238,12 +271,15 @@ async def test_stelle_rechnung(client, session: AsyncSession):
 async def test_storniere_rechnung(client, session: AsyncSession):
     """Test the stornieren endpoint: creates a Stornorechnung."""
     member = await _create_member(session)
-    inv_resp = await client.post("/api/finanzen/rechnungen", json={
-        "mitglied_id": member.id,
-        "betrag": 200.00,
-        "beschreibung": "To be cancelled",
-        "faelligkeitsdatum": "2026-12-31",
-    })
+    inv_resp = await client.post(
+        "/api/finanzen/rechnungen",
+        json={
+            "mitglied_id": member.id,
+            "betrag": 200.00,
+            "beschreibung": "To be cancelled",
+            "faelligkeitsdatum": "2026-12-31",
+        },
+    )
     rechnung_id = inv_resp.json()["id"]
 
     resp = await client.post(

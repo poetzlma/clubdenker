@@ -29,7 +29,8 @@ async def newsletter_erstellen(
     # Placeholder implementation
     return {
         "status": "success",
-        "message": f"Newsletter '{betreff}' erstellt." + (" Versand gestartet." if versenden else ""),
+        "message": f"Newsletter '{betreff}' erstellt."
+        + (" Versand gestartet." if versenden else ""),
         "versandt": versenden,
     }
 

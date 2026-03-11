@@ -31,9 +31,7 @@ async def mcp_engine():
 
 @pytest_asyncio.fixture()
 async def mcp_session_factory(mcp_engine):
-    factory = async_sessionmaker(
-        mcp_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(mcp_engine, class_=AsyncSession, expire_on_commit=False)
     set_session_factory(factory)
     yield factory
     set_session_factory(None)
@@ -57,7 +55,9 @@ async def test_abteilungen_list_empty(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_abteilungen_create(mcp_session_factory):
     result = await vereins_setup_abteilungen(
-        action="create", name="Handball", beschreibung="Handballabteilung",
+        action="create",
+        name="Handball",
+        beschreibung="Handballabteilung",
     )
     assert result["name"] == "Handball"
     assert result["beschreibung"] == "Handballabteilung"
@@ -74,7 +74,8 @@ async def test_abteilungen_create_missing_name(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_abteilungen_update(mcp_session_factory):
     created = await vereins_setup_abteilungen(
-        action="create", name="Schwimmen",
+        action="create",
+        name="Schwimmen",
     )
     result = await vereins_setup_abteilungen(
         action="update",
@@ -90,10 +91,12 @@ async def test_abteilungen_update(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_abteilungen_delete(mcp_session_factory):
     created = await vereins_setup_abteilungen(
-        action="create", name="Leichtathletik",
+        action="create",
+        name="Leichtathletik",
     )
     result = await vereins_setup_abteilungen(
-        action="delete", department_id=created["id"],
+        action="delete",
+        department_id=created["id"],
     )
     assert "message" in result
 
@@ -120,7 +123,9 @@ async def test_beitragskategorien_list_empty(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_beitragskategorien_create(mcp_session_factory):
     result = await vereins_setup_beitragskategorien(
-        action="create", name="Senioren", jahresbeitrag=180.0,
+        action="create",
+        name="Senioren",
+        jahresbeitrag=180.0,
         beschreibung="Seniorentarif",
     )
     assert result["name"] == "Senioren"
@@ -137,7 +142,9 @@ async def test_beitragskategorien_create_missing_fields(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_beitragskategorien_update(mcp_session_factory):
     created = await vereins_setup_beitragskategorien(
-        action="create", name="Studenten", jahresbeitrag=100.0,
+        action="create",
+        name="Studenten",
+        jahresbeitrag=100.0,
     )
     result = await vereins_setup_beitragskategorien(
         action="update",
@@ -151,10 +158,13 @@ async def test_beitragskategorien_update(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_beitragskategorien_delete(mcp_session_factory):
     created = await vereins_setup_beitragskategorien(
-        action="create", name="Probe", jahresbeitrag=50.0,
+        action="create",
+        name="Probe",
+        jahresbeitrag=50.0,
     )
     result = await vereins_setup_beitragskategorien(
-        action="delete", category_id=created["id"],
+        action="delete",
+        category_id=created["id"],
     )
     assert "message" in result
 

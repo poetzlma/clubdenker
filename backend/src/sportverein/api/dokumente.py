@@ -47,9 +47,7 @@ async def list_protokolle(
     session: AsyncSession = Depends(get_db_session),
 ) -> ProtokollListResponse:
     svc = ProtokollService(session)
-    items, total = await svc.list_protokolle(
-        typ=typ, search=search, page=page, page_size=page_size
-    )
+    items, total = await svc.list_protokolle(typ=typ, search=search, page=page, page_size=page_size)
     return ProtokollListResponse(
         items=[_protokoll_to_response(p) for p in items],
         total=total,
@@ -68,9 +66,7 @@ async def get_protokoll(
     try:
         p = await svc.get_protokoll(protokoll_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return _protokoll_to_response(p)
 
 
@@ -110,16 +106,12 @@ async def update_protokoll(
     try:
         p = await svc.update_protokoll(protokoll_id, **updates)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
     return _protokoll_to_response(p)
 
 
-@router.delete(
-    "/protokolle/{protokoll_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/protokolle/{protokoll_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_protokoll(
     protokoll_id: int,
     _token: ApiToken = Depends(get_current_token),
@@ -129,7 +121,5 @@ async def delete_protokoll(
     try:
         await svc.delete_protokoll(protokoll_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()

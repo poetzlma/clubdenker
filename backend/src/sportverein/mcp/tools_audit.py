@@ -38,9 +38,7 @@ async def audit_logs_abrufen(
             filters["action"] = aktion
         if bereich:
             filters["entity_type"] = bereich
-        logs, total = await svc.get_logs(
-            filters=filters or None, page=1, page_size=limit
-        )
+        logs, total = await svc.get_logs(filters=filters or None, page=1, page_size=limit)
         await session.commit()
         return {
             "items": [_audit_to_dict(log) for log in logs],
@@ -48,7 +46,9 @@ async def audit_logs_abrufen(
         }
 
 
-@mcp.tool(description="Compliance-Pruefung ausfuehren: Gemeinnuetzigkeit, Zweckbetrieb-Grenzen, DSGVO-Loeschfristen, SEPA-Mandate.")
+@mcp.tool(
+    description="Compliance-Pruefung ausfuehren: Gemeinnuetzigkeit, Zweckbetrieb-Grenzen, DSGVO-Loeschfristen, SEPA-Mandate."
+)
 async def compliance_monitor() -> dict:
     """Run all compliance checks and return findings."""
     async with get_mcp_session() as session:

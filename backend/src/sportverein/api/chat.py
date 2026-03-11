@@ -86,9 +86,7 @@ async def chat(
             )
 
         svc = MitgliederService(session)
-        members, total = await svc.search_members(
-            MitgliedFilter(name=search_name, page_size=5)
-        )
+        members, total = await svc.search_members(MitgliedFilter(name=search_name, page_size=5))
         if not members:
             return ChatResponse(
                 response=f"Kein Mitglied mit '{search_name}' gefunden.",

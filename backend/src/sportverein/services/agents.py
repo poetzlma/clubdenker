@@ -65,12 +65,14 @@ class BeitragseinzugAgent:
             if fee["member_id"] in mandate_map:
                 sepa_invoice_ids.append(rechnung.id)
             else:
-                missing_mandate_members.append({
-                    "member_id": fee["member_id"],
-                    "name": fee["name"],
-                    "betrag": float(fee["prorata_betrag"]),
-                    "rechnung_id": rechnung.id,
-                })
+                missing_mandate_members.append(
+                    {
+                        "member_id": fee["member_id"],
+                        "name": fee["name"],
+                        "betrag": float(fee["prorata_betrag"]),
+                        "rechnung_id": rechnung.id,
+                    }
+                )
 
         # Step 4: Generate SEPA XML if there are mandated invoices
         sepa_xml: str | None = None
@@ -123,25 +125,29 @@ class MahnwesenAgent:
             else:
                 continue
 
-            levels[level].append({
-                "rechnung_id": rechnung.id,
-                "rechnungsnummer": rechnung.rechnungsnummer,
-                "mitglied_id": rechnung.mitglied_id,
-                "betrag": float(rechnung.betrag),
-                "faelligkeitsdatum": rechnung.faelligkeitsdatum.isoformat(),
-                "days_overdue": days_overdue,
-            })
+            levels[level].append(
+                {
+                    "rechnung_id": rechnung.id,
+                    "rechnungsnummer": rechnung.rechnungsnummer,
+                    "mitglied_id": rechnung.mitglied_id,
+                    "betrag": float(rechnung.betrag),
+                    "faelligkeitsdatum": rechnung.faelligkeitsdatum.isoformat(),
+                    "days_overdue": days_overdue,
+                }
+            )
 
         total_overdue = sum(len(v) for v in levels.values())
         report: list[dict[str, Any]] = []
         for level_num in (1, 2, 3):
             if levels[level_num]:
-                report.append({
-                    "mahnstufe": level_num,
-                    "action": actions[level_num],
-                    "count": len(levels[level_num]),
-                    "rechnungen": levels[level_num],
-                })
+                report.append(
+                    {
+                        "mahnstufe": level_num,
+                        "action": actions[level_num],
+                        "count": len(levels[level_num]),
+                        "rechnungen": levels[level_num],
+                    }
+                )
 
         return {
             "total_overdue": total_overdue,
@@ -168,7 +174,11 @@ class AufwandMonitorAgent:
         # Add projections: estimate year-end total based on current pace
         today = date.today()
         day_of_year = today.timetuple().tm_yday
-        days_in_year = 366 if (today.year % 4 == 0 and (today.year % 100 != 0 or today.year % 400 == 0)) else 365
+        days_in_year = (
+            366
+            if (today.year % 4 == 0 and (today.year % 100 != 0 or today.year % 400 == 0))
+            else 365
+        )
         fraction_elapsed = Decimal(str(day_of_year)) / Decimal(str(days_in_year))
 
         for w in warnings:
@@ -223,13 +233,15 @@ class ComplianceMonitorAgent:
         result = await self.session.execute(select(Vereinsstammdaten).limit(1))
         stammdaten = result.scalar_one_or_none()
         if stammdaten is None or stammdaten.freistellungsbescheid_datum is None:
-            return [{
-                "category": "gemeinnuetzigkeit",
-                "severity": "warning",
-                "message": "Kein Freistellungsbescheid hinterlegt. "
-                           "Bitte Vereinsstammdaten pflegen.",
-                "affected_count": 0,
-            }]
+            return [
+                {
+                    "category": "gemeinnuetzigkeit",
+                    "severity": "warning",
+                    "message": "Kein Freistellungsbescheid hinterlegt. "
+                    "Bitte Vereinsstammdaten pflegen.",
+                    "affected_count": 0,
+                }
+            ]
 
         today = date.today()
         # Freistellungsbescheid is typically valid for ~3 years from issue date
@@ -238,23 +250,27 @@ class ComplianceMonitorAgent:
 
         findings: list[dict[str, Any]] = []
         if days_until_expiry < 0:
-            findings.append({
-                "category": "gemeinnuetzigkeit",
-                "severity": "critical",
-                "message": f"Freistellungsbescheid ist seit {abs(days_until_expiry)} "
-                           f"Tagen abgelaufen (Datum: "
-                           f"{stammdaten.freistellungsbescheid_datum.isoformat()}).",
-                "affected_count": 1,
-            })
+            findings.append(
+                {
+                    "category": "gemeinnuetzigkeit",
+                    "severity": "critical",
+                    "message": f"Freistellungsbescheid ist seit {abs(days_until_expiry)} "
+                    f"Tagen abgelaufen (Datum: "
+                    f"{stammdaten.freistellungsbescheid_datum.isoformat()}).",
+                    "affected_count": 1,
+                }
+            )
         elif days_until_expiry <= 90:
-            findings.append({
-                "category": "gemeinnuetzigkeit",
-                "severity": "warning",
-                "message": f"Freistellungsbescheid laeuft in {days_until_expiry} "
-                           f"Tagen ab (Datum: "
-                           f"{stammdaten.freistellungsbescheid_datum.isoformat()}).",
-                "affected_count": 1,
-            })
+            findings.append(
+                {
+                    "category": "gemeinnuetzigkeit",
+                    "severity": "warning",
+                    "message": f"Freistellungsbescheid laeuft in {days_until_expiry} "
+                    f"Tagen ab (Datum: "
+                    f"{stammdaten.freistellungsbescheid_datum.isoformat()}).",
+                    "affected_count": 1,
+                }
+            )
 
         return findings
 
@@ -277,21 +293,25 @@ class ComplianceMonitorAgent:
 
         findings: list[dict[str, Any]] = []
         if total_float > 45000:
-            findings.append({
-                "category": "zweckbetrieb",
-                "severity": "critical",
-                "message": f"Zweckbetrieb-Einnahmen {total_float:,.2f} EUR "
-                           f"ueberschreiten die 45.000-EUR-Grenze!",
-                "affected_count": 1,
-            })
+            findings.append(
+                {
+                    "category": "zweckbetrieb",
+                    "severity": "critical",
+                    "message": f"Zweckbetrieb-Einnahmen {total_float:,.2f} EUR "
+                    f"ueberschreiten die 45.000-EUR-Grenze!",
+                    "affected_count": 1,
+                }
+            )
         elif total_float > 40000:
-            findings.append({
-                "category": "zweckbetrieb",
-                "severity": "warning",
-                "message": f"Zweckbetrieb-Einnahmen {total_float:,.2f} EUR "
-                           f"naehern sich der 45.000-EUR-Grenze.",
-                "affected_count": 1,
-            })
+            findings.append(
+                {
+                    "category": "zweckbetrieb",
+                    "severity": "warning",
+                    "message": f"Zweckbetrieb-Einnahmen {total_float:,.2f} EUR "
+                    f"naehern sich der 45.000-EUR-Grenze.",
+                    "affected_count": 1,
+                }
+            )
 
         return findings
 
@@ -310,13 +330,15 @@ class ComplianceMonitorAgent:
         if pending:
             count = len(pending)
             severity = "critical" if count > 0 else "info"
-            findings.append({
-                "category": "dsgvo",
-                "severity": severity,
-                "message": f"{count} Mitglied(er) mit ueberschrittener "
-                           f"Loeschfrist muessen anonymisiert werden.",
-                "affected_count": count,
-            })
+            findings.append(
+                {
+                    "category": "dsgvo",
+                    "severity": severity,
+                    "message": f"{count} Mitglied(er) mit ueberschrittener "
+                    f"Loeschfrist muessen anonymisiert werden.",
+                    "affected_count": count,
+                }
+            )
         return findings
 
     async def _check_missing_sepa_mandates(self) -> list[dict[str, Any]]:
@@ -347,16 +369,18 @@ class ComplianceMonitorAgent:
         )
         active_ids = {row[0] for row in active_result.all()}
 
-        missing = members_with_open_invoices & active_ids - mandate_member_ids
+        missing = (members_with_open_invoices & active_ids) - mandate_member_ids
 
         findings: list[dict[str, Any]] = []
         if missing:
             count = len(missing)
-            findings.append({
-                "category": "sepa_mandate",
-                "severity": "warning" if count <= 5 else "info",
-                "message": f"{count} aktive(s) Mitglied(er) mit offenen Rechnungen "
-                           f"ohne SEPA-Mandat.",
-                "affected_count": count,
-            })
+            findings.append(
+                {
+                    "category": "sepa_mandate",
+                    "severity": "warning" if count <= 5 else "info",
+                    "message": f"{count} aktive(s) Mitglied(er) mit offenen Rechnungen "
+                    f"ohne SEPA-Mandat.",
+                    "affected_count": count,
+                }
+            )
         return findings

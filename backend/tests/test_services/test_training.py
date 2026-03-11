@@ -233,12 +233,8 @@ async def test_get_anwesenheit_with_filters(session: AsyncSession):
     d1 = date.today() - timedelta(days=7)
     d2 = date.today() - timedelta(days=1)
 
-    await svc.record_anwesenheit(
-        gruppe.id, d1, [{"mitglied_id": m1.id, "anwesend": True}]
-    )
-    await svc.record_anwesenheit(
-        gruppe.id, d2, [{"mitglied_id": m2.id, "anwesend": True}]
-    )
+    await svc.record_anwesenheit(gruppe.id, d1, [{"mitglied_id": m1.id, "anwesend": True}])
+    await svc.record_anwesenheit(gruppe.id, d2, [{"mitglied_id": m2.id, "anwesend": True}])
 
     # Filter by mitglied
     records = await svc.get_anwesenheit(mitglied_id=m1.id)
@@ -265,9 +261,7 @@ async def test_anwesenheit_statistik(session: AsyncSession):
     # Add some attendance records over the past weeks
     for i in range(1, 5):
         d = date.today() - timedelta(weeks=i)
-        await svc.record_anwesenheit(
-            gruppe.id, d, [{"mitglied_id": m.id, "anwesend": i % 2 == 0}]
-        )
+        await svc.record_anwesenheit(gruppe.id, d, [{"mitglied_id": m.id, "anwesend": i % 2 == 0}])
 
     stats = await svc.get_anwesenheit_statistik(abt.id, wochen=12)
     assert "heatmap" in stats
@@ -286,9 +280,7 @@ async def test_mitglied_anwesenheit(session: AsyncSession):
 
     for i in range(1, 4):
         d = date.today() - timedelta(weeks=i)
-        await svc.record_anwesenheit(
-            gruppe.id, d, [{"mitglied_id": m.id, "anwesend": True}]
-        )
+        await svc.record_anwesenheit(gruppe.id, d, [{"mitglied_id": m.id, "anwesend": True}])
 
     stats = await svc.get_mitglied_anwesenheit(m.id, wochen=12)
     assert stats["mitglied_id"] == m.id

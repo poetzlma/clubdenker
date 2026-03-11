@@ -25,6 +25,7 @@ from sportverein.services.mitglieder import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_create_data(**overrides) -> MitgliedCreate:
     defaults = dict(
         vorname="Max",
@@ -187,17 +188,29 @@ async def test_cancel_member_not_found_raises(session: AsyncSession):
 async def _seed_members(session: AsyncSession, svc: MitgliederService):
     """Create a handful of diverse members for search tests."""
     await svc.create_member(
-        _make_create_data(vorname="Anna", nachname="Schmidt", email="anna@example.com",
-                          status=MitgliedStatus.aktiv)
+        _make_create_data(
+            vorname="Anna",
+            nachname="Schmidt",
+            email="anna@example.com",
+            status=MitgliedStatus.aktiv,
+        )
     )
     await svc.create_member(
-        _make_create_data(vorname="Bernd", nachname="Mueller", email="bernd@example.com",
-                          status=MitgliedStatus.aktiv,
-                          beitragskategorie=BeitragKategorie.jugend)
+        _make_create_data(
+            vorname="Bernd",
+            nachname="Mueller",
+            email="bernd@example.com",
+            status=MitgliedStatus.aktiv,
+            beitragskategorie=BeitragKategorie.jugend,
+        )
     )
     await svc.create_member(
-        _make_create_data(vorname="Clara", nachname="Schmidt", email="clara@example.com",
-                          status=MitgliedStatus.passiv)
+        _make_create_data(
+            vorname="Clara",
+            nachname="Schmidt",
+            email="clara@example.com",
+            status=MitgliedStatus.passiv,
+        )
     )
 
 
@@ -231,9 +244,7 @@ async def test_search_by_status(session: AsyncSession):
     svc = MitgliederService(session)
     await _seed_members(session, svc)
 
-    results, total = await svc.search_members(
-        MitgliedFilter(status=MitgliedStatus.passiv)
-    )
+    results, total = await svc.search_members(MitgliedFilter(status=MitgliedStatus.passiv))
     assert total == 1
     assert results[0].vorname == "Clara"
 
@@ -256,13 +267,12 @@ async def test_search_by_department(session: AsyncSession):
 
     # Assign only first member
     from sqlalchemy import select as sa_select
+
     res = await session.execute(sa_select(Mitglied).limit(1))
     first = res.scalar_one()
     await svc.assign_department(first.id, abt.id)
 
-    results, total = await svc.search_members(
-        MitgliedFilter(abteilung_id=abt.id)
-    )
+    results, total = await svc.search_members(MitgliedFilter(abteilung_id=abt.id))
     assert total == 1
     assert results[0].id == first.id
 
@@ -291,9 +301,7 @@ async def test_search_sort_order(session: AsyncSession):
     svc = MitgliederService(session)
     await _seed_members(session, svc)
 
-    results, _ = await svc.search_members(
-        MitgliedFilter(sort_by="vorname", sort_order="desc")
-    )
+    results, _ = await svc.search_members(MitgliedFilter(sort_by="vorname", sort_order="desc"))
     names = [m.vorname for m in results]
     assert names == sorted(names, reverse=True)
 
@@ -359,19 +367,14 @@ async def test_get_departments(session: AsyncSession):
 async def test_get_member_stats(session: AsyncSession):
     svc = MitgliederService(session)
     # Create members with different statuses
-    await svc.create_member(
-        _make_create_data(email="a@example.com", status=MitgliedStatus.aktiv)
-    )
-    await svc.create_member(
-        _make_create_data(email="b@example.com", status=MitgliedStatus.aktiv)
-    )
-    await svc.create_member(
-        _make_create_data(email="c@example.com", status=MitgliedStatus.passiv)
-    )
+    await svc.create_member(_make_create_data(email="a@example.com", status=MitgliedStatus.aktiv))
+    await svc.create_member(_make_create_data(email="b@example.com", status=MitgliedStatus.aktiv))
+    await svc.create_member(_make_create_data(email="c@example.com", status=MitgliedStatus.passiv))
 
     abt = await _create_abteilung(session, "Fussball")
     # Assign first two members to department
     from sqlalchemy import select as sa_select
+
     res = await session.execute(sa_select(Mitglied).where(Mitglied.status == MitgliedStatus.aktiv))
     aktive = res.scalars().all()
     for m in aktive:

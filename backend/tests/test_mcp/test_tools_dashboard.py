@@ -41,9 +41,7 @@ async def mcp_engine():
 
 @pytest_asyncio.fixture()
 async def mcp_session_factory(mcp_engine):
-    factory = async_sessionmaker(
-        mcp_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(mcp_engine, class_=AsyncSession, expire_on_commit=False)
     set_session_factory(factory)
     yield factory
     set_session_factory(None)

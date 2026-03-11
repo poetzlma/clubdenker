@@ -27,6 +27,7 @@ def _get_factory() -> async_sessionmaker[AsyncSession]:
         return _session_factory_override
     # Import lazily to avoid circular imports and to pick up runtime config.
     from sportverein.db.session import async_session_factory
+
     return async_session_factory
 
 

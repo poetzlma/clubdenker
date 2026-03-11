@@ -58,7 +58,15 @@
 - TSC: Clean
 - Production build: Success
 
-### Completed Commits (10 total)
+### Bugs Found & Fixed continued
+
+| 8 | mypy type errors in zugferd.py (Decimal ops) | Minor | `3b52e0e` |
+| 9 | 2 ESLint errors (setState in useEffect) | Minor | `3b52e0e` |
+| 10 | record_payment 500 on invalid invoice (scalar_one) | Major | pending |
+| 11 | Set operation precedence in compliance agent | Major | pending |
+| 12 | ESLint incompatible-library warning in member-table | Minor | pending |
+
+### Completed Commits (11 total)
 1. `4524d57` - Initial feature batch
 2. `9b9ba68` - P0: DSGVO, Skonto, E-Rechnung UI
 3. `a34e7e4` - Dashboard wiring + Eingangsrechnungen UI
@@ -69,6 +77,7 @@
 8. `a53b35f` - Lint & build fixes
 9. `04710c1` - Search filter & protocol validation fixes
 10. `f383ddc` - EÜR report fix
+11. `3b52e0e` - mypy + ESLint fixes
 
 ### API Coverage Summary
 All major API endpoints tested live:
@@ -79,6 +88,78 @@ All major API endpoints tested live:
 - Agents: Mahnwesen, Aufwand Monitor, Compliance Monitor
 - Dokumente: Protokolle CRUD
 - Auth: Valid/invalid/missing token
+
+### Loop 11: Full Workflow & Agent Testing
+
+#### Member Lifecycle Tested
+| Action | Status | Result |
+|--------|--------|--------|
+| POST /api/mitglieder (create) | 201 | Created Lisa Testerin, M-0052 |
+| PUT /api/mitglieder/2 (update phone) | 200 | Telefon updated |
+| POST /api/mitglieder/52/abteilungen/1 | 201 | Assigned to Fussball |
+
+#### Invoice Lifecycle Tested
+| Action | Status | Result |
+|--------|--------|--------|
+| POST /api/finanzen/rechnungen (create) | 201 | Invoice 2026-RE-0001, 240 EUR |
+| POST /rechnungen/3/stellen | 200 | Status changed to gestellt |
+| POST /rechnungen/4/zahlungen | 201 | Payment of 178.50 EUR recorded |
+| POST /rechnungen/5/stornieren | 200 | Created storno invoice 2026-RE-0002 |
+
+#### Beitragseinzug Agent (Full Flow)
+| Metric | Value |
+|--------|-------|
+| Fees calculated | 37 |
+| Invoices created | 34 |
+| SEPA-ready (with mandates) | 11 |
+| Missing mandates | 23 |
+| SEPA total | 2,520.00 EUR |
+| SEPA XML | Valid pain.008.001.02 |
+
+No new bugs found this round.
+
+### Loop 12: MCP, Ehrenamt Data & Frontend Route Verification
+
+#### Ehrenamt Seed Data
+- 2025: 5 entries present (seed data uses 2025 dates)
+- 2026: 0 entries (expected -- no new data yet)
+- Freibetrag summary works: shows per-person usage and limits
+- Not a bug, just year filter defaulting to current year
+
+#### MCP Server
+- All 8 tool modules import successfully (tools_mitglieder, tools_beitraege, tools_audit, tools_dashboard, tools_eingangsrechnung, tools_setup, tools_training, plus kommunikation)
+
+#### Frontend Routes (all 200 OK)
+| Route | Status |
+|-------|--------|
+| / (root) | 200 |
+| /kalender | 200 |
+| /dokumente | 200 |
+| /finanzen | 200 |
+| /training | 200 |
+| /admin | 200 |
+
+No new bugs found.
+
+### Loop 13: Bug Hunt & Fixes
+
+#### Bugs Found & Fixed
+
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 10 | `record_payment()` uses `scalar_one()` -- crashes with 500 on invalid invoice ID instead of ValueError | Major | `services/finanzen.py:645` |
+| 11 | Set operation precedence error: `a & b - c` evaluates as `a & (b - c)` instead of `(a & b) - c` | Major | `services/agents.py:372` |
+| 12 | ESLint warning: `useReactTable` incompatible-library warning | Minor | `frontend member-table.tsx:205` |
+
+#### Tests Added
+- `test_record_payment_nonexistent_invoice` -- verifies ValueError on missing invoice
+
+#### Quality Checks
+- Backend: 517 passed (was 516)
+- Frontend build: clean
+- ESLint: 0 warnings
+- TSC: clean
+- Ruff: clean
 
 ### Remaining (P3)
 - [ ] Member Self-Service Portal

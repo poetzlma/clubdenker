@@ -35,10 +35,13 @@ async def _create_member(session: AsyncSession) -> Mitglied:
 
 async def test_beitragseinzug(client, session: AsyncSession):
     await _create_member(session)
-    resp = await client.post("/api/agents/beitragseinzug", json={
-        "year": 2025,
-        "month": 3,
-    })
+    resp = await client.post(
+        "/api/agents/beitragseinzug",
+        json={
+            "year": 2025,
+            "month": 3,
+        },
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["year"] == 2025

@@ -27,9 +27,7 @@ async def async_engine():
 
 @pytest_asyncio.fixture()
 async def session(async_engine):
-    factory = async_sessionmaker(
-        async_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as session:
         yield session
 
@@ -38,7 +36,9 @@ async def session(async_engine):
 async def admin_and_token(session: AsyncSession):
     """Create an admin user and a valid API token. Returns (admin, plain_token, token_record)."""
     auth = AuthService(session)
-    admin = await auth.create_admin(email="test@sportverein.de", password="secret123", name="Test Admin")
+    admin = await auth.create_admin(
+        email="test@sportverein.de", password="secret123", name="Test Admin"
+    )
     plain_token, token_record = await auth.create_token(admin_user_id=admin.id, name="test-token")
     await session.commit()
     return admin, plain_token, token_record

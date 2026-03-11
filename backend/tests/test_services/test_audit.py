@@ -26,6 +26,7 @@ async def test_log_creates_entry(session: AsyncSession):
 async def test_log_with_user_and_ip(session: AsyncSession):
     # We need an admin user for the FK
     from sportverein.auth.service import AuthService
+
     auth = AuthService(session)
     admin = await auth.create_admin(email="audit@test.de", password="pass", name="Audit Admin")
     await session.flush()

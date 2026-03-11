@@ -32,9 +32,7 @@ class ProtokollService:
 
         if search:
             pattern = f"%{search}%"
-            stmt = stmt.where(
-                Protokoll.titel.ilike(pattern) | Protokoll.inhalt.ilike(pattern)
-            )
+            stmt = stmt.where(Protokoll.titel.ilike(pattern) | Protokoll.inhalt.ilike(pattern))
             count_stmt = count_stmt.where(
                 Protokoll.titel.ilike(pattern) | Protokoll.inhalt.ilike(pattern)
             )
@@ -49,9 +47,7 @@ class ProtokollService:
 
     async def get_protokoll(self, protokoll_id: int) -> Protokoll:
         """Get a single protocol by ID."""
-        result = await self._session.execute(
-            select(Protokoll).where(Protokoll.id == protokoll_id)
-        )
+        result = await self._session.execute(select(Protokoll).where(Protokoll.id == protokoll_id))
         protokoll = result.scalar_one_or_none()
         if protokoll is None:
             raise ValueError(f"Protokoll {protokoll_id} nicht gefunden.")
@@ -82,9 +78,7 @@ class ProtokollService:
         await self._session.flush()
         return protokoll
 
-    async def update_protokoll(
-        self, protokoll_id: int, **kwargs: object
-    ) -> Protokoll:
+    async def update_protokoll(self, protokoll_id: int, **kwargs: object) -> Protokoll:
         """Update an existing protocol."""
         protokoll = await self.get_protokoll(protokoll_id)
         if "typ" in kwargs and kwargs["typ"] is not None:

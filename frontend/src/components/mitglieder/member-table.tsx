@@ -202,6 +202,7 @@ export function MemberTable({ data, onRowClick }: MemberTableProps) {
     return result
   }, [data, nameFilter, statusFilter, departmentFilter])
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
     columns,

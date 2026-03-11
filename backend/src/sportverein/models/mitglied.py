@@ -3,7 +3,17 @@ from __future__ import annotations
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sportverein.models.base import Base, TimestampMixin
@@ -30,9 +40,7 @@ class Abteilung(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(100), unique=True)
     beschreibung: Mapped[str | None] = mapped_column(String(500), default=None)
 
-    mitglieder: Mapped[list[MitgliedAbteilung]] = relationship(
-        back_populates="abteilung"
-    )
+    mitglieder: Mapped[list[MitgliedAbteilung]] = relationship(back_populates="abteilung")
 
 
 class Mitglied(TimestampMixin, Base):
@@ -61,9 +69,7 @@ class Mitglied(TimestampMixin, Base):
     loesch_datum: Mapped[date | None] = mapped_column(Date, default=None)
     geloescht_am: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
-    abteilungen: Mapped[list[MitgliedAbteilung]] = relationship(
-        back_populates="mitglied"
-    )
+    abteilungen: Mapped[list[MitgliedAbteilung]] = relationship(back_populates="mitglied")
 
 
 class MitgliedAbteilung(Base):

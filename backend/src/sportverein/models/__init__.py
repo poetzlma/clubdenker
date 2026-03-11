@@ -35,7 +35,13 @@ from sportverein.models.kommunikation import (
 )
 from sportverein.models.audit import AuditLog
 from sportverein.models.ehrenamt import Aufwandsentschaedigung, AufwandTyp
-from sportverein.models.training import Anwesenheit, Lizenztyp, TrainerLizenz, Trainingsgruppe, Wochentag
+from sportverein.models.training import (
+    Anwesenheit,
+    Lizenztyp,
+    TrainerLizenz,
+    Trainingsgruppe,
+    Wochentag,
+)
 from sportverein.models.protokoll import Protokoll, ProtokollTyp
 
 __all__ = [
@@ -85,5 +91,6 @@ def __getattr__(name: str):
     """Lazy import auth models to avoid circular imports."""
     if name in ("AdminUser", "ApiToken"):
         from sportverein.auth.models import AdminUser, ApiToken
+
         return {"AdminUser": AdminUser, "ApiToken": ApiToken}[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

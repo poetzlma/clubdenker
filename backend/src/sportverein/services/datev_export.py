@@ -35,20 +35,14 @@ class DatevExportService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def export_buchungen_csv(
-        self, year: int, month: int | None = None
-    ) -> bytes:
+    async def export_buchungen_csv(self, year: int, month: int | None = None) -> bytes:
         """Export bookings in DATEV Buchungsstapel format.
 
         Returns CSV as bytes encoded in Windows-1252.
         """
-        stmt = select(Buchung).where(
-            extract("year", Buchung.buchungsdatum) == year
-        )
+        stmt = select(Buchung).where(extract("year", Buchung.buchungsdatum) == year)
         if month is not None:
-            stmt = stmt.where(
-                extract("month", Buchung.buchungsdatum) == month
-            )
+            stmt = stmt.where(extract("month", Buchung.buchungsdatum) == month)
         stmt = stmt.order_by(Buchung.buchungsdatum, Buchung.id)
 
         result = await self.session.execute(stmt)
@@ -94,16 +88,18 @@ class DatevExportService:
             buchungstext = b.beschreibung[:60]  # DATEV limit
             kostenstelle = ks_map.get(b.kostenstelle_id, "") if b.kostenstelle_id else ""
 
-            writer.writerow([
-                umsatz_sh,
-                b.konto,
-                b.gegenkonto,
-                "",  # BU-Schluessel (tax key) -- left empty for nonprofit
-                belegdatum,
-                belegfeld1,
-                buchungstext,
-                kostenstelle,
-            ])
+            writer.writerow(
+                [
+                    umsatz_sh,
+                    b.konto,
+                    b.gegenkonto,
+                    "",  # BU-Schluessel (tax key) -- left empty for nonprofit
+                    belegdatum,
+                    belegfeld1,
+                    buchungstext,
+                    kostenstelle,
+                ]
+            )
 
         return buf.getvalue().encode("windows-1252", errors="replace")
 
@@ -143,14 +139,16 @@ class DatevExportService:
             brutto = _format_decimal(r.betrag)
             invoice_status = r.status.value if hasattr(r.status, "value") else str(r.status)
 
-            writer.writerow([
-                r.rechnungsnummer,
-                datum,
-                kunde,
-                netto,
-                ust,
-                brutto,
-                invoice_status,
-            ])
+            writer.writerow(
+                [
+                    r.rechnungsnummer,
+                    datum,
+                    kunde,
+                    netto,
+                    ust,
+                    brutto,
+                    invoice_status,
+                ]
+            )
 
         return buf.getvalue().encode("windows-1252", errors="replace")

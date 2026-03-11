@@ -135,9 +135,7 @@ class MitgliederService:
         await self.session.refresh(member)
         return member
 
-    async def cancel_member(
-        self, member_id: int, austrittsdatum: date | None = None
-    ) -> Mitglied:
+    async def cancel_member(self, member_id: int, austrittsdatum: date | None = None) -> Mitglied:
         member = await self.get_member(member_id)
         if member is None:
             raise ValueError(f"Member {member_id} not found")
@@ -149,9 +147,7 @@ class MitgliederService:
 
     # -- search --------------------------------------------------------------
 
-    async def search_members(
-        self, filters: MitgliedFilter
-    ) -> tuple[list[Mitglied], int]:
+    async def search_members(self, filters: MitgliedFilter) -> tuple[list[Mitglied], int]:
         query = select(Mitglied)
         count_query = select(func.count()).select_from(Mitglied)
 
@@ -202,9 +198,7 @@ class MitgliederService:
 
     # -- departments ---------------------------------------------------------
 
-    async def assign_department(
-        self, member_id: int, abteilung_id: int
-    ) -> MitgliedAbteilung:
+    async def assign_department(self, member_id: int, abteilung_id: int) -> MitgliedAbteilung:
         assoc = MitgliedAbteilung(
             mitglied_id=member_id,
             abteilung_id=abteilung_id,
@@ -236,9 +230,7 @@ class MitgliederService:
         result = await self.session.execute(select(Abteilung).order_by(Abteilung.name))
         return list(result.scalars().all())
 
-    async def create_department(
-        self, name: str, beschreibung: str | None = None
-    ) -> Abteilung:
+    async def create_department(self, name: str, beschreibung: str | None = None) -> Abteilung:
         """Create a new department."""
         dept = Abteilung(name=name, beschreibung=beschreibung)
         self.session.add(dept)
@@ -246,9 +238,7 @@ class MitgliederService:
             await self.session.flush()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ValueError(
-                f"Abteilung mit Name '{name}' existiert bereits."
-            ) from exc
+            raise ValueError(f"Abteilung mit Name '{name}' existiert bereits.") from exc
         await self.session.refresh(dept)
         return dept
 
@@ -259,9 +249,7 @@ class MitgliederService:
         beschreibung: str | None = ...,  # type: ignore[assignment]
     ) -> Abteilung:
         """Update an existing department."""
-        result = await self.session.execute(
-            select(Abteilung).where(Abteilung.id == department_id)
-        )
+        result = await self.session.execute(select(Abteilung).where(Abteilung.id == department_id))
         dept = result.scalar_one_or_none()
         if dept is None:
             raise ValueError(f"Abteilung mit ID {department_id} nicht gefunden.")
@@ -273,17 +261,13 @@ class MitgliederService:
             await self.session.flush()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ValueError(
-                f"Abteilung mit Name '{name}' existiert bereits."
-            ) from exc
+            raise ValueError(f"Abteilung mit Name '{name}' existiert bereits.") from exc
         await self.session.refresh(dept)
         return dept
 
     async def delete_department(self, department_id: int) -> None:
         """Delete a department. Raises if members are still assigned."""
-        result = await self.session.execute(
-            select(Abteilung).where(Abteilung.id == department_id)
-        )
+        result = await self.session.execute(select(Abteilung).where(Abteilung.id == department_id))
         dept = result.scalar_one_or_none()
         if dept is None:
             raise ValueError(f"Abteilung mit ID {department_id} nicht gefunden.")
@@ -307,16 +291,16 @@ class MitgliederService:
     async def get_member_stats(self) -> dict:
         # Active / passive counts
         active_result = await self.session.execute(
-            select(func.count()).select_from(Mitglied).where(
-                Mitglied.status == MitgliedStatus.aktiv
-            )
+            select(func.count())
+            .select_from(Mitglied)
+            .where(Mitglied.status == MitgliedStatus.aktiv)
         )
         total_active = active_result.scalar_one()
 
         passive_result = await self.session.execute(
-            select(func.count()).select_from(Mitglied).where(
-                Mitglied.status == MitgliedStatus.passiv
-            )
+            select(func.count())
+            .select_from(Mitglied)
+            .where(Mitglied.status == MitgliedStatus.passiv)
         )
         total_passive = passive_result.scalar_one()
 
@@ -324,9 +308,9 @@ class MitgliederService:
         today = date.today()
         first_of_month = today.replace(day=1)
         new_result = await self.session.execute(
-            select(func.count()).select_from(Mitglied).where(
-                Mitglied.eintrittsdatum >= first_of_month
-            )
+            select(func.count())
+            .select_from(Mitglied)
+            .where(Mitglied.eintrittsdatum >= first_of_month)
         )
         new_this_month = new_result.scalar_one()
 

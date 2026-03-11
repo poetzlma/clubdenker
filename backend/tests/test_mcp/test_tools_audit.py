@@ -29,9 +29,7 @@ async def mcp_engine():
 
 @pytest_asyncio.fixture()
 async def mcp_session_factory(mcp_engine):
-    factory = async_sessionmaker(
-        mcp_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(mcp_engine, class_=AsyncSession, expire_on_commit=False)
     set_session_factory(factory)
     yield factory
     set_session_factory(None)
@@ -47,10 +45,14 @@ async def mcp_session(mcp_session_factory):
 async def seed_audit_logs(mcp_session: AsyncSession):
     """Create sample audit log entries."""
     logs = [
-        AuditLog(action="create", entity_type="mitglied", entity_id=1, details="Neues Mitglied angelegt"),
+        AuditLog(
+            action="create", entity_type="mitglied", entity_id=1, details="Neues Mitglied angelegt"
+        ),
         AuditLog(action="update", entity_type="mitglied", entity_id=1, details="Name geaendert"),
         AuditLog(action="create", entity_type="buchung", entity_id=10, details="Neue Buchung"),
-        AuditLog(action="delete", entity_type="rechnung", entity_id=5, details="Rechnung geloescht"),
+        AuditLog(
+            action="delete", entity_type="rechnung", entity_id=5, details="Rechnung geloescht"
+        ),
     ]
     for log in logs:
         mcp_session.add(log)

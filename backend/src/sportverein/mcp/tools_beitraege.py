@@ -58,7 +58,9 @@ async def sepa_xml_generieren(
         return {"xml": xml, "count": len(rechnungen_ids)}
 
 
-@mcp.tool(description="Rechnung fuer ein Mitglied erstellen (mit optionalen Positionen und Steuerinformationen).")
+@mcp.tool(
+    description="Rechnung fuer ein Mitglied erstellen (mit optionalen Positionen und Steuerinformationen)."
+)
 async def rechnung_erstellen(
     mitglied_id: int | None = None,
     betrag: float | None = None,
@@ -107,7 +109,9 @@ async def rechnung_erstellen(
         }
 
 
-@mcp.tool(description="Rechnung stellen (Status von Entwurf auf Gestellt setzen, sperrt Bearbeitung).")
+@mcp.tool(
+    description="Rechnung stellen (Status von Entwurf auf Gestellt setzen, sperrt Bearbeitung)."
+)
 async def rechnung_stellen(rechnung_id: int) -> dict:
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
@@ -124,7 +128,9 @@ async def rechnung_stellen(rechnung_id: int) -> dict:
         }
 
 
-@mcp.tool(description="Rechnung stornieren (Stornorechnung erstellen, Original wird als storniert markiert).")
+@mcp.tool(
+    description="Rechnung stornieren (Stornorechnung erstellen, Original wird als storniert markiert)."
+)
 async def rechnung_stornieren(rechnung_id: int, grund: str | None = None) -> dict:
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
@@ -142,7 +148,9 @@ async def rechnung_stornieren(rechnung_id: int, grund: str | None = None) -> dic
         }
 
 
-@mcp.tool(description="Zahlung fuer eine Rechnung verbuchen. Bei apply_skonto=True wird Skonto automatisch abgezogen, falls innerhalb der Frist.")
+@mcp.tool(
+    description="Zahlung fuer eine Rechnung verbuchen. Bei apply_skonto=True wird Skonto automatisch abgezogen, falls innerhalb der Frist."
+)
 async def zahlung_verbuchen(
     rechnung_id: int,
     betrag: float,
@@ -239,15 +247,17 @@ async def buchung_anlegen(
 ) -> dict:
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
-        buchung = await svc.create_booking({
-            "buchungsdatum": date.fromisoformat(buchungsdatum),
-            "betrag": Decimal(str(betrag)),
-            "beschreibung": beschreibung,
-            "konto": konto,
-            "gegenkonto": gegenkonto,
-            "sphare": sphare,
-            "mitglied_id": mitglied_id,
-        })
+        buchung = await svc.create_booking(
+            {
+                "buchungsdatum": date.fromisoformat(buchungsdatum),
+                "betrag": Decimal(str(betrag)),
+                "beschreibung": beschreibung,
+                "konto": konto,
+                "gegenkonto": gegenkonto,
+                "sphare": sphare,
+                "mitglied_id": mitglied_id,
+            }
+        )
         await session.commit()
         return {
             "id": buchung.id,
@@ -261,7 +271,9 @@ async def buchung_anlegen(
         }
 
 
-@mcp.tool(description="Budget einer Kostenstelle pruefen. Zeigt Budget, Ausgaben, verbleibendes Budget und Freigabelimit.")
+@mcp.tool(
+    description="Budget einer Kostenstelle pruefen. Zeigt Budget, Ausgaben, verbleibendes Budget und Freigabelimit."
+)
 async def budget_pruefen(kostenstelle_id: int) -> dict:
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
@@ -276,11 +288,15 @@ async def budget_pruefen(kostenstelle_id: int) -> dict:
             "budget": float(budget_status["budget"]),
             "spent": float(budget_status["spent"]),
             "remaining": float(budget_status["remaining"]),
-            "freigabelimit": float(budget_status["freigabelimit"]) if budget_status["freigabelimit"] is not None else None,
+            "freigabelimit": float(budget_status["freigabelimit"])
+            if budget_status["freigabelimit"] is not None
+            else None,
         }
 
 
-@mcp.tool(description="Aufwandsentschaedigung: Freibetraege pruefen und verwalten (Paragraph 3 Nr.26/26a EStG).")
+@mcp.tool(
+    description="Aufwandsentschaedigung: Freibetraege pruefen und verwalten (Paragraph 3 Nr.26/26a EStG)."
+)
 async def aufwandsentschaedigung(
     member_id: int,
     year: int,
@@ -294,13 +310,15 @@ async def aufwandsentschaedigung(
     async with get_mcp_session() as session:
         svc = EhrenamtService(session)
         if betrag is not None and typ is not None and beschreibung is not None:
-            entry = await svc.create_compensation({
-                "mitglied_id": member_id,
-                "betrag": Decimal(str(betrag)),
-                "datum": date.fromisoformat(datum) if datum else date.today(),
-                "typ": typ,
-                "beschreibung": beschreibung,
-            })
+            entry = await svc.create_compensation(
+                {
+                    "mitglied_id": member_id,
+                    "betrag": Decimal(str(betrag)),
+                    "datum": date.fromisoformat(datum) if datum else date.today(),
+                    "typ": typ,
+                    "beschreibung": beschreibung,
+                }
+            )
             limits = await svc.check_limits(member_id, year)
             await session.commit()
             return {
@@ -361,7 +379,9 @@ async def leistungsverrechnung(
         }
 
 
-@mcp.tool(description="EUeR (Einnahmen-Ueberschuss-Rechnung) fuer ein Geschaeftsjahr erstellen. Gruppiert nach Sphaere, Monat und Kostenstelle.")
+@mcp.tool(
+    description="EUeR (Einnahmen-Ueberschuss-Rechnung) fuer ein Geschaeftsjahr erstellen. Gruppiert nach Sphaere, Monat und Kostenstelle."
+)
 async def finanzen_euer(
     jahr: int,
     sphare: str | None = None,
@@ -376,7 +396,9 @@ async def finanzen_euer(
         return report
 
 
-@mcp.tool(description="Beitragseinzug starten: Beitraege berechnen, Rechnungen erstellen, SEPA generieren.")
+@mcp.tool(
+    description="Beitragseinzug starten: Beitraege berechnen, Rechnungen erstellen, SEPA generieren."
+)
 async def beitragseinzug_starten(year: int, month: int) -> dict:
     async with get_mcp_session() as session:
         agent = BeitragseinzugAgent(session)
@@ -388,7 +410,9 @@ async def beitragseinzug_starten(year: int, month: int) -> dict:
         return result
 
 
-@mcp.tool(description="Mahnwesen-Agent: Ueberfaellige Rechnungen analysieren und Mahnstufen zuordnen.")
+@mcp.tool(
+    description="Mahnwesen-Agent: Ueberfaellige Rechnungen analysieren und Mahnstufen zuordnen."
+)
 async def mahnwesen_agent() -> dict:
     async with get_mcp_session() as session:
         agent = MahnwesenAgent(session)
@@ -397,7 +421,9 @@ async def mahnwesen_agent() -> dict:
         return result
 
 
-@mcp.tool(description="PDF-Dokument fuer eine Rechnung erzeugen. Gibt Base64-kodierten PDF-Inhalt zurueck.")
+@mcp.tool(
+    description="PDF-Dokument fuer eine Rechnung erzeugen. Gibt Base64-kodierten PDF-Inhalt zurueck."
+)
 async def rechnung_pdf_generieren(rechnung_id: int) -> dict:
     import base64
 
@@ -430,7 +456,9 @@ async def rechnung_zugferd_xml(rechnung_id: int) -> dict:
         }
 
 
-@mcp.tool(description="Aufwand-Monitor: Ehrenamtliche Freibetraege ueberwachen, Warnungen bei >80%.")
+@mcp.tool(
+    description="Aufwand-Monitor: Ehrenamtliche Freibetraege ueberwachen, Warnungen bei >80%."
+)
 async def aufwand_monitor() -> dict:
     async with get_mcp_session() as session:
         agent = AufwandMonitorAgent(session)
@@ -522,7 +550,9 @@ async def vereinsstammdaten_aktualisieren(
         }
 
 
-@mcp.tool(description="Rechnungsvorlagen auflisten (System-Templates fuer verschiedene Rechnungstypen)")
+@mcp.tool(
+    description="Rechnungsvorlagen auflisten (System-Templates fuer verschiedene Rechnungstypen)"
+)
 async def rechnungsvorlagen_auflisten() -> dict:
     svc = RechnungTemplateService()
     templates = svc.get_templates()
@@ -549,9 +579,9 @@ async def rechnungen_zip_exportieren(jahr: int) -> dict:
         from sportverein.models.finanzen import Rechnung
 
         result = await session.execute(
-            sa_select(func.count()).select_from(Rechnung).where(
-                extract("year", Rechnung.rechnungsdatum) == jahr
-            )
+            sa_select(func.count())
+            .select_from(Rechnung)
+            .where(extract("year", Rechnung.rechnungsdatum) == jahr)
         )
         count = result.scalar_one()
         return {
@@ -645,7 +675,9 @@ async def rechnungen_auflisten(
                     "status": r.status.value,
                     "rechnungstyp": r.rechnungstyp.value,
                     "rechnungsdatum": r.rechnungsdatum.isoformat(),
-                    "faelligkeitsdatum": r.faelligkeitsdatum.isoformat() if r.faelligkeitsdatum else None,
+                    "faelligkeitsdatum": r.faelligkeitsdatum.isoformat()
+                    if r.faelligkeitsdatum
+                    else None,
                     "beschreibung": r.beschreibung,
                 }
                 for r in invoices
@@ -656,9 +688,7 @@ async def rechnungen_auflisten(
         }
 
 
-@mcp.tool(
-    description="SEPA-Mandate verwalten: auflisten, erstellen, aktualisieren, deaktivieren."
-)
+@mcp.tool(description="SEPA-Mandate verwalten: auflisten, erstellen, aktualisieren, deaktivieren.")
 async def sepa_mandate_verwalten(
     action: str = "list",
     mandat_id: int | None = None,
@@ -695,7 +725,9 @@ async def sepa_mandate_verwalten(
                 "bic": bic,
                 "kontoinhaber": kontoinhaber,
                 "mandatsreferenz": mandatsreferenz,
-                "unterschriftsdatum": date.fromisoformat(unterschriftsdatum) if unterschriftsdatum else date.today(),
+                "unterschriftsdatum": date.fromisoformat(unterschriftsdatum)
+                if unterschriftsdatum
+                else date.today(),
                 "gueltig_ab": date.fromisoformat(gueltig_ab) if gueltig_ab else date.today(),
                 "gueltig_bis": date.fromisoformat(gueltig_bis) if gueltig_bis else None,
             }
@@ -760,9 +792,7 @@ async def sepa_mandate_verwalten(
         return {"error": f"Unbekannte Aktion: {action}. Erlaubt: list, create, update, deactivate."}
 
 
-@mcp.tool(
-    description="Kostenstellen verwalten: auflisten, erstellen, aktualisieren, loeschen."
-)
+@mcp.tool(description="Kostenstellen verwalten: auflisten, erstellen, aktualisieren, loeschen.")
 async def kostenstellen_verwalten(
     action: str = "list",
     kostenstelle_id: int | None = None,

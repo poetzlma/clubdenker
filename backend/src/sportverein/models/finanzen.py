@@ -82,15 +82,11 @@ class Buchung(Base):
     konto: Mapped[str] = mapped_column(String(20))
     gegenkonto: Mapped[str] = mapped_column(String(20))
     sphare: Mapped[Sphare] = mapped_column(Enum(Sphare))
-    mitglied_id: Mapped[int | None] = mapped_column(
-        ForeignKey("mitglieder.id"), default=None
-    )
+    mitglied_id: Mapped[int | None] = mapped_column(ForeignKey("mitglieder.id"), default=None)
     kostenstelle_id: Mapped[int | None] = mapped_column(
         ForeignKey("kostenstellen.id"), default=None
     )
-    parent_buchung_id: Mapped[int | None] = mapped_column(
-        ForeignKey("buchungen.id"), default=None
-    )
+    parent_buchung_id: Mapped[int | None] = mapped_column(ForeignKey("buchungen.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
@@ -101,9 +97,7 @@ class Kostenstelle(TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(100), unique=True)
     beschreibung: Mapped[str | None] = mapped_column(String(500), default=None)
-    abteilung_id: Mapped[int | None] = mapped_column(
-        ForeignKey("abteilungen.id"), default=None
-    )
+    abteilung_id: Mapped[int | None] = mapped_column(ForeignKey("abteilungen.id"), default=None)
     budget: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), default=None)
     freigabelimit: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), default=None)
 
@@ -115,9 +109,7 @@ class Rechnung(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     rechnungsnummer: Mapped[str] = mapped_column(String(30), unique=True)
-    mitglied_id: Mapped[int | None] = mapped_column(
-        ForeignKey("mitglieder.id"), nullable=True
-    )
+    mitglied_id: Mapped[int | None] = mapped_column(ForeignKey("mitglieder.id"), nullable=True)
 
     # -- Type & status -------------------------------------------------------
     rechnungstyp: Mapped[RechnungTyp] = mapped_column(
@@ -127,9 +119,7 @@ class Rechnung(Base):
         Enum(RechnungStatus), default=RechnungStatus.entwurf
     )
     mahnstufe: Mapped[int] = mapped_column(default=0)
-    format: Mapped[RechnungFormat] = mapped_column(
-        Enum(RechnungFormat), default=RechnungFormat.pdf
-    )
+    format: Mapped[RechnungFormat] = mapped_column(Enum(RechnungFormat), default=RechnungFormat.pdf)
 
     # -- Empfaenger (recipient) ----------------------------------------------
     empfaenger_typ: Mapped[EmpfaengerTyp] = mapped_column(
@@ -143,18 +133,10 @@ class Rechnung(Base):
 
     # -- Amounts (§14 UStG requires net, tax, gross) -------------------------
     betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2))  # = summe_brutto
-    summe_netto: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), default=Decimal("0")
-    )
-    summe_steuer: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), default=Decimal("0")
-    )
-    bezahlt_betrag: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), default=Decimal("0")
-    )
-    offener_betrag: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), default=Decimal("0")
-    )
+    summe_netto: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    summe_steuer: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    bezahlt_betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    offener_betrag: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
 
     # -- Description & service dates -----------------------------------------
     beschreibung: Mapped[str] = mapped_column(String(500))
@@ -177,21 +159,15 @@ class Rechnung(Base):
     verwendungszweck: Mapped[str | None] = mapped_column(String(140), nullable=True)
 
     # -- Storno (cancellation) reference ------------------------------------
-    storno_von_id: Mapped[int | None] = mapped_column(
-        ForeignKey("rechnungen.id"), nullable=True
-    )
+    storno_von_id: Mapped[int | None] = mapped_column(ForeignKey("rechnungen.id"), nullable=True)
 
     # -- DSGVO: retention period --------------------------------------------
     loeschdatum: Mapped[date | None] = mapped_column(nullable=True)
 
     # -- Skonto (cash discount) ---------------------------------------------
-    skonto_prozent: Mapped[Decimal | None] = mapped_column(
-        Numeric(4, 2), nullable=True
-    )
+    skonto_prozent: Mapped[Decimal | None] = mapped_column(Numeric(4, 2), nullable=True)
     skonto_frist_tage: Mapped[int | None] = mapped_column(nullable=True)
-    skonto_betrag: Mapped[Decimal | None] = mapped_column(
-        Numeric(10, 2), nullable=True
-    )
+    skonto_betrag: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     # -- Versand (dispatch tracking) ----------------------------------------
     versand_kanal: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -200,9 +176,7 @@ class Rechnung(Base):
 
     # -- Timestamps ----------------------------------------------------------
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(
-        default=None, onupdate=func.now()
-    )
+    updated_at: Mapped[datetime | None] = mapped_column(default=None, onupdate=func.now())
 
     # -- Relationships -------------------------------------------------------
     zahlungen: Mapped[list[Zahlung]] = relationship(back_populates="rechnung")
@@ -232,12 +206,8 @@ class Rechnungsposition(Base):
     menge: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=Decimal("1"))
     einheit: Mapped[str] = mapped_column(String(20), default="x")
     einzelpreis_netto: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    steuersatz: Mapped[Decimal] = mapped_column(
-        Numeric(5, 2), default=Decimal("0")
-    )
-    steuerbefreiungsgrund: Mapped[str | None] = mapped_column(
-        String(200), nullable=True
-    )
+    steuersatz: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0"))
+    steuerbefreiungsgrund: Mapped[str | None] = mapped_column(String(200), nullable=True)
     gesamtpreis_netto: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     gesamtpreis_steuer: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     gesamtpreis_brutto: Mapped[Decimal] = mapped_column(Numeric(10, 2))

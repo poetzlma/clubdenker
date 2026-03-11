@@ -52,16 +52,14 @@ class DashboardService:
     async def _vorstand_kpis(self) -> dict[str, Any]:
         # Active members
         active_result = await self.session.execute(
-            select(func.count()).select_from(Mitglied).where(
-                Mitglied.status == MitgliedStatus.aktiv
-            )
+            select(func.count())
+            .select_from(Mitglied)
+            .where(Mitglied.status == MitgliedStatus.aktiv)
         )
         active_members = active_result.scalar_one()
 
         # Total balance
-        balance_result = await self.session.execute(
-            select(func.sum(Buchung.betrag))
-        )
+        balance_result = await self.session.execute(select(func.sum(Buchung.betrag)))
         total_balance = float(balance_result.scalar_one() or Decimal("0.00"))
 
         # Open fees
@@ -69,15 +67,19 @@ class DashboardService:
             select(
                 func.count(),
                 func.coalesce(func.sum(Rechnung.betrag), Decimal("0.00")),
-            ).where(Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]))
+            ).where(
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                )
+            )
         )
         row = open_result.one()
         open_fees_count = row[0]
@@ -91,9 +93,7 @@ class DashboardService:
         )
         mandates_count = mandate_result.scalar_one()
         compliance_score = (
-            round(mandates_count / active_members * 100, 1)
-            if active_members > 0
-            else 0.0
+            round(mandates_count / active_members * 100, 1) if active_members > 0 else 0.0
         )
 
         return {
@@ -131,10 +131,11 @@ class DashboardService:
 
             # Total members active as of end of that month
             total_result = await self.session.execute(
-                select(func.count()).select_from(Mitglied).where(
+                select(func.count())
+                .select_from(Mitglied)
+                .where(
                     Mitglied.eintrittsdatum <= end_of_month,
-                    (Mitglied.austrittsdatum.is_(None))
-                    | (Mitglied.austrittsdatum > end_of_month),
+                    (Mitglied.austrittsdatum.is_(None)) | (Mitglied.austrittsdatum > end_of_month),
                 )
             )
             total = total_result.scalar_one()
@@ -156,11 +157,13 @@ class DashboardService:
                 )
                 by_dept[dept_name] = dept_count_result.scalar_one()
 
-            trend.append({
-                "month": month_label,
-                "total": total,
-                "by_department": by_dept,
-            })
+            trend.append(
+                {
+                    "month": month_label,
+                    "total": total,
+                    "by_department": by_dept,
+                }
+            )
 
         return trend
 
@@ -198,11 +201,13 @@ class DashboardService:
             )
             expenses = abs(float(expense_result.scalar_one()))
 
-            cashflow.append({
-                "month": month_label,
-                "income": income,
-                "expenses": expenses,
-            })
+            cashflow.append(
+                {
+                    "month": month_label,
+                    "income": income,
+                    "expenses": expenses,
+                }
+            )
 
         return cashflow
 
@@ -214,32 +219,38 @@ class DashboardService:
         # Overdue invoices
         overdue_result = await self.session.execute(
             select(Rechnung).where(
-                Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]),
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                ),
                 Rechnung.faelligkeitsdatum < today,
             )
         )
         overdue = overdue_result.scalars().all()
         if overdue:
             total_overdue = sum(float(r.betrag) for r in overdue)
-            actions.append({
-                "type": "overdue_fees",
-                "title": "Überfällige Beiträge",
-                "detail": f"{len(overdue)} Rechnungen, gesamt {total_overdue:.2f} EUR",
-                "severity": "high" if len(overdue) > 5 else "medium",
-            })
+            actions.append(
+                {
+                    "type": "overdue_fees",
+                    "title": "Überfällige Beiträge",
+                    "detail": f"{len(overdue)} Rechnungen, gesamt {total_overdue:.2f} EUR",
+                    "severity": "high" if len(overdue) > 5 else "medium",
+                }
+            )
 
         # Expiring SEPA mandates (within 30 days)
         soon = today + timedelta(days=30)
         mandate_result = await self.session.execute(
-            select(func.count()).select_from(SepaMandat).where(
+            select(func.count())
+            .select_from(SepaMandat)
+            .where(
                 SepaMandat.aktiv == True,  # noqa: E712
                 SepaMandat.gueltig_bis.is_not(None),
                 SepaMandat.gueltig_bis <= soon,
@@ -247,12 +258,14 @@ class DashboardService:
         )
         expiring = mandate_result.scalar_one()
         if expiring > 0:
-            actions.append({
-                "type": "expiring_mandates",
-                "title": "Ablaufende SEPA-Mandate",
-                "detail": f"{expiring} Mandate laufen in 30 Tagen ab",
-                "severity": "medium",
-            })
+            actions.append(
+                {
+                    "type": "expiring_mandates",
+                    "title": "Ablaufende SEPA-Mandate",
+                    "detail": f"{expiring} Mandate laufen in 30 Tagen ab",
+                    "severity": "medium",
+                }
+            )
 
         # Budget warnings: cost centers >90% spent
         ks_result = await self.session.execute(
@@ -267,12 +280,14 @@ class DashboardService:
             spent = abs(float(spent_result.scalar_one()))
             budget = float(ks.budget) if ks.budget else 0.0
             if budget > 0 and spent / budget > 0.9:
-                actions.append({
-                    "type": "budget_warning",
-                    "title": f"Budgetwarnung: {ks.name}",
-                    "detail": f"{spent:.0f}/{budget:.0f} EUR ({spent / budget * 100:.0f}%)",
-                    "severity": "high" if spent / budget > 1.0 else "medium",
-                })
+                actions.append(
+                    {
+                        "type": "budget_warning",
+                        "title": f"Budgetwarnung: {ks.name}",
+                        "detail": f"{spent:.0f}/{budget:.0f} EUR ({spent / budget * 100:.0f}%)",
+                        "severity": "high" if spent / budget > 1.0 else "medium",
+                    }
+                )
 
         return actions
 
@@ -303,15 +318,19 @@ class DashboardService:
             select(
                 func.count(),
                 func.coalesce(func.sum(Rechnung.betrag), Decimal("0.00")),
-            ).where(Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]))
+            ).where(
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                )
+            )
         )
         row = total_result.one()
         total_count = row[0]
@@ -323,18 +342,21 @@ class DashboardService:
             .select_from(Rechnung)
             .join(
                 SepaMandat,
-                (SepaMandat.mitglied_id == Rechnung.mitglied_id)
-                & (SepaMandat.aktiv == True),  # noqa: E712
+                (SepaMandat.mitglied_id == Rechnung.mitglied_id) & (SepaMandat.aktiv == True),  # noqa: E712
             )
-            .where(Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]))
+            .where(
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                )
+            )
         )
         ready_count = ready_result.scalar_one()
         exceptions = total_count - ready_count
@@ -360,31 +382,37 @@ class DashboardService:
         # Open receivables (sum of open invoices)
         recv_result = await self.session.execute(
             select(func.coalesce(func.sum(Rechnung.betrag), Decimal("0.00"))).where(
-                Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ])
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                )
             )
         )
         open_receivables = float(recv_result.scalar_one())
 
         # Pending transfers: count of open invoices without SEPA mandate
         pending_result = await self.session.execute(
-            select(func.count()).select_from(Rechnung).where(
-                Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]),
+            select(func.count())
+            .select_from(Rechnung)
+            .where(
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                ),
                 ~Rechnung.mitglied_id.in_(
                     select(SepaMandat.mitglied_id).where(
                         SepaMandat.aktiv == True  # noqa: E712
@@ -409,15 +437,17 @@ class DashboardService:
 
         result = await self.session.execute(
             select(Rechnung).where(
-                Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]),
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                ),
                 Rechnung.faelligkeitsdatum < today,
             )
         )
@@ -454,13 +484,15 @@ class DashboardService:
             dept_row = dept_result.scalar_one_or_none()
             department = dept_row if dept_row else "Keine Abteilung"
 
-            items.append({
-                "member_name": member_name,
-                "department": department,
-                "amount": float(rechnung.betrag),
-                "days_overdue": days_overdue,
-                "dunning_level": dunning_level,
-            })
+            items.append(
+                {
+                    "member_name": member_name,
+                    "department": department,
+                    "amount": float(rechnung.betrag),
+                    "days_overdue": days_overdue,
+                    "dunning_level": dunning_level,
+                }
+            )
 
         return items
 
@@ -468,34 +500,40 @@ class DashboardService:
         """Budget utilization per Kostenstelle."""
         # Department colors for display
         dept_colors = [
-            "#3b82f6", "#ef4444", "#10b981", "#f59e0b",
-            "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16",
+            "#3b82f6",
+            "#ef4444",
+            "#10b981",
+            "#f59e0b",
+            "#8b5cf6",
+            "#ec4899",
+            "#06b6d4",
+            "#84cc16",
         ]
 
-        ks_result = await self.session.execute(
-            select(Kostenstelle).order_by(Kostenstelle.name)
-        )
+        ks_result = await self.session.execute(select(Kostenstelle).order_by(Kostenstelle.name))
         items: list[dict[str, Any]] = []
         for idx, ks in enumerate(ks_result.scalars().all()):
             budget = float(ks.budget) if ks.budget else 0.0
 
             spent_result = await self.session.execute(
-                select(
-                    func.coalesce(func.sum(Buchung.betrag), Decimal("0.00"))
-                ).where(Buchung.kostenstelle_id == ks.id)
+                select(func.coalesce(func.sum(Buchung.betrag), Decimal("0.00"))).where(
+                    Buchung.kostenstelle_id == ks.id
+                )
             )
             spent = abs(float(spent_result.scalar_one()))
 
             percentage = round(spent / budget * 100, 1) if budget > 0 else 0.0
             color = dept_colors[idx % len(dept_colors)]
 
-            items.append({
-                "name": ks.name,
-                "budget": budget,
-                "spent": spent,
-                "percentage": percentage,
-                "department_color": color,
-            })
+            items.append(
+                {
+                    "name": ks.name,
+                    "budget": budget,
+                    "spent": spent,
+                    "percentage": percentage,
+                    "department_color": color,
+                }
+            )
 
         return items
 
@@ -503,9 +541,7 @@ class DashboardService:
     # Spartenleiter Dashboard
     # -----------------------------------------------------------------------
 
-    async def get_spartenleiter_dashboard(
-        self, abteilung_name: str
-    ) -> dict[str, Any]:
+    async def get_spartenleiter_dashboard(self, abteilung_name: str) -> dict[str, Any]:
         """Department leader dashboard."""
         # Find the department
         dept_result = await self.session.execute(
@@ -552,15 +588,13 @@ class DashboardService:
         total_spent = 0.0
         for ks in kostenstellen:
             spent_result = await self.session.execute(
-                select(
-                    func.coalesce(func.sum(Buchung.betrag), Decimal("0.00"))
-                ).where(Buchung.kostenstelle_id == ks.id)
+                select(func.coalesce(func.sum(Buchung.betrag), Decimal("0.00"))).where(
+                    Buchung.kostenstelle_id == ks.id
+                )
             )
             total_spent += abs(float(spent_result.scalar_one()))
 
-        budget_utilization = (
-            round(total_spent / total_budget * 100, 1) if total_budget > 0 else 0.0
-        )
+        budget_utilization = round(total_spent / total_budget * 100, 1) if total_budget > 0 else 0.0
 
         # Risk count: members with open invoices in this department
         risk_result = await self.session.execute(
@@ -571,15 +605,17 @@ class DashboardService:
             )
             .where(
                 MitgliedAbteilung.abteilung_id == abteilung.id,
-                Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]),
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                ),
                 Rechnung.faelligkeitsdatum < date.today(),
             )
         )
@@ -630,14 +666,16 @@ class DashboardService:
         schedule: list[dict[str, Any]] = []
         for i in range(count):
             max_p = rng.choice([12, 16, 20, 24])
-            schedule.append({
-                "group": rng.choice(groups),
-                "trainer": rng.choice(trainers),
-                "registered": rng.randint(4, max_p),
-                "max_participants": max_p,
-                "weekday": rng.choice(weekdays),
-                "time": rng.choice(times),
-            })
+            schedule.append(
+                {
+                    "group": rng.choice(groups),
+                    "trainer": rng.choice(trainers),
+                    "registered": rng.randint(4, max_p),
+                    "max_participants": max_p,
+                    "weekday": rng.choice(weekdays),
+                    "time": rng.choice(times),
+                }
+            )
 
         return schedule
 
@@ -654,15 +692,17 @@ class DashboardService:
             )
             .where(
                 MitgliedAbteilung.abteilung_id == abteilung.id,
-                Rechnung.status.in_([
-                    RechnungStatus.entwurf,
-                    RechnungStatus.gestellt,
-                    RechnungStatus.faellig,
-                    RechnungStatus.teilbezahlt,
-                    RechnungStatus.mahnung_1,
-                    RechnungStatus.mahnung_2,
-                    RechnungStatus.mahnung_3,
-                ]),
+                Rechnung.status.in_(
+                    [
+                        RechnungStatus.entwurf,
+                        RechnungStatus.gestellt,
+                        RechnungStatus.faellig,
+                        RechnungStatus.teilbezahlt,
+                        RechnungStatus.mahnung_1,
+                        RechnungStatus.mahnung_2,
+                        RechnungStatus.mahnung_3,
+                    ]
+                ),
                 Rechnung.faelligkeitsdatum < today,
                 Mitglied.status == MitgliedStatus.aktiv,
             )
@@ -672,11 +712,13 @@ class DashboardService:
 
         risk: list[dict[str, Any]] = []
         for row in members:
-            risk.append({
-                "member_id": row[0],
-                "name": f"{row[1]} {row[2]}",
-                "reason": "Offene Beitraege ueberfaellig",
-            })
+            risk.append(
+                {
+                    "member_id": row[0],
+                    "name": f"{row[1]} {row[2]}",
+                    "reason": "Offene Beitraege ueberfaellig",
+                }
+            )
 
         return risk
 
@@ -691,9 +733,9 @@ class DashboardService:
         total_spent = 0.0
         for ks in kostenstellen:
             spent_result = await self.session.execute(
-                select(
-                    func.coalesce(func.sum(Buchung.betrag), Decimal("0.00"))
-                ).where(Buchung.kostenstelle_id == ks.id)
+                select(func.coalesce(func.sum(Buchung.betrag), Decimal("0.00"))).where(
+                    Buchung.kostenstelle_id == ks.id
+                )
             )
             total_spent += abs(float(spent_result.scalar_one()))
 

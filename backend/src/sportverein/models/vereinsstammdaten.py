@@ -25,9 +25,7 @@ class Vereinsstammdaten(Base):
     registergericht: Mapped[str | None] = mapped_column(String(100), nullable=True)
     registernummer: Mapped[str | None] = mapped_column(String(30), nullable=True)
     freistellungsbescheid_datum: Mapped[date | None] = mapped_column(nullable=True)
-    freistellungsbescheid_az: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
-    )
+    freistellungsbescheid_az: Mapped[str | None] = mapped_column(String(50), nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(
         default=None, onupdate=func.now(), nullable=True
     )

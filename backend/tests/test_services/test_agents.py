@@ -166,9 +166,7 @@ class TestComplianceMonitorAgent:
         result = await agent.run()
         # Should at least warn about missing Vereinsstammdaten
         assert result["total"] >= 1
-        gemeinnuetzigkeit = [
-            f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"
-        ]
+        gemeinnuetzigkeit = [f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"]
         assert len(gemeinnuetzigkeit) == 1
         assert gemeinnuetzigkeit[0]["severity"] == "warning"
 
@@ -189,9 +187,7 @@ class TestComplianceMonitorAgent:
         agent = ComplianceMonitorAgent(session)
         result = await agent.run()
 
-        gemeinnuetzigkeit = [
-            f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"
-        ]
+        gemeinnuetzigkeit = [f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"]
         assert len(gemeinnuetzigkeit) == 1
         assert gemeinnuetzigkeit[0]["severity"] == "critical"
         assert result["critical_count"] >= 1
@@ -215,9 +211,7 @@ class TestComplianceMonitorAgent:
         agent = ComplianceMonitorAgent(session)
         result = await agent.run()
 
-        gemeinnuetzigkeit = [
-            f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"
-        ]
+        gemeinnuetzigkeit = [f for f in result["findings"] if f["category"] == "gemeinnuetzigkeit"]
         assert len(gemeinnuetzigkeit) == 1
         assert gemeinnuetzigkeit[0]["severity"] == "warning"
 
@@ -237,9 +231,7 @@ class TestComplianceMonitorAgent:
         agent = ComplianceMonitorAgent(session)
         result = await agent.run()
 
-        zweckbetrieb = [
-            f for f in result["findings"] if f["category"] == "zweckbetrieb"
-        ]
+        zweckbetrieb = [f for f in result["findings"] if f["category"] == "zweckbetrieb"]
         assert len(zweckbetrieb) == 1
         assert zweckbetrieb[0]["severity"] == "warning"
 
@@ -259,9 +251,7 @@ class TestComplianceMonitorAgent:
         agent = ComplianceMonitorAgent(session)
         result = await agent.run()
 
-        zweckbetrieb = [
-            f for f in result["findings"] if f["category"] == "zweckbetrieb"
-        ]
+        zweckbetrieb = [f for f in result["findings"] if f["category"] == "zweckbetrieb"]
         assert len(zweckbetrieb) == 1
         assert zweckbetrieb[0]["severity"] == "critical"
 

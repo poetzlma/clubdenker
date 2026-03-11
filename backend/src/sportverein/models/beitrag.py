@@ -10,7 +10,6 @@ from sportverein.models.base import Base, TimestampMixin
 from sportverein.models.mitglied import Mitglied
 
 
-
 class BeitragsKategorie(TimestampMixin, Base):
     """Fee category with annual amount."""
 

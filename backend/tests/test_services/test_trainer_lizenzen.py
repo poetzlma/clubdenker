@@ -116,13 +116,19 @@ async def test_list_licenses_expired_filter(session: AsyncSession):
 
     # Expired license
     await svc.create_license(
-        m.id, Lizenztyp.erste_hilfe, "Alte Erste Hilfe",
-        date(2020, 1, 1), date(2022, 1, 1),
+        m.id,
+        Lizenztyp.erste_hilfe,
+        "Alte Erste Hilfe",
+        date(2020, 1, 1),
+        date(2022, 1, 1),
     )
     # Valid license
     await svc.create_license(
-        m.id, Lizenztyp.trainerlizenz_b, "Gueltige B-Lizenz",
-        date(2024, 1, 1), date.today() + timedelta(days=365),
+        m.id,
+        Lizenztyp.trainerlizenz_b,
+        "Gueltige B-Lizenz",
+        date(2024, 1, 1),
+        date.today() + timedelta(days=365),
     )
 
     expired = await svc.list_licenses(expired=True)
@@ -140,18 +146,27 @@ async def test_get_expiring_licenses(session: AsyncSession):
 
     # Expiring in 30 days
     await svc.create_license(
-        m.id, Lizenztyp.trainerlizenz_c, "Bald ablaufend",
-        date(2022, 1, 1), date.today() + timedelta(days=30),
+        m.id,
+        Lizenztyp.trainerlizenz_c,
+        "Bald ablaufend",
+        date(2022, 1, 1),
+        date.today() + timedelta(days=30),
     )
     # Expiring in 180 days (outside 90-day window)
     await svc.create_license(
-        m.id, Lizenztyp.trainerlizenz_b, "Noch lange gueltig",
-        date(2024, 1, 1), date.today() + timedelta(days=180),
+        m.id,
+        Lizenztyp.trainerlizenz_b,
+        "Noch lange gueltig",
+        date(2024, 1, 1),
+        date.today() + timedelta(days=180),
     )
     # Already expired
     await svc.create_license(
-        m.id, Lizenztyp.erste_hilfe, "Bereits abgelaufen",
-        date(2020, 1, 1), date(2022, 1, 1),
+        m.id,
+        Lizenztyp.erste_hilfe,
+        "Bereits abgelaufen",
+        date(2020, 1, 1),
+        date(2022, 1, 1),
     )
 
     expiring = await svc.get_expiring_licenses(days=90)
@@ -164,8 +179,11 @@ async def test_get_expiring_licenses_custom_days(session: AsyncSession):
     svc = TrainingService(session)
 
     await svc.create_license(
-        m.id, Lizenztyp.trainerlizenz_c, "In 150 Tagen",
-        date(2022, 1, 1), date.today() + timedelta(days=150),
+        m.id,
+        Lizenztyp.trainerlizenz_c,
+        "In 150 Tagen",
+        date(2022, 1, 1),
+        date.today() + timedelta(days=150),
     )
 
     # 90 days: should not find it
@@ -182,8 +200,11 @@ async def test_delete_license(session: AsyncSession):
     svc = TrainingService(session)
 
     lizenz = await svc.create_license(
-        m.id, Lizenztyp.erste_hilfe, "Zu loeschen",
-        date(2024, 1, 1), date(2026, 1, 1),
+        m.id,
+        Lizenztyp.erste_hilfe,
+        "Zu loeschen",
+        date(2024, 1, 1),
+        date(2026, 1, 1),
     )
 
     await svc.delete_license(lizenz.id)

@@ -33,9 +33,7 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
-    plain_token, _token_record = await auth.create_token(
-        admin_user_id=admin.id, name="login-token"
-    )
+    plain_token, _token_record = await auth.create_token(admin_user_id=admin.id, name="login-token")
     await log_audit(
         session,
         user_id=admin.id,

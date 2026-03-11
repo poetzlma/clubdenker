@@ -110,9 +110,7 @@ async def update_trainingsgruppe(
     try:
         gruppe = await svc.update_trainingsgruppe(gruppe_id, **updates)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()
     return _gruppe_to_response(gruppe)
 
@@ -127,9 +125,7 @@ async def delete_trainingsgruppe(
     try:
         await svc.delete_trainingsgruppe(gruppe_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
 
 
@@ -157,9 +153,7 @@ async def record_anwesenheit(
             teilnehmer=teilnehmer_dicts,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await session.commit()
     return [_anwesenheit_to_response(r) for r in records]
 
@@ -286,7 +280,5 @@ async def delete_lizenz(
     try:
         await svc.delete_license(lizenz_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await session.commit()

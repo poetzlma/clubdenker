@@ -36,13 +36,15 @@ async def test_create_compensation(session: AsyncSession):
     await session.flush()
 
     svc = EhrenamtService(session)
-    entry = await svc.create_compensation({
-        "mitglied_id": member.id,
-        "betrag": Decimal("500.00"),
-        "datum": date(2025, 6, 1),
-        "typ": "uebungsleiter",
-        "beschreibung": "Trainertaetigkeit",
-    })
+    entry = await svc.create_compensation(
+        {
+            "mitglied_id": member.id,
+            "betrag": Decimal("500.00"),
+            "datum": date(2025, 6, 1),
+            "typ": "uebungsleiter",
+            "beschreibung": "Trainertaetigkeit",
+        }
+    )
     assert entry.id is not None
     assert entry.betrag == Decimal("500.00")
     assert entry.typ == AufwandTyp.uebungsleiter
@@ -54,28 +56,34 @@ async def test_get_annual_total(session: AsyncSession):
     await session.flush()
 
     svc = EhrenamtService(session)
-    await svc.create_compensation({
-        "mitglied_id": member.id,
-        "betrag": Decimal("500.00"),
-        "datum": date(2025, 3, 1),
-        "typ": "uebungsleiter",
-        "beschreibung": "Q1",
-    })
-    await svc.create_compensation({
-        "mitglied_id": member.id,
-        "betrag": Decimal("300.00"),
-        "datum": date(2025, 6, 1),
-        "typ": "uebungsleiter",
-        "beschreibung": "Q2",
-    })
+    await svc.create_compensation(
+        {
+            "mitglied_id": member.id,
+            "betrag": Decimal("500.00"),
+            "datum": date(2025, 3, 1),
+            "typ": "uebungsleiter",
+            "beschreibung": "Q1",
+        }
+    )
+    await svc.create_compensation(
+        {
+            "mitglied_id": member.id,
+            "betrag": Decimal("300.00"),
+            "datum": date(2025, 6, 1),
+            "typ": "uebungsleiter",
+            "beschreibung": "Q2",
+        }
+    )
     # Different type
-    await svc.create_compensation({
-        "mitglied_id": member.id,
-        "betrag": Decimal("100.00"),
-        "datum": date(2025, 6, 1),
-        "typ": "ehrenamt",
-        "beschreibung": "Ehrenamt Q2",
-    })
+    await svc.create_compensation(
+        {
+            "mitglied_id": member.id,
+            "betrag": Decimal("100.00"),
+            "datum": date(2025, 6, 1),
+            "typ": "ehrenamt",
+            "beschreibung": "Ehrenamt Q2",
+        }
+    )
 
     total_ul = await svc.get_annual_total(member.id, 2025, AufwandTyp.uebungsleiter)
     assert total_ul == Decimal("800.00")
@@ -100,13 +108,15 @@ async def test_check_limits(session: AsyncSession):
     await session.flush()
 
     svc = EhrenamtService(session)
-    await svc.create_compensation({
-        "mitglied_id": member.id,
-        "betrag": Decimal("2500.00"),
-        "datum": date(2025, 6, 1),
-        "typ": "uebungsleiter",
-        "beschreibung": "Trainertaetigkeit",
-    })
+    await svc.create_compensation(
+        {
+            "mitglied_id": member.id,
+            "betrag": Decimal("2500.00"),
+            "datum": date(2025, 6, 1),
+            "typ": "uebungsleiter",
+            "beschreibung": "Trainertaetigkeit",
+        }
+    )
 
     limits = await svc.check_limits(member.id, 2025)
     assert limits["uebungsleiter"]["total"] == Decimal("2500.00")
@@ -127,21 +137,25 @@ async def test_get_warnings(session: AsyncSession):
 
     svc = EhrenamtService(session)
     # m1: 2500 of 3000 = 83% (above 80%)
-    await svc.create_compensation({
-        "mitglied_id": m1.id,
-        "betrag": Decimal("2500.00"),
-        "datum": date(2025, 6, 1),
-        "typ": "uebungsleiter",
-        "beschreibung": "A",
-    })
+    await svc.create_compensation(
+        {
+            "mitglied_id": m1.id,
+            "betrag": Decimal("2500.00"),
+            "datum": date(2025, 6, 1),
+            "typ": "uebungsleiter",
+            "beschreibung": "A",
+        }
+    )
     # m2: 500 of 3000 = 16% (below 80%)
-    await svc.create_compensation({
-        "mitglied_id": m2.id,
-        "betrag": Decimal("500.00"),
-        "datum": date(2025, 6, 1),
-        "typ": "uebungsleiter",
-        "beschreibung": "B",
-    })
+    await svc.create_compensation(
+        {
+            "mitglied_id": m2.id,
+            "betrag": Decimal("500.00"),
+            "datum": date(2025, 6, 1),
+            "typ": "uebungsleiter",
+            "beschreibung": "B",
+        }
+    )
 
     warnings = await svc.get_warnings(2025)
     assert len(warnings) == 1

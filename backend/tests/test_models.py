@@ -22,6 +22,7 @@ from sportverein.auth.models import AdminUser, ApiToken
 
 # ---- Helpers ----
 
+
 def _make_mitglied(nr: str = "M-0001", email: str = "test@example.de") -> Mitglied:
     return Mitglied(
         mitgliedsnummer=nr,
@@ -36,6 +37,7 @@ def _make_mitglied(nr: str = "M-0001", email: str = "test@example.de") -> Mitgli
 
 
 # ---- Mitglied tests ----
+
 
 @pytest.mark.asyncio
 async def test_create_mitglied(session: AsyncSession):
@@ -70,6 +72,7 @@ async def test_mitglied_unique_nummer(session: AsyncSession):
 
 # ---- Abteilung tests ----
 
+
 @pytest.mark.asyncio
 async def test_create_abteilung(session: AsyncSession):
     a = Abteilung(name="Fussball", beschreibung="Fussballabteilung")
@@ -90,6 +93,7 @@ async def test_abteilung_unique_name(session: AsyncSession):
 
 
 # ---- MitgliedAbteilung relationship tests ----
+
 
 @pytest.mark.asyncio
 async def test_mitglied_abteilung_relationship(session: AsyncSession):
@@ -120,18 +124,25 @@ async def test_mitglied_abteilung_unique_constraint(session: AsyncSession):
     session.add_all([m, a])
     await session.flush()
 
-    session.add(MitgliedAbteilung(mitglied_id=m.id, abteilung_id=a.id, beitrittsdatum=date(2024, 1, 1)))
+    session.add(
+        MitgliedAbteilung(mitglied_id=m.id, abteilung_id=a.id, beitrittsdatum=date(2024, 1, 1))
+    )
     await session.flush()
-    session.add(MitgliedAbteilung(mitglied_id=m.id, abteilung_id=a.id, beitrittsdatum=date(2024, 6, 1)))
+    session.add(
+        MitgliedAbteilung(mitglied_id=m.id, abteilung_id=a.id, beitrittsdatum=date(2024, 6, 1))
+    )
     with pytest.raises(IntegrityError):
         await session.flush()
 
 
 # ---- BeitragsKategorie tests ----
 
+
 @pytest.mark.asyncio
 async def test_create_beitragskategorie(session: AsyncSession):
-    bk = BeitragsKategorie(name="erwachsene", jahresbeitrag=Decimal("240.00"), beschreibung="Erwachsene")
+    bk = BeitragsKategorie(
+        name="erwachsene", jahresbeitrag=Decimal("240.00"), beschreibung="Erwachsene"
+    )
     session.add(bk)
     await session.commit()
 
@@ -141,6 +152,7 @@ async def test_create_beitragskategorie(session: AsyncSession):
 
 
 # ---- SepaMandat tests ----
+
 
 @pytest.mark.asyncio
 async def test_create_sepa_mandat(session: AsyncSession):
@@ -174,19 +186,22 @@ async def test_sepa_mandat_unique_referenz(session: AsyncSession):
     await session.flush()
 
     for _ in range(2):
-        session.add(SepaMandat(
-            mitglied_id=m.id,
-            mandatsreferenz="MANDATE-DUP",
-            iban="DE89370400440532013000",
-            kontoinhaber="Hans Mueller",
-            unterschriftsdatum=date(2024, 1, 1),
-            gueltig_ab=date(2024, 1, 1),
-        ))
+        session.add(
+            SepaMandat(
+                mitglied_id=m.id,
+                mandatsreferenz="MANDATE-DUP",
+                iban="DE89370400440532013000",
+                kontoinhaber="Hans Mueller",
+                unterschriftsdatum=date(2024, 1, 1),
+                gueltig_ab=date(2024, 1, 1),
+            )
+        )
     with pytest.raises(IntegrityError):
         await session.flush()
 
 
 # ---- AdminUser tests ----
+
 
 @pytest.mark.asyncio
 async def test_create_admin_user(session: AsyncSession):
@@ -214,6 +229,7 @@ async def test_admin_user_unique_email(session: AsyncSession):
 
 
 # ---- ApiToken tests ----
+
 
 @pytest.mark.asyncio
 async def test_create_api_token(session: AsyncSession):
@@ -252,6 +268,7 @@ async def test_api_token_unique_hash(session: AsyncSession):
 
 
 # ---- Enum value tests ----
+
 
 def test_mitglied_status_values():
     assert MitgliedStatus.aktiv.value == "aktiv"

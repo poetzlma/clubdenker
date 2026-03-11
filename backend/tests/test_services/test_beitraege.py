@@ -23,37 +23,27 @@ class TestCalculateProrata:
 
     def test_full_year_before_billing(self):
         """Member joined before the billing year -> full amount."""
-        result = self._svc().calculate_prorata(
-            Decimal("240.00"), date(2023, 3, 15), 2024
-        )
+        result = self._svc().calculate_prorata(Decimal("240.00"), date(2023, 3, 15), 2024)
         assert result == Decimal("240.00")
 
     def test_january_join(self):
         """Joined in January of billing year -> 12 months remaining."""
-        result = self._svc().calculate_prorata(
-            Decimal("240.00"), date(2024, 1, 10), 2024
-        )
+        result = self._svc().calculate_prorata(Decimal("240.00"), date(2024, 1, 10), 2024)
         assert result == Decimal("240.00")
 
     def test_july_join(self):
         """Joined in July of billing year -> 6 months remaining."""
-        result = self._svc().calculate_prorata(
-            Decimal("240.00"), date(2024, 7, 1), 2024
-        )
+        result = self._svc().calculate_prorata(Decimal("240.00"), date(2024, 7, 1), 2024)
         assert result == Decimal("120.00")
 
     def test_december_join(self):
         """Joined in December of billing year -> 1 month remaining."""
-        result = self._svc().calculate_prorata(
-            Decimal("240.00"), date(2024, 12, 20), 2024
-        )
+        result = self._svc().calculate_prorata(Decimal("240.00"), date(2024, 12, 20), 2024)
         assert result == Decimal("20.00")
 
     def test_future_billing_year(self):
         """Join date is after billing year -> 0."""
-        result = self._svc().calculate_prorata(
-            Decimal("240.00"), date(2025, 5, 1), 2024
-        )
+        result = self._svc().calculate_prorata(Decimal("240.00"), date(2025, 5, 1), 2024)
         assert result == Decimal("0.00")
 
 

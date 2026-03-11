@@ -128,9 +128,7 @@ class TestZugferdXmlGeneration:
         # ExchangedDocumentContext
         ctx = root.find("rsm:ExchangedDocumentContext", _NS)
         assert ctx is not None
-        guideline_id = ctx.find(
-            "ram:GuidelineSpecifiedDocumentContextParameter/ram:ID", _NS
-        )
+        guideline_id = ctx.find("ram:GuidelineSpecifiedDocumentContextParameter/ram:ID", _NS)
         assert guideline_id is not None
         assert guideline_id.text == "urn:factur-x.eu:1p0:basic"
 
@@ -166,9 +164,7 @@ class TestZugferdXmlGeneration:
         assert currency.text == "EUR"
 
         # Monetary summation
-        summation = settlement.find(
-            "ram:SpecifiedTradeSettlementHeaderMonetarySummation", _NS
-        )
+        summation = settlement.find("ram:SpecifiedTradeSettlementHeaderMonetarySummation", _NS)
         assert summation is not None
         assert summation.find("ram:LineTotalAmount", _NS).text == "100.00"
         assert summation.find("ram:GrandTotalAmount", _NS).text == "100.00"
@@ -214,23 +210,15 @@ class TestZugferdXmlGeneration:
 
         # First item
         item1 = line_items[0]
-        assert item1.find(
-            "ram:AssociatedDocumentLineDocument/ram:LineID", _NS
-        ).text == "1"
-        assert item1.find(
-            "ram:SpecifiedTradeProduct/ram:Name", _NS
-        ).text == "Position A"
-        qty1 = item1.find(
-            "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity", _NS
-        )
+        assert item1.find("ram:AssociatedDocumentLineDocument/ram:LineID", _NS).text == "1"
+        assert item1.find("ram:SpecifiedTradeProduct/ram:Name", _NS).text == "Position A"
+        qty1 = item1.find("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity", _NS)
         assert qty1.text == "2"
         assert qty1.get("unitCode") == "C62"  # Stk -> C62
 
         # Second item
         item2 = line_items[1]
-        qty2 = item2.find(
-            "ram:SpecifiedLineTradeDelivery/ram:BilledQuantity", _NS
-        )
+        qty2 = item2.find("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity", _NS)
         assert qty2.get("unitCode") == "HUR"  # h -> HUR
 
     async def test_storno_produces_type_code_381(self, session):
@@ -308,16 +296,14 @@ class TestZugferdXmlGeneration:
 
         # Header tax summary
         header_tax = txn.find(
-            "ram:ApplicableHeaderTradeSettlement/"
-            "ram:ApplicableTradeTax/ram:CategoryCode",
+            "ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode",
             _NS,
         )
         assert header_tax.text == "E"
 
         # Exemption reason
         exemption = txn.find(
-            "ram:ApplicableHeaderTradeSettlement/"
-            "ram:ApplicableTradeTax/ram:ExemptionReason",
+            "ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:ExemptionReason",
             _NS,
         )
         assert exemption is not None
@@ -364,8 +350,7 @@ class TestZugferdXmlGeneration:
 
         # Header tax summary
         header_tax = txn.find(
-            "ram:ApplicableHeaderTradeSettlement/"
-            "ram:ApplicableTradeTax/ram:CategoryCode",
+            "ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode",
             _NS,
         )
         assert header_tax.text == "S"
@@ -486,9 +471,7 @@ class TestZugferdXmlGeneration:
         )
         assert means is not None
         assert means.find("ram:TypeCode", _NS).text == "58"
-        iban = means.find(
-            "ram:PayeePartyCreditorFinancialAccount/ram:IBANID", _NS
-        )
+        iban = means.find("ram:PayeePartyCreditorFinancialAccount/ram:IBANID", _NS)
         assert iban.text == "DE89370400440532013000"
 
     async def test_not_found_raises_error(self, session):

@@ -37,36 +37,136 @@ from sportverein.models.training import Anwesenheit, Trainingsgruppe, Wochentag
 from sportverein.auth.models import AdminUser, ApiToken
 
 VORNAMEN = [
-    "Hans", "Klaus", "Peter", "Thomas", "Michael", "Stefan", "Andreas",
-    "Markus", "Frank", "Wolfgang", "Juergen", "Uwe", "Bernd", "Dieter",
-    "Ralf", "Anna", "Maria", "Petra", "Sabine", "Monika", "Claudia",
-    "Susanne", "Andrea", "Birgit", "Karin", "Heike", "Nicole", "Martina",
-    "Stefanie", "Julia", "Lena", "Finn", "Lukas", "Maximilian", "Tim",
-    "Laura", "Sophie", "Lea", "Emma", "Jonas", "Ben", "Paul", "Leon",
-    "Felix", "Max", "Erik", "Jan", "Lisa", "Sarah", "Katrin",
+    "Hans",
+    "Klaus",
+    "Peter",
+    "Thomas",
+    "Michael",
+    "Stefan",
+    "Andreas",
+    "Markus",
+    "Frank",
+    "Wolfgang",
+    "Juergen",
+    "Uwe",
+    "Bernd",
+    "Dieter",
+    "Ralf",
+    "Anna",
+    "Maria",
+    "Petra",
+    "Sabine",
+    "Monika",
+    "Claudia",
+    "Susanne",
+    "Andrea",
+    "Birgit",
+    "Karin",
+    "Heike",
+    "Nicole",
+    "Martina",
+    "Stefanie",
+    "Julia",
+    "Lena",
+    "Finn",
+    "Lukas",
+    "Maximilian",
+    "Tim",
+    "Laura",
+    "Sophie",
+    "Lea",
+    "Emma",
+    "Jonas",
+    "Ben",
+    "Paul",
+    "Leon",
+    "Felix",
+    "Max",
+    "Erik",
+    "Jan",
+    "Lisa",
+    "Sarah",
+    "Katrin",
 ]
 
 NACHNAMEN = [
-    "Mueller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer",
-    "Wagner", "Becker", "Schulz", "Hoffmann", "Schafer", "Koch",
-    "Bauer", "Richter", "Klein", "Wolf", "Schroeder", "Neumann",
-    "Schwarz", "Zimmermann", "Braun", "Krueger", "Hofmann", "Hartmann",
-    "Lange", "Schmitt", "Werner", "Schmitz", "Krause", "Meier",
-    "Lehmann", "Schmid", "Schulze", "Maier", "Koehler", "Herrmann",
-    "Koenig", "Walter", "Mayer", "Huber", "Kaiser", "Fuchs",
-    "Peters", "Lang", "Scholz", "Moeller", "Weiss", "Jung", "Hahn", "Vogel",
+    "Mueller",
+    "Schmidt",
+    "Schneider",
+    "Fischer",
+    "Weber",
+    "Meyer",
+    "Wagner",
+    "Becker",
+    "Schulz",
+    "Hoffmann",
+    "Schafer",
+    "Koch",
+    "Bauer",
+    "Richter",
+    "Klein",
+    "Wolf",
+    "Schroeder",
+    "Neumann",
+    "Schwarz",
+    "Zimmermann",
+    "Braun",
+    "Krueger",
+    "Hofmann",
+    "Hartmann",
+    "Lange",
+    "Schmitt",
+    "Werner",
+    "Schmitz",
+    "Krause",
+    "Meier",
+    "Lehmann",
+    "Schmid",
+    "Schulze",
+    "Maier",
+    "Koehler",
+    "Herrmann",
+    "Koenig",
+    "Walter",
+    "Mayer",
+    "Huber",
+    "Kaiser",
+    "Fuchs",
+    "Peters",
+    "Lang",
+    "Scholz",
+    "Moeller",
+    "Weiss",
+    "Jung",
+    "Hahn",
+    "Vogel",
 ]
 
 STRASSEN = [
-    "Hauptstrasse", "Bahnhofstrasse", "Schulstrasse", "Gartenstrasse",
-    "Kirchstrasse", "Bergstrasse", "Waldstrasse", "Ringstrasse",
-    "Lindenstrasse", "Parkstrasse", "Muehlenweg", "Am Markt",
+    "Hauptstrasse",
+    "Bahnhofstrasse",
+    "Schulstrasse",
+    "Gartenstrasse",
+    "Kirchstrasse",
+    "Bergstrasse",
+    "Waldstrasse",
+    "Ringstrasse",
+    "Lindenstrasse",
+    "Parkstrasse",
+    "Muehlenweg",
+    "Am Markt",
 ]
 
 ORTE = [
-    ("70173", "Stuttgart"), ("80331", "Muenchen"), ("50667", "Koeln"),
-    ("60311", "Frankfurt"), ("40213", "Duesseldorf"), ("22767", "Hamburg"),
-    ("10115", "Berlin"), ("01067", "Dresden"), ("04109", "Leipzig"),
+    ("70173", "Stuttgart"),
+    ("80331", "Muenchen"),
+    ("50667", "Koeln"),
+    ("60311", "Frankfurt"),
+    ("40213", "Duesseldorf"),
+    ("22767", "Hamburg"),
+    ("10115", "Berlin"),
+    ("01067", "Dresden"),
+    ("04109", "Leipzig"),
     ("30159", "Hannover"),
 ]
 
@@ -128,16 +228,12 @@ async def seed() -> None:
             nachname = random.choice(NACHNAMEN)
             email = f"{vorname.lower()}.{nachname.lower()}{i}@example.de"
             while email in used_emails:
-                email = f"{vorname.lower()}.{nachname.lower()}{i}{random.randint(1,99)}@example.de"
+                email = f"{vorname.lower()}.{nachname.lower()}{i}{random.randint(1, 99)}@example.de"
             used_emails.add(email)
 
             plz, ort = random.choice(ORTE)
-            status = random.choices(
-                statuses, weights=[70, 15, 10, 5], k=1
-            )[0]
-            kat = random.choices(
-                beitrag_kats, weights=[50, 20, 15, 10, 5], k=1
-            )[0]
+            status = random.choices(statuses, weights=[70, 15, 10, 5], k=1)[0]
+            kat = random.choices(beitrag_kats, weights=[50, 20, 15, 10, 5], k=1)[0]
 
             m = Mitglied(
                 mitgliedsnummer=f"M-{i:04d}",
@@ -150,7 +246,9 @@ async def seed() -> None:
                 plz=plz,
                 ort=ort,
                 eintrittsdatum=_random_date(2015, 2025),
-                austrittsdatum=_random_date(2024, 2025) if status == MitgliedStatus.gekuendigt else None,
+                austrittsdatum=_random_date(2024, 2025)
+                if status == MitgliedStatus.gekuendigt
+                else None,
                 status=status,
                 beitragskategorie=kat,
                 notizen=None,
@@ -223,14 +321,86 @@ async def seed() -> None:
 
         # --- Trainingsgruppen ---
         trainingsgruppen_data = [
-            ("Herren 1. Mannschaft", abteilungen[0], "Stefan Mueller", Wochentag.dienstag, "18:30", 90, 22, "Sportplatz A"),
-            ("Herren 2. Mannschaft", abteilungen[0], "Andreas Weber", Wochentag.mittwoch, "19:00", 90, 22, "Sportplatz B"),
-            ("Jugend U17", abteilungen[0], "Frank Becker", Wochentag.montag, "17:00", 75, 18, "Sportplatz A"),
-            ("Damen Einzel", abteilungen[1], "Claudia Schmidt", Wochentag.donnerstag, "18:00", 60, 8, "Tennisplatz 1-4"),
-            ("Herren Doppel", abteilungen[1], "Peter Wagner", Wochentag.freitag, "19:00", 90, 12, "Tennisplatz 1-4"),
-            ("Schwimmtraining Erwachsene", abteilungen[2], "Monika Fischer", Wochentag.montag, "20:00", 60, 20, "Hallenbad"),
-            ("Schwimmtraining Jugend", abteilungen[2], "Heike Braun", Wochentag.mittwoch, "17:00", 60, 15, "Hallenbad"),
-            ("Lauftreff", abteilungen[3], "Wolfgang Hoffmann", Wochentag.samstag, "09:00", 120, None, "Stadtpark"),
+            (
+                "Herren 1. Mannschaft",
+                abteilungen[0],
+                "Stefan Mueller",
+                Wochentag.dienstag,
+                "18:30",
+                90,
+                22,
+                "Sportplatz A",
+            ),
+            (
+                "Herren 2. Mannschaft",
+                abteilungen[0],
+                "Andreas Weber",
+                Wochentag.mittwoch,
+                "19:00",
+                90,
+                22,
+                "Sportplatz B",
+            ),
+            (
+                "Jugend U17",
+                abteilungen[0],
+                "Frank Becker",
+                Wochentag.montag,
+                "17:00",
+                75,
+                18,
+                "Sportplatz A",
+            ),
+            (
+                "Damen Einzel",
+                abteilungen[1],
+                "Claudia Schmidt",
+                Wochentag.donnerstag,
+                "18:00",
+                60,
+                8,
+                "Tennisplatz 1-4",
+            ),
+            (
+                "Herren Doppel",
+                abteilungen[1],
+                "Peter Wagner",
+                Wochentag.freitag,
+                "19:00",
+                90,
+                12,
+                "Tennisplatz 1-4",
+            ),
+            (
+                "Schwimmtraining Erwachsene",
+                abteilungen[2],
+                "Monika Fischer",
+                Wochentag.montag,
+                "20:00",
+                60,
+                20,
+                "Hallenbad",
+            ),
+            (
+                "Schwimmtraining Jugend",
+                abteilungen[2],
+                "Heike Braun",
+                Wochentag.mittwoch,
+                "17:00",
+                60,
+                15,
+                "Hallenbad",
+            ),
+            (
+                "Lauftreff",
+                abteilungen[3],
+                "Wolfgang Hoffmann",
+                Wochentag.samstag,
+                "09:00",
+                120,
+                None,
+                "Stadtpark",
+            ),
         ]
         trainingsgruppen = []
         for name, abt, trainer, tag, zeit, dauer, max_t, ort_val in trainingsgruppen_data:
@@ -256,8 +426,12 @@ async def seed() -> None:
             for tg in trainingsgruppen:
                 # Map wochentag enum to weekday int (0=Monday)
                 wochentag_map = {
-                    Wochentag.montag: 0, Wochentag.dienstag: 1, Wochentag.mittwoch: 2,
-                    Wochentag.donnerstag: 3, Wochentag.freitag: 4, Wochentag.samstag: 5,
+                    Wochentag.montag: 0,
+                    Wochentag.dienstag: 1,
+                    Wochentag.mittwoch: 2,
+                    Wochentag.donnerstag: 3,
+                    Wochentag.freitag: 4,
+                    Wochentag.samstag: 5,
                     Wochentag.sonntag: 6,
                 }
                 target_day = wochentag_map[tg.wochentag]
@@ -315,7 +489,12 @@ async def seed() -> None:
                 "sphaere": "ideell",
                 "beschreibung": "Mitgliedsbeitrag 2026",
                 "positionen": [
-                    ("Jahresbeitrag Erwachsene 2026", Decimal("1"), Decimal("240.00"), Decimal("0")),
+                    (
+                        "Jahresbeitrag Erwachsene 2026",
+                        Decimal("1"),
+                        Decimal("240.00"),
+                        Decimal("0"),
+                    ),
                 ],
             },
             {
@@ -379,7 +558,8 @@ async def seed() -> None:
                 rechnungstyp=rd["typ"],
                 status=rd["status"],
                 empfaenger_typ=rd.get("empfaenger_typ", EmpfaengerTyp.mitglied),
-                empfaenger_name=rd.get("empfaenger_name") or (f"{m.vorname} {m.nachname}" if m else None),
+                empfaenger_name=rd.get("empfaenger_name")
+                or (f"{m.vorname} {m.nachname}" if m else None),
                 empfaenger_strasse=rd.get("empfaenger_strasse") or (m.strasse if m else None),
                 empfaenger_plz=rd.get("empfaenger_plz") or (m.plz if m else None),
                 empfaenger_ort=rd.get("empfaenger_ort") or (m.ort if m else None),
@@ -406,21 +586,23 @@ async def seed() -> None:
             await session.flush()
 
             for pos_nr, desc, menge, preis, satz, gp_n, gp_s, gp_b in pos_objects:
-                session.add(Rechnungsposition(
-                    rechnung_id=rechnung.id,
-                    position_nr=pos_nr,
-                    beschreibung=desc,
-                    menge=menge,
-                    einheit="x",
-                    einzelpreis_netto=preis,
-                    steuersatz=satz,
-                    steuerbefreiungsgrund=(
-                        "Paragraph 4 Nr. 22a UStG" if satz == Decimal("0") else None
-                    ),
-                    gesamtpreis_netto=gp_n,
-                    gesamtpreis_steuer=gp_s,
-                    gesamtpreis_brutto=gp_b,
-                ))
+                session.add(
+                    Rechnungsposition(
+                        rechnung_id=rechnung.id,
+                        position_nr=pos_nr,
+                        beschreibung=desc,
+                        menge=menge,
+                        einheit="x",
+                        einzelpreis_netto=preis,
+                        steuersatz=satz,
+                        steuerbefreiungsgrund=(
+                            "Paragraph 4 Nr. 22a UStG" if satz == Decimal("0") else None
+                        ),
+                        gesamtpreis_netto=gp_n,
+                        gesamtpreis_steuer=gp_s,
+                        gesamtpreis_brutto=gp_b,
+                    )
+                )
             await session.flush()
 
         # --- AdminUser ---

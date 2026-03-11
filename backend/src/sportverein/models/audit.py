@@ -13,9 +13,7 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(server_default=func.now())
-    user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("admin_users.id"), default=None
-    )
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("admin_users.id"), default=None)
     action: Mapped[str] = mapped_column(String(50))
     entity_type: Mapped[str] = mapped_column(String(50))
     entity_id: Mapped[int | None] = mapped_column(default=None)

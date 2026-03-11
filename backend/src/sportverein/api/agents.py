@@ -24,7 +24,9 @@ from sportverein.services.agents import (
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
 
-@router.post("/beitragseinzug", response_model=BeitragseinzugResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/beitragseinzug", response_model=BeitragseinzugResponse, status_code=status.HTTP_200_OK
+)
 async def run_beitragseinzug(
     body: BeitragseinzugRequest,
     _token: ApiToken = Depends(get_current_token),
@@ -59,7 +61,9 @@ async def run_aufwand_monitor(
     return AufwandMonitorResponse(**result)
 
 
-@router.post("/compliance-monitor", response_model=ComplianceMonitorResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/compliance-monitor", response_model=ComplianceMonitorResponse, status_code=status.HTTP_200_OK
+)
 async def run_compliance_monitor(
     _token: ApiToken = Depends(get_current_token),
     session: AsyncSession = Depends(get_db_session),

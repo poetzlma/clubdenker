@@ -37,9 +37,7 @@ async def mcp_engine():
 
 @pytest_asyncio.fixture()
 async def mcp_session_factory(mcp_engine):
-    factory = async_sessionmaker(
-        mcp_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(mcp_engine, class_=AsyncSession, expire_on_commit=False)
     set_session_factory(factory)
     yield factory
     set_session_factory(None)
@@ -170,7 +168,9 @@ async def test_anwesenheit_erfassen(mcp_session_factory, sample_gruppe, sample_m
 
 
 @pytest.mark.asyncio
-async def test_anwesenheit_statistik(mcp_session_factory, sample_abteilung, sample_gruppe, sample_member):
+async def test_anwesenheit_statistik(
+    mcp_session_factory, sample_abteilung, sample_gruppe, sample_member
+):
     # Record some attendance
     await anwesenheit_erfassen(
         trainingsgruppe_id=sample_gruppe["id"],

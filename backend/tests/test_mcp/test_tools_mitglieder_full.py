@@ -39,9 +39,7 @@ async def mcp_engine():
 
 @pytest_asyncio.fixture()
 async def mcp_session_factory(mcp_engine):
-    factory = async_sessionmaker(
-        mcp_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(mcp_engine, class_=AsyncSession, expire_on_commit=False)
     set_session_factory(factory)
     yield factory
     set_session_factory(None)
@@ -90,11 +88,15 @@ async def test_mitglieder_suchen_empty(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_mitglieder_suchen_with_filters(mcp_session_factory):
     await mitglied_anlegen(
-        vorname="Anna", nachname="Schmidt", email="anna@example.de",
+        vorname="Anna",
+        nachname="Schmidt",
+        email="anna@example.de",
         geburtsdatum="1985-03-20",
     )
     await mitglied_anlegen(
-        vorname="Peter", nachname="Müller", email="peter@example.de",
+        vorname="Peter",
+        nachname="Müller",
+        email="peter@example.de",
         geburtsdatum="1992-07-10",
     )
 
@@ -132,7 +134,9 @@ async def test_mitglied_details_not_found(mcp_session_factory):
 @pytest.mark.asyncio
 async def test_mitglied_anlegen_basic(mcp_session_factory):
     result = await mitglied_anlegen(
-        vorname="Lisa", nachname="Weber", email="lisa@example.de",
+        vorname="Lisa",
+        nachname="Weber",
+        email="lisa@example.de",
         geburtsdatum="1988-11-30",
     )
     assert result["vorname"] == "Lisa"
@@ -259,11 +263,13 @@ async def test_datenschutz_einwilligung_setzen_grant(mcp_session_factory, sample
 async def test_datenschutz_einwilligung_setzen_revoke(mcp_session_factory, sample_member):
     # Grant first
     await datenschutz_einwilligung_setzen(
-        member_id=sample_member["id"], einwilligung=True,
+        member_id=sample_member["id"],
+        einwilligung=True,
     )
     # Revoke
     result = await datenschutz_einwilligung_setzen(
-        member_id=sample_member["id"], einwilligung=False,
+        member_id=sample_member["id"],
+        einwilligung=False,
     )
     assert result["dsgvo_einwilligung"] is False
     assert result["einwilligung_datum"] is None

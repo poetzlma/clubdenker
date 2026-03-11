@@ -29,9 +29,7 @@ class DatenschutzService:
         result = await self.session.execute(
             select(Mitglied)
             .where(Mitglied.id == member_id)
-            .options(
-                selectinload(Mitglied.abteilungen).selectinload(MitgliedAbteilung.abteilung)
-            )
+            .options(selectinload(Mitglied.abteilungen).selectinload(MitgliedAbteilung.abteilung))
         )
         member = result.scalar_one_or_none()
         if member is None:
@@ -51,9 +49,13 @@ class DatenschutzService:
             "eintrittsdatum": member.eintrittsdatum.isoformat() if member.eintrittsdatum else None,
             "austrittsdatum": member.austrittsdatum.isoformat() if member.austrittsdatum else None,
             "status": member.status.value if member.status else None,
-            "beitragskategorie": member.beitragskategorie.value if member.beitragskategorie else None,
+            "beitragskategorie": member.beitragskategorie.value
+            if member.beitragskategorie
+            else None,
             "dsgvo_einwilligung": member.dsgvo_einwilligung,
-            "einwilligung_datum": member.einwilligung_datum.isoformat() if member.einwilligung_datum else None,
+            "einwilligung_datum": member.einwilligung_datum.isoformat()
+            if member.einwilligung_datum
+            else None,
             "loesch_datum": member.loesch_datum.isoformat() if member.loesch_datum else None,
         }
 
@@ -72,13 +74,17 @@ class DatenschutzService:
         )
         invoices_data = []
         for inv in inv_result.scalars().all():
-            invoices_data.append({
-                "id": inv.id,
-                "rechnungsnummer": inv.rechnungsnummer,
-                "betrag": str(inv.betrag),
-                "status": inv.status.value if inv.status else None,
-                "rechnungsdatum": inv.rechnungsdatum.isoformat() if inv.rechnungsdatum else None,
-            })
+            invoices_data.append(
+                {
+                    "id": inv.id,
+                    "rechnungsnummer": inv.rechnungsnummer,
+                    "betrag": str(inv.betrag),
+                    "status": inv.status.value if inv.status else None,
+                    "rechnungsdatum": inv.rechnungsdatum.isoformat()
+                    if inv.rechnungsdatum
+                    else None,
+                }
+            )
 
         # Payments
         inv_ids = [i["id"] for i in invoices_data]
@@ -88,13 +94,17 @@ class DatenschutzService:
                 select(Zahlung).where(Zahlung.rechnung_id.in_(inv_ids))
             )
             for pay in pay_result.scalars().all():
-                payments_data.append({
-                    "id": pay.id,
-                    "rechnung_id": pay.rechnung_id,
-                    "betrag": str(pay.betrag),
-                    "zahlungsdatum": pay.zahlungsdatum.isoformat() if pay.zahlungsdatum else None,
-                    "zahlungsart": pay.zahlungsart.value if pay.zahlungsart else None,
-                })
+                payments_data.append(
+                    {
+                        "id": pay.id,
+                        "rechnung_id": pay.rechnung_id,
+                        "betrag": str(pay.betrag),
+                        "zahlungsdatum": pay.zahlungsdatum.isoformat()
+                        if pay.zahlungsdatum
+                        else None,
+                        "zahlungsart": pay.zahlungsart.value if pay.zahlungsart else None,
+                    }
+                )
 
         # SEPA mandates
         sepa_result = await self.session.execute(
@@ -102,14 +112,16 @@ class DatenschutzService:
         )
         sepa_data = []
         for m in sepa_result.scalars().all():
-            sepa_data.append({
-                "id": m.id,
-                "mandatsreferenz": m.mandatsreferenz,
-                "iban": m.iban,
-                "bic": m.bic,
-                "kontoinhaber": m.kontoinhaber,
-                "aktiv": m.aktiv,
-            })
+            sepa_data.append(
+                {
+                    "id": m.id,
+                    "mandatsreferenz": m.mandatsreferenz,
+                    "iban": m.iban,
+                    "bic": m.bic,
+                    "kontoinhaber": m.kontoinhaber,
+                    "aktiv": m.aktiv,
+                }
+            )
 
         # Audit log entries
         audit_result = await self.session.execute(
@@ -120,12 +132,14 @@ class DatenschutzService:
         )
         audit_data = []
         for a in audit_result.scalars().all():
-            audit_data.append({
-                "id": a.id,
-                "timestamp": a.timestamp.isoformat() if a.timestamp else None,
-                "action": a.action,
-                "details": a.details,
-            })
+            audit_data.append(
+                {
+                    "id": a.id,
+                    "timestamp": a.timestamp.isoformat() if a.timestamp else None,
+                    "action": a.action,
+                    "details": a.details,
+                }
+            )
 
         return {
             "personal_data": personal_data,
@@ -138,9 +152,7 @@ class DatenschutzService:
 
     async def set_consent(self, member_id: int, consent: bool) -> Mitglied:
         """Update DSGVO consent flag."""
-        result = await self.session.execute(
-            select(Mitglied).where(Mitglied.id == member_id)
-        )
+        result = await self.session.execute(select(Mitglied).where(Mitglied.id == member_id))
         member = result.scalar_one_or_none()
         if member is None:
             raise ValueError(f"Member {member_id} not found")
@@ -151,13 +163,9 @@ class DatenschutzService:
         await self.session.refresh(member)
         return member
 
-    async def schedule_deletion(
-        self, member_id: int, retention_days: int = 365 * 10
-    ) -> Mitglied:
+    async def schedule_deletion(self, member_id: int, retention_days: int = 365 * 10) -> Mitglied:
         """Set loesch_datum for a member."""
-        result = await self.session.execute(
-            select(Mitglied).where(Mitglied.id == member_id)
-        )
+        result = await self.session.execute(select(Mitglied).where(Mitglied.id == member_id))
         member = result.scalar_one_or_none()
         if member is None:
             raise ValueError(f"Member {member_id} not found")
@@ -184,9 +192,7 @@ class DatenschutzService:
         Keeps the record for financial audit trail (soft-delete).
         Replaces personal data with placeholder values and sets geloescht_am.
         """
-        result = await self.session.execute(
-            select(Mitglied).where(Mitglied.id == member_id)
-        )
+        result = await self.session.execute(select(Mitglied).where(Mitglied.id == member_id))
         member = result.scalar_one_or_none()
         if member is None:
             raise ValueError(f"Mitglied mit ID {member_id} nicht gefunden.")
@@ -240,14 +246,18 @@ class DatenschutzService:
         for member in pending:
             try:
                 await self.delete_member_data(member.id)
-                results.append({
-                    "mitglied_id": member.id,
-                    "status": "geloescht",
-                })
+                results.append(
+                    {
+                        "mitglied_id": member.id,
+                        "status": "geloescht",
+                    }
+                )
             except ValueError as exc:
-                results.append({
-                    "mitglied_id": member.id,
-                    "status": "fehler",
-                    "detail": str(exc),
-                })
+                results.append(
+                    {
+                        "mitglied_id": member.id,
+                        "status": "fehler",
+                        "detail": str(exc),
+                    }
+                )
         return results

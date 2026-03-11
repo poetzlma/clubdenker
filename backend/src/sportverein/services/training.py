@@ -74,9 +74,7 @@ class TrainingService:
         await self.session.refresh(gruppe)
         return gruppe
 
-    async def update_trainingsgruppe(
-        self, gruppe_id: int, **kwargs: object
-    ) -> Trainingsgruppe:
+    async def update_trainingsgruppe(self, gruppe_id: int, **kwargs: object) -> Trainingsgruppe:
         """Update a training group. Only provided kwargs are changed."""
         gruppe = await self.get_trainingsgruppe(gruppe_id)
         if gruppe is None:
@@ -182,9 +180,7 @@ class TrainingService:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
-    async def get_anwesenheit_statistik(
-        self, abteilung_id: int, wochen: int = 12
-    ) -> dict:
+    async def get_anwesenheit_statistik(self, abteilung_id: int, wochen: int = 12) -> dict:
         """Get attendance statistics for heatmap: 7 days x N weeks with intensity levels.
 
         Returns a dict with:
@@ -254,9 +250,7 @@ class TrainingService:
             "avg_attendance_pct": round(avg_pct, 1),
         }
 
-    async def get_mitglied_anwesenheit(
-        self, mitglied_id: int, wochen: int = 12
-    ) -> dict:
+    async def get_mitglied_anwesenheit(self, mitglied_id: int, wochen: int = 12) -> dict:
         """Get attendance rate for a single member over the last N weeks."""
         end_date = date.today()
         start_date = end_date - timedelta(weeks=wochen)

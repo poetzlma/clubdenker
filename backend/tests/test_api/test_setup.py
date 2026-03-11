@@ -60,11 +60,14 @@ async def test_list_categories_empty(client):
 
 
 async def test_create_category(client):
-    resp = await client.post("/api/setup/beitragskategorien", json={
-        "name": "erwachsene",
-        "jahresbeitrag": 240.00,
-        "beschreibung": "Erwachsene ab 18",
-    })
+    resp = await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "erwachsene",
+            "jahresbeitrag": 240.00,
+            "beschreibung": "Erwachsene ab 18",
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert body["name"] == "erwachsene"
@@ -74,10 +77,13 @@ async def test_create_category(client):
 
 
 async def test_list_categories_after_create(client):
-    await client.post("/api/setup/beitragskategorien", json={
-        "name": "jugend",
-        "jahresbeitrag": 120.00,
-    })
+    await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "jugend",
+            "jahresbeitrag": 120.00,
+        },
+    )
     resp = await client.get("/api/setup/beitragskategorien")
     assert resp.status_code == 200
     body = resp.json()
@@ -86,29 +92,41 @@ async def test_list_categories_after_create(client):
 
 
 async def test_create_category_duplicate_name(client):
-    await client.post("/api/setup/beitragskategorien", json={
-        "name": "passiv",
-        "jahresbeitrag": 60.00,
-    })
-    resp = await client.post("/api/setup/beitragskategorien", json={
-        "name": "passiv",
-        "jahresbeitrag": 80.00,
-    })
+    await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "passiv",
+            "jahresbeitrag": 60.00,
+        },
+    )
+    resp = await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "passiv",
+            "jahresbeitrag": 80.00,
+        },
+    )
     assert resp.status_code == 400
     assert "existiert bereits" in resp.json()["detail"]
 
 
 async def test_update_category(client):
-    resp = await client.post("/api/setup/beitragskategorien", json={
-        "name": "familie",
-        "jahresbeitrag": 360.00,
-    })
+    resp = await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "familie",
+            "jahresbeitrag": 360.00,
+        },
+    )
     cat_id = resp.json()["id"]
 
-    resp2 = await client.put(f"/api/setup/beitragskategorien/{cat_id}", json={
-        "jahresbeitrag": 400.00,
-        "beschreibung": "Familienbeitrag",
-    })
+    resp2 = await client.put(
+        f"/api/setup/beitragskategorien/{cat_id}",
+        json={
+            "jahresbeitrag": 400.00,
+            "beschreibung": "Familienbeitrag",
+        },
+    )
     assert resp2.status_code == 200
     body = resp2.json()
     assert body["jahresbeitrag"] == 400.00
@@ -117,17 +135,23 @@ async def test_update_category(client):
 
 
 async def test_update_category_not_found(client):
-    resp = await client.put("/api/setup/beitragskategorien/9999", json={
-        "jahresbeitrag": 100.00,
-    })
+    resp = await client.put(
+        "/api/setup/beitragskategorien/9999",
+        json={
+            "jahresbeitrag": 100.00,
+        },
+    )
     assert resp.status_code == 404
 
 
 async def test_delete_category(client):
-    resp = await client.post("/api/setup/beitragskategorien", json={
-        "name": "ehrenmitglied",
-        "jahresbeitrag": 0.00,
-    })
+    resp = await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "ehrenmitglied",
+            "jahresbeitrag": 0.00,
+        },
+    )
     cat_id = resp.json()["id"]
 
     resp2 = await client.delete(f"/api/setup/beitragskategorien/{cat_id}")
@@ -149,10 +173,13 @@ async def test_delete_category_in_use(client, session: AsyncSession):
     await _create_member(session)
 
     # Create a BeitragsKategorie row with name matching the enum value
-    resp = await client.post("/api/setup/beitragskategorien", json={
-        "name": "erwachsene",
-        "jahresbeitrag": 240.00,
-    })
+    resp = await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "erwachsene",
+            "jahresbeitrag": 240.00,
+        },
+    )
     cat_id = resp.json()["id"]
 
     resp2 = await client.delete(f"/api/setup/beitragskategorien/{cat_id}")
@@ -161,16 +188,22 @@ async def test_delete_category_in_use(client, session: AsyncSession):
 
 
 async def test_create_category_missing_name(client):
-    resp = await client.post("/api/setup/beitragskategorien", json={
-        "jahresbeitrag": 100.00,
-    })
+    resp = await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "jahresbeitrag": 100.00,
+        },
+    )
     assert resp.status_code == 422
 
 
 async def test_create_category_missing_jahresbeitrag(client):
-    resp = await client.post("/api/setup/beitragskategorien", json={
-        "name": "test",
-    })
+    resp = await client.post(
+        "/api/setup/beitragskategorien",
+        json={
+            "name": "test",
+        },
+    )
     assert resp.status_code == 422
 
 
@@ -186,10 +219,13 @@ async def test_list_departments_empty(client):
 
 
 async def test_create_department(client):
-    resp = await client.post("/api/setup/abteilungen", json={
-        "name": "Fußball",
-        "beschreibung": "Fußballabteilung",
-    })
+    resp = await client.post(
+        "/api/setup/abteilungen",
+        json={
+            "name": "Fußball",
+            "beschreibung": "Fußballabteilung",
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert body["name"] == "Fußball"
@@ -217,10 +253,13 @@ async def test_update_department(client):
     resp = await client.post("/api/setup/abteilungen", json={"name": "Handball"})
     dept_id = resp.json()["id"]
 
-    resp2 = await client.put(f"/api/setup/abteilungen/{dept_id}", json={
-        "name": "Handball Herren",
-        "beschreibung": "Herrenmannschaft",
-    })
+    resp2 = await client.put(
+        f"/api/setup/abteilungen/{dept_id}",
+        json={
+            "name": "Handball Herren",
+            "beschreibung": "Herrenmannschaft",
+        },
+    )
     assert resp2.status_code == 200
     body = resp2.json()
     assert body["name"] == "Handball Herren"

@@ -310,9 +310,7 @@ class TestListEingangsrechnungen:
         # Update one to geprueft
         await svc.update_status(session, rechnung.id, "geprueft")
 
-        items, total = await svc.list_eingangsrechnungen(
-            session, filters={"status": "geprueft"}
-        )
+        items, total = await svc.list_eingangsrechnungen(session, filters={"status": "geprueft"})
         assert total == 1
         assert items[0].rechnungsnummer == "RE-2026-001"
 

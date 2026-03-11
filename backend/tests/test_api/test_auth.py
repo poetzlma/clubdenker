@@ -16,7 +16,9 @@ async def test_login_success(login_client, session: AsyncSession):
     await auth.create_admin(email="login@test.de", password="pass123", name="Login Admin")
     await session.commit()
 
-    resp = await login_client.post("/auth/login", json={"email": "login@test.de", "password": "pass123"})
+    resp = await login_client.post(
+        "/auth/login", json={"email": "login@test.de", "password": "pass123"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
@@ -30,13 +32,17 @@ async def test_login_wrong_credentials(login_client, session: AsyncSession):
     await auth.create_admin(email="wrong@test.de", password="pass123", name="Admin")
     await session.commit()
 
-    resp = await login_client.post("/auth/login", json={"email": "wrong@test.de", "password": "wrongpass"})
+    resp = await login_client.post(
+        "/auth/login", json={"email": "wrong@test.de", "password": "wrongpass"}
+    )
     assert resp.status_code == 401
     assert resp.json()["detail"] == "Invalid credentials"
 
 
 async def test_login_nonexistent_user(login_client):
-    resp = await login_client.post("/auth/login", json={"email": "nobody@test.de", "password": "pass123"})
+    resp = await login_client.post(
+        "/auth/login", json={"email": "nobody@test.de", "password": "pass123"}
+    )
     assert resp.status_code == 401
 
 

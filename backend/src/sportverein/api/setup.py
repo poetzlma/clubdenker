@@ -67,9 +67,7 @@ async def create_category(
             beschreibung=body.beschreibung,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -101,9 +99,7 @@ async def update_category(
     try:
         category = await svc.update_category(category_id, **kwargs)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -131,12 +127,8 @@ async def delete_category(
     except ValueError as exc:
         detail = str(exc)
         if "nicht gefunden" in detail:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=detail
-            ) from exc
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=detail
-        ) from exc
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail) from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -184,13 +176,9 @@ async def create_department(
 ) -> AbteilungResponse:
     svc = MitgliederService(session)
     try:
-        dept = await svc.create_department(
-            name=body.name, beschreibung=body.beschreibung
-        )
+        dept = await svc.create_department(name=body.name, beschreibung=body.beschreibung)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -219,9 +207,7 @@ async def update_department(
     try:
         dept = await svc.update_department(department_id, **kwargs)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -249,12 +235,8 @@ async def delete_department(
     except ValueError as exc:
         detail = str(exc)
         if "nicht gefunden" in detail:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=detail
-            ) from exc
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=detail
-        ) from exc
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail) from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,

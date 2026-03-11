@@ -141,9 +141,7 @@ class EingangsrechnungService:
         doc = root.find("rsm:ExchangedDocument", CII_NS)
         if doc is not None:
             result["rechnungsnummer"] = _text(doc.find("ram:ID", CII_NS)) or ""
-            result["rechnungsdatum"] = _parse_date_102(
-                doc.find("ram:IssueDateTime", CII_NS)
-            )
+            result["rechnungsdatum"] = _parse_date_102(doc.find("ram:IssueDateTime", CII_NS))
 
         # -- SupplyChainTradeTransaction --
         txn = root.find("rsm:SupplyChainTradeTransaction", CII_NS)
@@ -159,15 +157,9 @@ class EingangsrechnungService:
 
                 addr = seller.find("ram:PostalTradeAddress", CII_NS)
                 if addr is not None:
-                    result["aussteller_strasse"] = _text(
-                        addr.find("ram:LineOne", CII_NS)
-                    )
-                    result["aussteller_plz"] = _text(
-                        addr.find("ram:PostcodeCode", CII_NS)
-                    )
-                    result["aussteller_ort"] = _text(
-                        addr.find("ram:CityName", CII_NS)
-                    )
+                    result["aussteller_strasse"] = _text(addr.find("ram:LineOne", CII_NS))
+                    result["aussteller_plz"] = _text(addr.find("ram:PostcodeCode", CII_NS))
+                    result["aussteller_ort"] = _text(addr.find("ram:CityName", CII_NS))
 
                 # Tax registration
                 for tax_reg in seller.findall("ram:SpecifiedTaxRegistration", CII_NS):
@@ -183,17 +175,13 @@ class EingangsrechnungService:
         # -- Delivery (Leistungsdatum) --
         delivery = txn.find("ram:ApplicableHeaderTradeDelivery", CII_NS)
         if delivery is not None:
-            occ = delivery.find(
-                "ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime", CII_NS
-            )
+            occ = delivery.find("ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime", CII_NS)
             result["leistungsdatum"] = _parse_date_102(occ)
 
         # -- Settlement (amounts, currency, due date) --
         settlement = txn.find("ram:ApplicableHeaderTradeSettlement", CII_NS)
         if settlement is not None:
-            result["waehrung"] = (
-                _text(settlement.find("ram:InvoiceCurrencyCode", CII_NS)) or "EUR"
-            )
+            result["waehrung"] = _text(settlement.find("ram:InvoiceCurrencyCode", CII_NS)) or "EUR"
 
             # Due date from payment terms
             terms = settlement.find("ram:SpecifiedTradePaymentTerms", CII_NS)
@@ -207,15 +195,9 @@ class EingangsrechnungService:
                 "ram:SpecifiedTradeSettlementHeaderMonetarySummation", CII_NS
             )
             if summation is not None:
-                result["summe_netto"] = _decimal(
-                    summation.find("ram:TaxBasisTotalAmount", CII_NS)
-                )
-                result["summe_steuer"] = _decimal(
-                    summation.find("ram:TaxTotalAmount", CII_NS)
-                )
-                result["summe_brutto"] = _decimal(
-                    summation.find("ram:GrandTotalAmount", CII_NS)
-                )
+                result["summe_netto"] = _decimal(summation.find("ram:TaxBasisTotalAmount", CII_NS))
+                result["summe_steuer"] = _decimal(summation.find("ram:TaxTotalAmount", CII_NS))
+                result["summe_brutto"] = _decimal(summation.find("ram:GrandTotalAmount", CII_NS))
                 # DuePayableAmount can also serve as brutto
                 if result.get("summe_brutto") is None:
                     result["summe_brutto"] = _decimal(
@@ -223,9 +205,17 @@ class EingangsrechnungService:
                     )
 
         # Compute missing totals
-        if result.get("summe_netto") and result.get("summe_brutto") and not result.get("summe_steuer"):
+        if (
+            result.get("summe_netto")
+            and result.get("summe_brutto")
+            and not result.get("summe_steuer")
+        ):
             result["summe_steuer"] = result["summe_brutto"] - result["summe_netto"]
-        if result.get("summe_netto") and result.get("summe_steuer") and not result.get("summe_brutto"):
+        if (
+            result.get("summe_netto")
+            and result.get("summe_steuer")
+            and not result.get("summe_brutto")
+        ):
             result["summe_brutto"] = result["summe_netto"] + result["summe_steuer"]
 
         return result
@@ -239,49 +229,31 @@ class EingangsrechnungService:
         result: dict[str, Any] = {"quell_format": "xrechnung"}
 
         result["rechnungsnummer"] = _text(root.find("cbc:ID", UBL_NS)) or ""
-        result["rechnungsdatum"] = _parse_ubl_date(
-            root.find("cbc:IssueDate", UBL_NS)
-        )
-        result["faelligkeitsdatum"] = _parse_ubl_date(
-            root.find("cbc:DueDate", UBL_NS)
-        )
+        result["rechnungsdatum"] = _parse_ubl_date(root.find("cbc:IssueDate", UBL_NS))
+        result["faelligkeitsdatum"] = _parse_ubl_date(root.find("cbc:DueDate", UBL_NS))
 
         # Currency
-        result["waehrung"] = (
-            _text(root.find("cbc:DocumentCurrencyCode", UBL_NS)) or "EUR"
-        )
+        result["waehrung"] = _text(root.find("cbc:DocumentCurrencyCode", UBL_NS)) or "EUR"
 
         # Seller
-        supplier = root.find(
-            "cac:AccountingSupplierParty/cac:Party", UBL_NS
-        )
+        supplier = root.find("cac:AccountingSupplierParty/cac:Party", UBL_NS)
         if supplier is not None:
             name_el = supplier.find("cac:PartyName/cbc:Name", UBL_NS)
             result["aussteller_name"] = _text(name_el) or ""
 
             # Try PartyLegalEntity/RegistrationName as fallback
             if not result["aussteller_name"]:
-                legal_name = supplier.find(
-                    "cac:PartyLegalEntity/cbc:RegistrationName", UBL_NS
-                )
+                legal_name = supplier.find("cac:PartyLegalEntity/cbc:RegistrationName", UBL_NS)
                 result["aussteller_name"] = _text(legal_name) or ""
 
             addr = supplier.find("cac:PostalAddress", UBL_NS)
             if addr is not None:
-                result["aussteller_strasse"] = _text(
-                    addr.find("cbc:StreetName", UBL_NS)
-                )
-                result["aussteller_plz"] = _text(
-                    addr.find("cbc:PostalZone", UBL_NS)
-                )
-                result["aussteller_ort"] = _text(
-                    addr.find("cbc:CityName", UBL_NS)
-                )
+                result["aussteller_strasse"] = _text(addr.find("cbc:StreetName", UBL_NS))
+                result["aussteller_plz"] = _text(addr.find("cbc:PostalZone", UBL_NS))
+                result["aussteller_ort"] = _text(addr.find("cbc:CityName", UBL_NS))
 
             # Tax scheme
-            tax_scheme = supplier.find(
-                "cac:PartyTaxScheme/cbc:CompanyID", UBL_NS
-            )
+            tax_scheme = supplier.find("cac:PartyTaxScheme/cbc:CompanyID", UBL_NS)
             if tax_scheme is not None:
                 tax_val = _text(tax_scheme)
                 if tax_val and tax_val.startswith("DE"):
@@ -292,29 +264,25 @@ class EingangsrechnungService:
         # Monetary totals
         monetary = root.find("cac:LegalMonetaryTotal", UBL_NS)
         if monetary is not None:
-            result["summe_netto"] = _decimal(
-                monetary.find("cbc:TaxExclusiveAmount", UBL_NS)
-            )
-            result["summe_brutto"] = _decimal(
-                monetary.find("cbc:TaxInclusiveAmount", UBL_NS)
-            )
+            result["summe_netto"] = _decimal(monetary.find("cbc:TaxExclusiveAmount", UBL_NS))
+            result["summe_brutto"] = _decimal(monetary.find("cbc:TaxInclusiveAmount", UBL_NS))
             if result.get("summe_brutto") is None:
-                result["summe_brutto"] = _decimal(
-                    monetary.find("cbc:PayableAmount", UBL_NS)
-                )
+                result["summe_brutto"] = _decimal(monetary.find("cbc:PayableAmount", UBL_NS))
 
         # Tax total
         tax_total = root.find("cac:TaxTotal/cbc:TaxAmount", UBL_NS)
         result["summe_steuer"] = _decimal(tax_total)
 
         # Compute missing
-        if result.get("summe_netto") and result.get("summe_brutto") and not result.get("summe_steuer"):
+        if (
+            result.get("summe_netto")
+            and result.get("summe_brutto")
+            and not result.get("summe_steuer")
+        ):
             result["summe_steuer"] = result["summe_brutto"] - result["summe_netto"]
 
         # Delivery date
-        delivery_date = root.find(
-            "cac:Delivery/cbc:ActualDeliveryDate", UBL_NS
-        )
+        delivery_date = root.find("cac:Delivery/cbc:ActualDeliveryDate", UBL_NS)
         result["leistungsdatum"] = _parse_ubl_date(delivery_date)
 
         return result
@@ -479,13 +447,9 @@ class EingangsrechnungService:
                     status_val = EingangsrechnungStatus(status_val)
                 conditions.append(Eingangsrechnung.status == status_val)
             if filters.get("date_from"):
-                conditions.append(
-                    Eingangsrechnung.rechnungsdatum >= filters["date_from"]
-                )
+                conditions.append(Eingangsrechnung.rechnungsdatum >= filters["date_from"])
             if filters.get("date_to"):
-                conditions.append(
-                    Eingangsrechnung.rechnungsdatum <= filters["date_to"]
-                )
+                conditions.append(Eingangsrechnung.rechnungsdatum <= filters["date_to"])
 
         if conditions:
             query = query.where(*conditions)
@@ -532,15 +496,12 @@ class EingangsrechnungService:
         )
         rechnung = result.scalar_one_or_none()
         if rechnung is None:
-            raise ValueError(
-                f"Eingangsrechnung mit ID {rechnung_id} nicht gefunden"
-            )
+            raise ValueError(f"Eingangsrechnung mit ID {rechnung_id} nicht gefunden")
 
         valid_statuses = {s.value for s in EingangsrechnungStatus}
         if status not in valid_statuses:
             raise ValueError(
-                f"Ungültiger Status: {status}. "
-                f"Erlaubt: {', '.join(sorted(valid_statuses))}"
+                f"Ungültiger Status: {status}. Erlaubt: {', '.join(sorted(valid_statuses))}"
             )
 
         rechnung.status = EingangsrechnungStatus(status)

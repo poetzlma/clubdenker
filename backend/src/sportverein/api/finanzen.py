@@ -87,24 +87,27 @@ def _rechnung_to_response(r) -> RechnungResponse:
     positionen = []
     # Only include positionen if they were eagerly loaded (avoid lazy load in async)
     from sqlalchemy.orm import attributes
+
     pos_state = attributes.instance_state(r)
     if "positionen" in pos_state.dict:
         for p in r.positionen:
-            positionen.append(RechnungspositionResponse(
-                id=p.id,
-                rechnung_id=p.rechnung_id,
-                position_nr=p.position_nr,
-                beschreibung=p.beschreibung,
-                menge=float(p.menge),
-                einheit=p.einheit,
-                einzelpreis_netto=float(p.einzelpreis_netto),
-                steuersatz=float(p.steuersatz),
-                steuerbefreiungsgrund=p.steuerbefreiungsgrund,
-                gesamtpreis_netto=float(p.gesamtpreis_netto),
-                gesamtpreis_steuer=float(p.gesamtpreis_steuer),
-                gesamtpreis_brutto=float(p.gesamtpreis_brutto),
-                kostenstelle_id=p.kostenstelle_id,
-            ))
+            positionen.append(
+                RechnungspositionResponse(
+                    id=p.id,
+                    rechnung_id=p.rechnung_id,
+                    position_nr=p.position_nr,
+                    beschreibung=p.beschreibung,
+                    menge=float(p.menge),
+                    einheit=p.einheit,
+                    einzelpreis_netto=float(p.einzelpreis_netto),
+                    steuersatz=float(p.steuersatz),
+                    steuerbefreiungsgrund=p.steuerbefreiungsgrund,
+                    gesamtpreis_netto=float(p.gesamtpreis_netto),
+                    gesamtpreis_steuer=float(p.gesamtpreis_steuer),
+                    gesamtpreis_brutto=float(p.gesamtpreis_brutto),
+                    kostenstelle_id=p.kostenstelle_id,
+                )
+            )
 
     return RechnungResponse(
         id=r.id,
@@ -115,18 +118,30 @@ def _rechnung_to_response(r) -> RechnungResponse:
         rechnungsdatum=r.rechnungsdatum,
         faelligkeitsdatum=r.faelligkeitsdatum,
         status=r.status.value if hasattr(r.status, "value") else str(r.status),
-        rechnungstyp=r.rechnungstyp.value if hasattr(r, "rechnungstyp") and r.rechnungstyp else None,
+        rechnungstyp=r.rechnungstyp.value
+        if hasattr(r, "rechnungstyp") and r.rechnungstyp
+        else None,
         mahnstufe=r.mahnstufe if hasattr(r, "mahnstufe") else 0,
-        empfaenger_typ=r.empfaenger_typ.value if hasattr(r, "empfaenger_typ") and r.empfaenger_typ else None,
+        empfaenger_typ=r.empfaenger_typ.value
+        if hasattr(r, "empfaenger_typ") and r.empfaenger_typ
+        else None,
         empfaenger_name=getattr(r, "empfaenger_name", None),
         empfaenger_strasse=getattr(r, "empfaenger_strasse", None),
         empfaenger_plz=getattr(r, "empfaenger_plz", None),
         empfaenger_ort=getattr(r, "empfaenger_ort", None),
         empfaenger_ust_id=getattr(r, "empfaenger_ust_id", None),
-        summe_netto=float(r.summe_netto) if hasattr(r, "summe_netto") and r.summe_netto is not None else None,
-        summe_steuer=float(r.summe_steuer) if hasattr(r, "summe_steuer") and r.summe_steuer is not None else None,
-        bezahlt_betrag=float(r.bezahlt_betrag) if hasattr(r, "bezahlt_betrag") and r.bezahlt_betrag is not None else None,
-        offener_betrag=float(r.offener_betrag) if hasattr(r, "offener_betrag") and r.offener_betrag is not None else None,
+        summe_netto=float(r.summe_netto)
+        if hasattr(r, "summe_netto") and r.summe_netto is not None
+        else None,
+        summe_steuer=float(r.summe_steuer)
+        if hasattr(r, "summe_steuer") and r.summe_steuer is not None
+        else None,
+        bezahlt_betrag=float(r.bezahlt_betrag)
+        if hasattr(r, "bezahlt_betrag") and r.bezahlt_betrag is not None
+        else None,
+        offener_betrag=float(r.offener_betrag)
+        if hasattr(r, "offener_betrag") and r.offener_betrag is not None
+        else None,
         leistungsdatum=getattr(r, "leistungsdatum", None),
         leistungszeitraum_von=getattr(r, "leistungszeitraum_von", None),
         leistungszeitraum_bis=getattr(r, "leistungszeitraum_bis", None),
@@ -139,9 +154,13 @@ def _rechnung_to_response(r) -> RechnungResponse:
         gestellt_am=getattr(r, "gestellt_am", None),
         bezahlt_am=getattr(r, "bezahlt_am", None),
         format=r.format.value if hasattr(r, "format") and r.format else None,
-        skonto_prozent=float(r.skonto_prozent) if getattr(r, "skonto_prozent", None) is not None else None,
+        skonto_prozent=float(r.skonto_prozent)
+        if getattr(r, "skonto_prozent", None) is not None
+        else None,
         skonto_frist_tage=getattr(r, "skonto_frist_tage", None),
-        skonto_betrag=float(r.skonto_betrag) if getattr(r, "skonto_betrag", None) is not None else None,
+        skonto_betrag=float(r.skonto_betrag)
+        if getattr(r, "skonto_betrag", None) is not None
+        else None,
         versand_kanal=getattr(r, "versand_kanal", None),
         versendet_am=getattr(r, "versendet_am", None),
         versendet_an=getattr(r, "versendet_an", None),
@@ -155,15 +174,17 @@ def _rechnung_to_response(r) -> RechnungResponse:
 def _template_to_response(t: dict) -> RechnungTemplateResponse:
     positionen = []
     for p in t.get("positionen", []):
-        positionen.append(RechnungTemplatePositionResponse(
-            beschreibung=p.get("beschreibung", ""),
-            menge=p.get("menge", 1),
-            einheit=p.get("einheit", "×"),
-            einzelpreis_netto=p.get("einzelpreis_netto"),
-            steuersatz=p.get("steuersatz", 0),
-            steuerbefreiungsgrund=p.get("steuerbefreiungsgrund"),
-            platzhalter=p.get("platzhalter"),
-        ))
+        positionen.append(
+            RechnungTemplatePositionResponse(
+                beschreibung=p.get("beschreibung", ""),
+                menge=p.get("menge", 1),
+                einheit=p.get("einheit", "×"),
+                einzelpreis_netto=p.get("einzelpreis_netto"),
+                steuersatz=p.get("steuersatz", 0),
+                steuerbefreiungsgrund=p.get("steuerbefreiungsgrund"),
+                platzhalter=p.get("platzhalter"),
+            )
+        )
     return RechnungTemplateResponse(
         id=t["id"],
         name=t["name"],
@@ -225,7 +246,9 @@ async def list_bookings(
     if mitglied_id:
         filters["mitglied_id"] = mitglied_id
 
-    bookings, total = await svc.get_bookings(filters=filters or None, page=page, page_size=page_size)
+    bookings, total = await svc.get_bookings(
+        filters=filters or None, page=page, page_size=page_size
+    )
     return BuchungListResponse(
         items=[_buchung_to_response(b) for b in bookings],
         total=total,
@@ -266,10 +289,7 @@ async def get_balance(
     by_sphere = await svc.get_balance_by_sphere()
     total = await svc.get_total_balance()
     return KassenstandResponse(
-        by_sphere=[
-            KassenstandSphare(sphare=k, betrag=float(v))
-            for k, v in by_sphere.items()
-        ],
+        by_sphere=[KassenstandSphare(sphare=k, betrag=float(v)) for k, v in by_sphere.items()],
         total=float(total),
     )
 
@@ -304,7 +324,9 @@ async def list_invoices(
     if mitglied_id:
         filters["mitglied_id"] = mitglied_id
 
-    invoices, total = await svc.get_invoices(filters=filters or None, page=page, page_size=page_size)
+    invoices, total = await svc.get_invoices(
+        filters=filters or None, page=page, page_size=page_size
+    )
     return RechnungListResponse(
         items=[_rechnung_to_response(r) for r in invoices],
         total=total,
@@ -343,7 +365,9 @@ async def create_invoice(
             zahlungsziel_tage=body.zahlungsziel_tage,
             positionen=positionen_data,
             format=body.format,
-            skonto_prozent=Decimal(str(body.skonto_prozent)) if body.skonto_prozent is not None else None,
+            skonto_prozent=Decimal(str(body.skonto_prozent))
+            if body.skonto_prozent is not None
+            else None,
             skonto_frist_tage=body.skonto_frist_tage,
         )
     except Exception as exc:
@@ -421,13 +445,9 @@ async def delete_invoice(
     try:
         await svc.delete_invoice(rechnung_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PermissionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -454,9 +474,7 @@ async def versende_rechnung(
             empfaenger=body.empfaenger,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await log_audit(
         session,
         user_id=_token.admin_user_id,
@@ -480,9 +498,7 @@ async def get_skonto_info(
     try:
         info = await svc.calculate_skonto(rechnung_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return SkontoInfoResponse(
         skonto_betrag=float(info["skonto_betrag"]),
         zahlbetrag=float(info["zahlbetrag"]),
@@ -492,7 +508,11 @@ async def get_skonto_info(
     )
 
 
-@router.post("/rechnungen/{rechnung_id}/zahlungen", response_model=ZahlungResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/rechnungen/{rechnung_id}/zahlungen",
+    response_model=ZahlungResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def record_payment(
     rechnung_id: int,
     body: ZahlungCreate,
@@ -516,12 +536,16 @@ async def record_payment(
         rechnung_id=zahlung.rechnung_id,
         betrag=float(zahlung.betrag),
         zahlungsdatum=zahlung.zahlungsdatum,
-        zahlungsart=zahlung.zahlungsart.value if hasattr(zahlung.zahlungsart, "value") else str(zahlung.zahlungsart),
+        zahlungsart=zahlung.zahlungsart.value
+        if hasattr(zahlung.zahlungsart, "value")
+        else str(zahlung.zahlungsart),
         referenz=zahlung.referenz,
     )
 
 
-@router.post("/beitragslaeufe", response_model=list[RechnungResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/beitragslaeufe", response_model=list[RechnungResponse], status_code=status.HTTP_201_CREATED
+)
 async def run_fee_generation(
     body: BeitragslaufRequest,
     _token: ApiToken = Depends(get_current_token),
@@ -586,9 +610,7 @@ async def get_euer_report(
     try:
         report = await svc.get_euer_report(year=jahr, sphare=sphare)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return EuerReportResponse(**report)
 
 
@@ -616,18 +638,24 @@ async def list_cost_centers(
     result = []
     for ks in centers:
         budget_status = await svc.get_budget_status(ks.id)
-        result.append(KostenstelleBudgetResponse(
-            kostenstelle_id=budget_status["kostenstelle_id"],
-            name=budget_status["name"],
-            budget=float(budget_status["budget"]),
-            spent=float(budget_status["spent"]),
-            remaining=float(budget_status["remaining"]),
-            freigabelimit=float(budget_status["freigabelimit"]) if budget_status["freigabelimit"] is not None else None,
-        ))
+        result.append(
+            KostenstelleBudgetResponse(
+                kostenstelle_id=budget_status["kostenstelle_id"],
+                name=budget_status["name"],
+                budget=float(budget_status["budget"]),
+                spent=float(budget_status["spent"]),
+                remaining=float(budget_status["remaining"]),
+                freigabelimit=float(budget_status["freigabelimit"])
+                if budget_status["freigabelimit"] is not None
+                else None,
+            )
+        )
     return result
 
 
-@router.post("/kostenstellen", response_model=KostenstelleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/kostenstellen", response_model=KostenstelleResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_cost_center(
     body: KostenstelleCreate,
     _token: ApiToken = Depends(get_current_token),
@@ -687,7 +715,11 @@ async def update_cost_center(
 # -- Leistungsverrechnung ---------------------------------------------------
 
 
-@router.post("/leistungsverrechnung", response_model=LeistungsverrechnungResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/leistungsverrechnung",
+    response_model=LeistungsverrechnungResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def allocate_shared_costs(
     body: LeistungsverrechnungRequest,
     _token: ApiToken = Depends(get_current_token),
@@ -926,9 +958,7 @@ async def get_rechnung_pdf(
     try:
         pdf_bytes = await pdf_svc.generate_rechnung_pdf(session, rechnung_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     # Fetch rechnungsnummer for filename
     result = await session.execute(
@@ -956,9 +986,7 @@ async def get_rechnung_zugferd_xml(
     try:
         xml_bytes = await zugferd_svc.generate_zugferd_xml(session, rechnung_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     # Fetch rechnungsnummer for filename
     result = await session.execute(
@@ -1051,9 +1079,7 @@ async def upload_eingangsrechnung(
     try:
         rechnung, warnungen = await svc.create_from_xml(session, content)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     await log_audit(
         session,
@@ -1143,13 +1169,9 @@ async def update_eingangsrechnung_status(
 
     svc = EingangsrechnungService(session)
     try:
-        rechnung = await svc.update_status(
-            session, rechnung_id, body.status, body.notiz
-        )
+        rechnung = await svc.update_status(session, rechnung_id, body.status, body.notiz)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     await log_audit(
         session,
@@ -1213,17 +1235,13 @@ async def create_ehrenamt(
     try:
         entry = await svc.create_compensation(body.model_dump())
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     # Fetch member name
     from sportverein.models.mitglied import Mitglied
 
     result = await session.execute(
-        select(Mitglied.vorname, Mitglied.nachname).where(
-            Mitglied.id == entry.mitglied_id
-        )
+        select(Mitglied.vorname, Mitglied.nachname).where(Mitglied.id == entry.mitglied_id)
     )
     m_row = result.one_or_none()
     name = f"{m_row[0]} {m_row[1]}" if m_row else f"ID {entry.mitglied_id}"

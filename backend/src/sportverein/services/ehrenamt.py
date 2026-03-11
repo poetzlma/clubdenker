@@ -16,7 +16,7 @@ from sportverein.models.mitglied import Mitglied
 # Legal limits per year
 _LIMITS: dict[AufwandTyp, Decimal] = {
     AufwandTyp.uebungsleiter: Decimal("3000.00"),  # section 3 Nr. 26 EStG
-    AufwandTyp.ehrenamt: Decimal("840.00"),         # section 3 Nr. 26a EStG
+    AufwandTyp.ehrenamt: Decimal("840.00"),  # section 3 Nr. 26a EStG
 }
 
 
@@ -32,8 +32,12 @@ class EhrenamtService:
 
         entry = Aufwandsentschaedigung(
             mitglied_id=data["mitglied_id"],
-            betrag=data["betrag"] if isinstance(data["betrag"], Decimal) else Decimal(str(data["betrag"])),
-            datum=data["datum"] if isinstance(data["datum"], date) else date.fromisoformat(data["datum"]),
+            betrag=data["betrag"]
+            if isinstance(data["betrag"], Decimal)
+            else Decimal(str(data["betrag"])),
+            datum=data["datum"]
+            if isinstance(data["datum"], date)
+            else date.fromisoformat(data["datum"]),
             typ=typ_value,
             beschreibung=data["beschreibung"],
         )
@@ -42,9 +46,7 @@ class EhrenamtService:
         await self.session.refresh(entry)
         return entry
 
-    async def get_annual_total(
-        self, member_id: int, year: int, typ: AufwandTyp | str
-    ) -> Decimal:
+    async def get_annual_total(self, member_id: int, year: int, typ: AufwandTyp | str) -> Decimal:
         """Sum of compensation for a member/year/type."""
         if isinstance(typ, str):
             typ = AufwandTyp(typ)
@@ -94,16 +96,18 @@ class EhrenamtService:
             entry = row[0]
             vorname = row[1]
             nachname = row[2]
-            entries.append({
-                "id": entry.id,
-                "mitglied_id": entry.mitglied_id,
-                "mitglied_name": f"{vorname} {nachname}",
-                "betrag": float(entry.betrag),
-                "datum": entry.datum.isoformat(),
-                "typ": entry.typ.value if hasattr(entry.typ, "value") else str(entry.typ),
-                "beschreibung": entry.beschreibung,
-                "created_at": entry.created_at.isoformat() if entry.created_at else None,
-            })
+            entries.append(
+                {
+                    "id": entry.id,
+                    "mitglied_id": entry.mitglied_id,
+                    "mitglied_name": f"{vorname} {nachname}",
+                    "betrag": float(entry.betrag),
+                    "datum": entry.datum.isoformat(),
+                    "typ": entry.typ.value if hasattr(entry.typ, "value") else str(entry.typ),
+                    "beschreibung": entry.beschreibung,
+                    "created_at": entry.created_at.isoformat() if entry.created_at else None,
+                }
+            )
         return entries
 
     async def get_freibetrag_summary(self, year: int) -> list[dict]:
@@ -136,16 +140,18 @@ class EhrenamtService:
             typ_value = typ.value if hasattr(typ, "value") else str(typ)
             limit = _LIMITS.get(AufwandTyp(typ_value), Decimal("0"))
             percent = float(total / limit * 100) if limit > 0 else 0.0
-            summaries.append({
-                "mitglied_id": member_id,
-                "mitglied_name": f"{vorname} {nachname}",
-                "typ": typ_value,
-                "total": float(total),
-                "limit": float(limit),
-                "remaining": float(max(limit - total, Decimal("0"))),
-                "percent": round(percent, 1),
-                "warning": percent > 80.0,
-            })
+            summaries.append(
+                {
+                    "mitglied_id": member_id,
+                    "mitglied_name": f"{vorname} {nachname}",
+                    "typ": typ_value,
+                    "total": float(total),
+                    "limit": float(limit),
+                    "remaining": float(max(limit - total, Decimal("0"))),
+                    "percent": round(percent, 1),
+                    "warning": percent > 80.0,
+                }
+            )
         return summaries
 
     async def get_warnings(self, year: int) -> list[dict]:
@@ -173,19 +179,19 @@ class EhrenamtService:
                 total = row[1]
                 # Get member name
                 m_result = await self.session.execute(
-                    select(Mitglied.vorname, Mitglied.nachname).where(
-                        Mitglied.id == member_id
-                    )
+                    select(Mitglied.vorname, Mitglied.nachname).where(Mitglied.id == member_id)
                 )
                 m_row = m_result.one_or_none()
                 name = f"{m_row[0]} {m_row[1]}" if m_row else f"ID {member_id}"
-                warnings.append({
-                    "member_id": member_id,
-                    "name": name,
-                    "typ": typ.value,
-                    "total": total,
-                    "limit": limit,
-                    "percent": round(float(total / limit * 100), 1),
-                })
+                warnings.append(
+                    {
+                        "member_id": member_id,
+                        "name": name,
+                        "typ": typ.value,
+                        "total": total,
+                        "limit": limit,
+                        "percent": round(float(total / limit * 100), 1),
+                    }
+                )
 
         return warnings

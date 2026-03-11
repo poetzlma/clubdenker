@@ -32,9 +32,7 @@ class Nachricht(Base):
     erstellt_am: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     gesendet_am: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
-    empfaenger: Mapped[list[NachrichtEmpfaenger]] = relationship(
-        back_populates="nachricht"
-    )
+    empfaenger: Mapped[list[NachrichtEmpfaenger]] = relationship(back_populates="nachricht")
 
 
 class NachrichtEmpfaenger(Base):

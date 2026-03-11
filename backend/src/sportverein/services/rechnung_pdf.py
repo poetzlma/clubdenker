@@ -228,9 +228,7 @@ class RechnungPdfService:
             return "MAHNUNG"
         return "RECHNUNG"
 
-    async def generate_rechnung_pdf(
-        self, session: AsyncSession, rechnung_id: int
-    ) -> bytes:
+    async def generate_rechnung_pdf(self, session: AsyncSession, rechnung_id: int) -> bytes:
         """Generate PDF for invoice, returns PDF bytes."""
         # Load invoice with positionen
         result = await session.execute(
@@ -302,9 +300,7 @@ class RechnungPdfService:
             canvas.saveState()
             canvas.setFont("Helvetica", 8)
             canvas.setFillColor(colors.HexColor("#999999"))
-            canvas.drawCentredString(
-                _PAGE_WIDTH / 2, _MARGIN - 0.5 * cm, footer_text
-            )
+            canvas.drawCentredString(_PAGE_WIDTH / 2, _MARGIN - 0.5 * cm, footer_text)
             canvas.restoreState()
 
         story = []
@@ -327,9 +323,7 @@ class RechnungPdfService:
                 Paragraph(rechnung.rechnungsnummer, styles["subtitle"]),
             ],
         ]
-        header_table = Table(
-            header_data, colWidths=[left_w, right_w], hAlign="LEFT"
-        )
+        header_table = Table(header_data, colWidths=[left_w, right_w], hAlign="LEFT")
         header_table.setStyle(
             TableStyle(
                 [
@@ -364,10 +358,12 @@ class RechnungPdfService:
         meta_rows.append(("Rechnungsnummer:", rechnung.rechnungsnummer))
 
         if rechnung.leistungszeitraum_von and rechnung.leistungszeitraum_bis:
-            meta_rows.append((
-                "Leistungszeitraum:",
-                f"{_fmt_date(rechnung.leistungszeitraum_von)} \u2013 {_fmt_date(rechnung.leistungszeitraum_bis)}",
-            ))
+            meta_rows.append(
+                (
+                    "Leistungszeitraum:",
+                    f"{_fmt_date(rechnung.leistungszeitraum_von)} \u2013 {_fmt_date(rechnung.leistungszeitraum_bis)}",
+                )
+            )
         elif rechnung.leistungsdatum:
             meta_rows.append(("Leistungsdatum:", _fmt_date(rechnung.leistungsdatum)))
 
@@ -380,9 +376,7 @@ class RechnungPdfService:
 
         meta_content = ""
         for label, val in meta_rows:
-            meta_content += (
-                f"<b>{label}</b> {val}<br/>"
-            )
+            meta_content += f"<b>{label}</b> {val}<br/>"
 
         addr_meta_data = [
             [
@@ -390,9 +384,7 @@ class RechnungPdfService:
                 Paragraph(meta_content, styles["meta_value"]),
             ]
         ]
-        addr_meta_table = Table(
-            addr_meta_data, colWidths=[left_w, right_w], hAlign="LEFT"
-        )
+        addr_meta_table = Table(addr_meta_data, colWidths=[left_w, right_w], hAlign="LEFT")
         addr_meta_table.setStyle(
             TableStyle(
                 [
@@ -441,13 +433,13 @@ class RechnungPdfService:
 
         if positionen:
             col_widths = [
-                usable_width * 0.06,   # Pos
-                usable_width * 0.34,   # Beschreibung
-                usable_width * 0.08,   # Menge
-                usable_width * 0.08,   # Einheit
-                usable_width * 0.16,   # Einzelpreis
-                usable_width * 0.12,   # USt
-                usable_width * 0.16,   # Gesamt
+                usable_width * 0.06,  # Pos
+                usable_width * 0.34,  # Beschreibung
+                usable_width * 0.08,  # Menge
+                usable_width * 0.08,  # Einheit
+                usable_width * 0.16,  # Einzelpreis
+                usable_width * 0.12,  # USt
+                usable_width * 0.16,  # Gesamt
             ]
 
             table_data = [
@@ -463,18 +455,22 @@ class RechnungPdfService:
             ]
 
             for pos in positionen:
-                table_data.append([
-                    Paragraph(str(pos.position_nr), styles["table_cell"]),
-                    Paragraph(pos.beschreibung, styles["table_cell"]),
-                    Paragraph(
-                        str(int(pos.menge)) if pos.menge == int(pos.menge) else str(pos.menge),
-                        styles["table_cell_right"],
-                    ),
-                    Paragraph("\u00d7" if pos.einheit == "x" else pos.einheit, styles["table_cell"]),
-                    Paragraph(_fmt_decimal(pos.einzelpreis_netto), styles["table_cell_right"]),
-                    Paragraph(_fmt_pct(pos.steuersatz), styles["table_cell_right"]),
-                    Paragraph(_fmt_decimal(pos.gesamtpreis_brutto), styles["table_cell_right"]),
-                ])
+                table_data.append(
+                    [
+                        Paragraph(str(pos.position_nr), styles["table_cell"]),
+                        Paragraph(pos.beschreibung, styles["table_cell"]),
+                        Paragraph(
+                            str(int(pos.menge)) if pos.menge == int(pos.menge) else str(pos.menge),
+                            styles["table_cell_right"],
+                        ),
+                        Paragraph(
+                            "\u00d7" if pos.einheit == "x" else pos.einheit, styles["table_cell"]
+                        ),
+                        Paragraph(_fmt_decimal(pos.einzelpreis_netto), styles["table_cell_right"]),
+                        Paragraph(_fmt_pct(pos.steuersatz), styles["table_cell_right"]),
+                        Paragraph(_fmt_decimal(pos.gesamtpreis_brutto), styles["table_cell_right"]),
+                    ]
+                )
 
             pos_table = Table(table_data, colWidths=col_widths, hAlign="LEFT")
 
@@ -495,9 +491,7 @@ class RechnungPdfService:
             # Alternating row shading
             for i in range(1, len(table_data)):
                 if i % 2 == 0:
-                    style_cmds.append(
-                        ("BACKGROUND", (0, i), (-1, i), colors.HexColor("#fafafa"))
-                    )
+                    style_cmds.append(("BACKGROUND", (0, i), (-1, i), colors.HexColor("#fafafa")))
 
             pos_table.setStyle(TableStyle(style_cmds))
             story.append(pos_table)
@@ -516,10 +510,12 @@ class RechnungPdfService:
         totals_col_widths = [usable_width * 0.65, usable_width * 0.35]
 
         totals_data = []
-        totals_data.append([
-            Paragraph("Summe Netto:", styles["total_label"]),
-            Paragraph(_fmt_decimal(rechnung.summe_netto), styles["total_value"]),
-        ])
+        totals_data.append(
+            [
+                Paragraph("Summe Netto:", styles["total_label"]),
+                Paragraph(_fmt_decimal(rechnung.summe_netto), styles["total_value"]),
+            ]
+        )
 
         # Group tax by rate
         if positionen:
@@ -527,20 +523,26 @@ class RechnungPdfService:
             for pos in positionen:
                 tax_by_rate[pos.steuersatz] += pos.gesamtpreis_steuer
             for rate in sorted(tax_by_rate.keys()):
-                totals_data.append([
-                    Paragraph(f"USt {_fmt_pct(rate)}:", styles["total_label"]),
-                    Paragraph(_fmt_decimal(tax_by_rate[rate]), styles["total_value"]),
-                ])
+                totals_data.append(
+                    [
+                        Paragraph(f"USt {_fmt_pct(rate)}:", styles["total_label"]),
+                        Paragraph(_fmt_decimal(tax_by_rate[rate]), styles["total_value"]),
+                    ]
+                )
         else:
-            totals_data.append([
-                Paragraph("USt 0%:", styles["total_label"]),
-                Paragraph(_fmt_decimal(rechnung.summe_steuer), styles["total_value"]),
-            ])
+            totals_data.append(
+                [
+                    Paragraph("USt 0%:", styles["total_label"]),
+                    Paragraph(_fmt_decimal(rechnung.summe_steuer), styles["total_value"]),
+                ]
+            )
 
-        totals_data.append([
-            Paragraph("Gesamtbetrag:", styles["total_label_bold"]),
-            Paragraph(_fmt_decimal(rechnung.betrag), styles["total_value_bold"]),
-        ])
+        totals_data.append(
+            [
+                Paragraph("Gesamtbetrag:", styles["total_label_bold"]),
+                Paragraph(_fmt_decimal(rechnung.betrag), styles["total_value_bold"]),
+            ]
+        )
 
         totals_table = Table(totals_data, colWidths=totals_col_widths, hAlign="LEFT")
         totals_table.setStyle(
@@ -559,9 +561,7 @@ class RechnungPdfService:
 
         # ---- STEUERHINWEIS ----
         if rechnung.steuerhinweis_text:
-            story.append(
-                Paragraph(rechnung.steuerhinweis_text, styles["body_italic"])
-            )
+            story.append(Paragraph(rechnung.steuerhinweis_text, styles["body_italic"]))
             story.append(Spacer(1, 4 * mm))
 
         # ---- SKONTO HINWEIS ----
@@ -573,9 +573,7 @@ class RechnungPdfService:
         ):
             from datetime import timedelta
 
-            skonto_bis = rechnung.rechnungsdatum + timedelta(
-                days=rechnung.skonto_frist_tage
-            )
+            skonto_bis = rechnung.rechnungsdatum + timedelta(days=rechnung.skonto_frist_tage)
             skonto_text = (
                 f"Bei Zahlung bis {_fmt_date(skonto_bis)}: "
                 f"{_fmt_pct(rechnung.skonto_prozent)} Skonto "
@@ -599,9 +597,7 @@ class RechnungPdfService:
         if verein_bic:
             payment_details.append(f"<b>BIC:</b> {verein_bic}")
         if rechnung.verwendungszweck:
-            payment_details.append(
-                f"<b>Verwendungszweck:</b> {rechnung.verwendungszweck}"
-            )
+            payment_details.append(f"<b>Verwendungszweck:</b> {rechnung.verwendungszweck}")
 
         for line in payment_details:
             story.append(Paragraph(line, styles["body"]))

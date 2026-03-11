@@ -45,18 +45,12 @@ class FinanzenService:
 
     async def get_vereinsstammdaten(self) -> Vereinsstammdaten | None:
         """Fetch club master data (singleton row)."""
-        result = await self.session.execute(
-            select(Vereinsstammdaten).limit(1)
-        )
+        result = await self.session.execute(select(Vereinsstammdaten).limit(1))
         return result.scalar_one_or_none()
 
-    async def update_vereinsstammdaten(
-        self, data: dict[str, Any]
-    ) -> Vereinsstammdaten:
+    async def update_vereinsstammdaten(self, data: dict[str, Any]) -> Vereinsstammdaten:
         """Create or update club master data."""
-        result = await self.session.execute(
-            select(Vereinsstammdaten).limit(1)
-        )
+        result = await self.session.execute(select(Vereinsstammdaten).limit(1))
         stammdaten = result.scalar_one_or_none()
         if stammdaten is None:
             stammdaten = Vereinsstammdaten(**data)
@@ -79,8 +73,7 @@ class FinanzenService:
                 sphare_value = Sphare(sphare_value)
             except ValueError:
                 raise ValueError(
-                    f"Invalid sphere: {sphare_value}. "
-                    f"Must be one of: {[s.value for s in Sphare]}"
+                    f"Invalid sphere: {sphare_value}. Must be one of: {[s.value for s in Sphare]}"
                 )
         elif isinstance(sphare_value, Sphare):
             pass
@@ -145,7 +138,10 @@ class FinanzenService:
         result = await self.session.execute(
             select(Buchung.sphare, func.sum(Buchung.betrag)).group_by(Buchung.sphare)
         )
-        return {row[0].value if isinstance(row[0], Sphare) else row[0]: row[1] or Decimal("0.00") for row in result.all()}
+        return {
+            row[0].value if isinstance(row[0], Sphare) else row[0]: row[1] or Decimal("0.00")
+            for row in result.all()
+        }
 
     async def get_total_balance(self) -> Decimal:
         """Overall balance (sum of all bookings)."""
@@ -331,9 +327,7 @@ class FinanzenService:
 
     async def stelle_rechnung(self, rechnung_id: int) -> Rechnung:
         """Move invoice from ENTWURF to GESTELLT (locks editing)."""
-        result = await self.session.execute(
-            select(Rechnung).where(Rechnung.id == rechnung_id)
-        )
+        result = await self.session.execute(select(Rechnung).where(Rechnung.id == rechnung_id))
         rechnung = result.scalar_one_or_none()
         if rechnung is None:
             raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
@@ -348,9 +342,7 @@ class FinanzenService:
         await self.session.refresh(rechnung)
         return rechnung
 
-    async def storniere_rechnung(
-        self, rechnung_id: int, grund: str | None = None
-    ) -> Rechnung:
+    async def storniere_rechnung(self, rechnung_id: int, grund: str | None = None) -> Rechnung:
         """Cancel an invoice by creating a Stornorechnung.
 
         Returns the new Stornorechnung. The original is marked storniert.
@@ -373,25 +365,29 @@ class FinanzenService:
 
         storno_positionen: list[dict[str, Any]] = []
         for pos in original.positionen:
-            storno_positionen.append({
-                "beschreibung": f"Storno: {pos.beschreibung}",
-                "menge": pos.menge,
-                "einheit": pos.einheit,
-                "einzelpreis_netto": -pos.einzelpreis_netto,
-                "steuersatz": pos.steuersatz,
-                "steuerbefreiungsgrund": pos.steuerbefreiungsgrund,
-                "kostenstelle_id": pos.kostenstelle_id,
-            })
+            storno_positionen.append(
+                {
+                    "beschreibung": f"Storno: {pos.beschreibung}",
+                    "menge": pos.menge,
+                    "einheit": pos.einheit,
+                    "einzelpreis_netto": -pos.einzelpreis_netto,
+                    "steuersatz": pos.steuersatz,
+                    "steuerbefreiungsgrund": pos.steuerbefreiungsgrund,
+                    "kostenstelle_id": pos.kostenstelle_id,
+                }
+            )
 
         # If original had no positionen, create single storno position
         if not storno_positionen:
-            storno_positionen.append({
-                "beschreibung": storno_beschreibung,
-                "menge": Decimal("1"),
-                "einheit": "x",
-                "einzelpreis_netto": -original.summe_netto,
-                "steuersatz": Decimal("0"),
-            })
+            storno_positionen.append(
+                {
+                    "beschreibung": storno_beschreibung,
+                    "menge": Decimal("1"),
+                    "einheit": "x",
+                    "einzelpreis_netto": -original.summe_netto,
+                    "steuersatz": Decimal("0"),
+                }
+            )
 
         storno_nummer = await self._next_rechnungsnummer(original.sphaere)
 
@@ -438,20 +434,22 @@ class FinanzenService:
             gp_steuer = (gp_netto * steuersatz / Decimal("100")).quantize(Decimal("0.01"))
             gp_brutto = gp_netto + gp_steuer
 
-            self.session.add(Rechnungsposition(
-                rechnung_id=storno.id,
-                position_nr=idx,
-                beschreibung=pos_data["beschreibung"],
-                menge=menge,
-                einheit=pos_data.get("einheit", "x"),
-                einzelpreis_netto=einzelpreis_netto,
-                steuersatz=steuersatz,
-                steuerbefreiungsgrund=pos_data.get("steuerbefreiungsgrund"),
-                gesamtpreis_netto=gp_netto,
-                gesamtpreis_steuer=gp_steuer,
-                gesamtpreis_brutto=gp_brutto,
-                kostenstelle_id=pos_data.get("kostenstelle_id"),
-            ))
+            self.session.add(
+                Rechnungsposition(
+                    rechnung_id=storno.id,
+                    position_nr=idx,
+                    beschreibung=pos_data["beschreibung"],
+                    menge=menge,
+                    einheit=pos_data.get("einheit", "x"),
+                    einzelpreis_netto=einzelpreis_netto,
+                    steuersatz=steuersatz,
+                    steuerbefreiungsgrund=pos_data.get("steuerbefreiungsgrund"),
+                    gesamtpreis_netto=gp_netto,
+                    gesamtpreis_steuer=gp_steuer,
+                    gesamtpreis_brutto=gp_brutto,
+                    kostenstelle_id=pos_data.get("kostenstelle_id"),
+                )
+            )
 
         # Mark original as storniert
         original.status = RechnungStatus.storniert
@@ -505,9 +503,7 @@ class FinanzenService:
         - Even storniert invoices are subject to the 10-year retention period
           (loeschdatum check).
         """
-        result = await self.session.execute(
-            select(Rechnung).where(Rechnung.id == rechnung_id)
-        )
+        result = await self.session.execute(select(Rechnung).where(Rechnung.id == rechnung_id))
         rechnung = result.scalar_one_or_none()
         if rechnung is None:
             raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
@@ -553,21 +549,17 @@ class FinanzenService:
             VersandKanal(kanal)
         except ValueError:
             raise ValueError(
-                f"Ungültiger Versandkanal: {kanal}. "
-                f"Erlaubt: {[k.value for k in VersandKanal]}"
+                f"Ungültiger Versandkanal: {kanal}. Erlaubt: {[k.value for k in VersandKanal]}"
             )
 
-        result = await self.session.execute(
-            select(Rechnung).where(Rechnung.id == rechnung_id)
-        )
+        result = await self.session.execute(select(Rechnung).where(Rechnung.id == rechnung_id))
         rechnung = result.scalar_one_or_none()
         if rechnung is None:
             raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
 
         if rechnung.status == RechnungStatus.entwurf:
             raise ValueError(
-                "Entwürfe können nicht versendet werden. "
-                "Bitte stellen Sie die Rechnung zuerst."
+                "Entwürfe können nicht versendet werden. Bitte stellen Sie die Rechnung zuerst."
             )
 
         rechnung.versand_kanal = kanal
@@ -598,9 +590,7 @@ class FinanzenService:
         """
         ref = reference_date or date.today()
 
-        result = await self.session.execute(
-            select(Rechnung).where(Rechnung.id == rechnung_id)
-        )
+        result = await self.session.execute(select(Rechnung).where(Rechnung.id == rechnung_id))
         rechnung = result.scalar_one_or_none()
         if rechnung is None:
             raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
@@ -614,14 +604,12 @@ class FinanzenService:
                 "skonto_prozent": Decimal("0.00"),
             }
 
-        skonto_frist_bis = rechnung.rechnungsdatum + timedelta(
-            days=rechnung.skonto_frist_tage
-        )
+        skonto_frist_bis = rechnung.rechnungsdatum + timedelta(days=rechnung.skonto_frist_tage)
         skonto_verfuegbar = ref <= skonto_frist_bis
 
-        skonto_abzug = (
-            rechnung.summe_netto * rechnung.skonto_prozent / Decimal("100")
-        ).quantize(Decimal("0.01"))
+        skonto_abzug = (rechnung.summe_netto * rechnung.skonto_prozent / Decimal("100")).quantize(
+            Decimal("0.01")
+        )
         zahlbetrag = (rechnung.betrag - skonto_abzug).quantize(Decimal("0.01"))
 
         return {
@@ -653,10 +641,10 @@ class FinanzenService:
         if isinstance(zahlungsart, str):
             zahlungsart = Zahlungsart(zahlungsart)
 
-        result = await self.session.execute(
-            select(Rechnung).where(Rechnung.id == rechnung_id)
-        )
-        rechnung = result.scalar_one()
+        result = await self.session.execute(select(Rechnung).where(Rechnung.id == rechnung_id))
+        rechnung = result.scalar_one_or_none()
+        if rechnung is None:
+            raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
 
         zahlung = Zahlung(
             rechnung_id=rechnung_id,
@@ -672,10 +660,7 @@ class FinanzenService:
         skonto_buchung: Buchung | None = None
         if apply_skonto:
             skonto_info = await self.calculate_skonto(rechnung_id)
-            if (
-                skonto_info["skonto_verfuegbar"]
-                and skonto_info["skonto_betrag"] > Decimal("0")
-            ):
+            if skonto_info["skonto_verfuegbar"] and skonto_info["skonto_betrag"] > Decimal("0"):
                 skonto_abzug = skonto_info["skonto_betrag"]
                 sphare_value = Sphare(rechnung.sphaere) if rechnung.sphaere else Sphare.ideell
                 skonto_buchung = Buchung(
@@ -756,9 +741,7 @@ class FinanzenService:
         club_bic = stammdaten.bic if stammdaten else "COBADEFFXXX"
 
         # Load invoices
-        result = await self.session.execute(
-            select(Rechnung).where(Rechnung.id.in_(rechnungen_ids))
-        )
+        result = await self.session.execute(select(Rechnung).where(Rechnung.id.in_(rechnungen_ids)))
         rechnungen = list(result.scalars().all())
         if not rechnungen:
             raise ValueError("No invoices found for the given IDs")
@@ -779,9 +762,7 @@ class FinanzenService:
         member_result = await self.session.execute(
             select(Mitglied).where(Mitglied.id.in_(mitglied_ids))
         )
-        member_map: dict[int, Mitglied] = {
-            m.id: m for m in member_result.scalars().all()
-        }
+        member_map: dict[int, Mitglied] = {m.id: m for m in member_result.scalars().all()}
 
         # Build XML
         ns = "urn:iso:std:iso:20022:tech:xsd:pain.008.001.02"
@@ -862,9 +843,7 @@ class FinanzenService:
 
             dbtr_acct = ET.SubElement(drct_dbt_tx, "DbtrAcct")
             dbtr_acct_id = ET.SubElement(dbtr_acct, "Id")
-            ET.SubElement(dbtr_acct_id, "IBAN").text = (
-                mandat.iban if mandat else "UNKNOWN"
-            )
+            ET.SubElement(dbtr_acct_id, "IBAN").text = mandat.iban if mandat else "UNKNOWN"
 
             rmt_inf = ET.SubElement(drct_dbt_tx, "RmtInf")
             ET.SubElement(rmt_inf, "Ustrd").text = (
@@ -877,9 +856,7 @@ class FinanzenService:
 
     async def get_cost_centers(self) -> list[Kostenstelle]:
         """List all cost centers."""
-        result = await self.session.execute(
-            select(Kostenstelle).order_by(Kostenstelle.name)
-        )
+        result = await self.session.execute(select(Kostenstelle).order_by(Kostenstelle.name))
         return list(result.scalars().all())
 
     async def create_cost_center(self, data: dict[str, Any]) -> Kostenstelle:
@@ -896,9 +873,7 @@ class FinanzenService:
         await self.session.refresh(ks)
         return ks
 
-    async def update_cost_center(
-        self, kostenstelle_id: int, data: dict[str, Any]
-    ) -> Kostenstelle:
+    async def update_cost_center(self, kostenstelle_id: int, data: dict[str, Any]) -> Kostenstelle:
         """Update a cost center."""
         result = await self.session.execute(
             select(Kostenstelle).where(Kostenstelle.id == kostenstelle_id)
@@ -925,9 +900,9 @@ class FinanzenService:
             raise ValueError(f"Kostenstelle {kostenstelle_id} nicht gefunden")
 
         booking_count = await self.session.execute(
-            select(func.count()).select_from(Buchung).where(
-                Buchung.kostenstelle_id == kostenstelle_id
-            )
+            select(func.count())
+            .select_from(Buchung)
+            .where(Buchung.kostenstelle_id == kostenstelle_id)
         )
         if booking_count.scalar_one() > 0:
             raise ValueError(
@@ -947,9 +922,7 @@ class FinanzenService:
             raise ValueError(f"Kostenstelle {kostenstelle_id} not found")
 
         spent_result = await self.session.execute(
-            select(func.sum(Buchung.betrag)).where(
-                Buchung.kostenstelle_id == kostenstelle_id
-            )
+            select(func.sum(Buchung.betrag)).where(Buchung.kostenstelle_id == kostenstelle_id)
         )
         spent = spent_result.scalar_one() or Decimal("0.00")
         budget = ks.budget or Decimal("0.00")
@@ -974,9 +947,7 @@ class FinanzenService:
     ) -> list[Buchung]:
         """Distribute a booking across departments/cost centers."""
         # Load parent booking
-        result = await self.session.execute(
-            select(Buchung).where(Buchung.id == buchung_id)
-        )
+        result = await self.session.execute(select(Buchung).where(Buchung.id == buchung_id))
         parent = result.scalar_one_or_none()
         if parent is None:
             raise ValueError(f"Buchung {buchung_id} nicht gefunden")
@@ -984,9 +955,7 @@ class FinanzenService:
         # Validate allocations sum to 1.0
         total_anteil = sum(Decimal(str(a["anteil"])) for a in allocations)
         if abs(total_anteil - Decimal("1.00")) > Decimal("0.01"):
-            raise ValueError(
-                f"Summe der Anteile muss 1.0 ergeben, ist aber {total_anteil}"
-            )
+            raise ValueError(f"Summe der Anteile muss 1.0 ergeben, ist aber {total_anteil}")
 
         children: list[Buchung] = []
         for alloc in allocations:
@@ -1236,19 +1205,21 @@ class FinanzenService:
             mitglied_name = None
             if m.mitglied:
                 mitglied_name = f"{m.mitglied.vorname} {m.mitglied.nachname}"
-            items.append({
-                "id": m.id,
-                "mitglied_id": m.mitglied_id,
-                "mitglied_name": mitglied_name,
-                "iban": m.iban,
-                "bic": m.bic,
-                "kontoinhaber": m.kontoinhaber,
-                "mandatsreferenz": m.mandatsreferenz,
-                "unterschriftsdatum": m.unterschriftsdatum,
-                "gueltig_ab": m.gueltig_ab,
-                "gueltig_bis": m.gueltig_bis,
-                "aktiv": m.aktiv,
-            })
+            items.append(
+                {
+                    "id": m.id,
+                    "mitglied_id": m.mitglied_id,
+                    "mitglied_name": mitglied_name,
+                    "iban": m.iban,
+                    "bic": m.bic,
+                    "kontoinhaber": m.kontoinhaber,
+                    "mandatsreferenz": m.mandatsreferenz,
+                    "unterschriftsdatum": m.unterschriftsdatum,
+                    "gueltig_ab": m.gueltig_ab,
+                    "gueltig_bis": m.gueltig_bis,
+                    "aktiv": m.aktiv,
+                }
+            )
 
         return items, len(items)
 
@@ -1272,16 +1243,19 @@ class FinanzenService:
 
     async def update_mandat(self, mandat_id: int, data: dict) -> SepaMandat:
         """Update an existing SEPA mandate."""
-        result = await self.session.execute(
-            select(SepaMandat).where(SepaMandat.id == mandat_id)
-        )
+        result = await self.session.execute(select(SepaMandat).where(SepaMandat.id == mandat_id))
         mandat = result.scalar_one_or_none()
         if mandat is None:
             raise ValueError(f"SEPA-Mandat mit ID {mandat_id} nicht gefunden.")
 
         for field in (
-            "iban", "bic", "kontoinhaber", "mandatsreferenz",
-            "unterschriftsdatum", "gueltig_ab", "gueltig_bis",
+            "iban",
+            "bic",
+            "kontoinhaber",
+            "mandatsreferenz",
+            "unterschriftsdatum",
+            "gueltig_ab",
+            "gueltig_bis",
         ):
             if field in data:
                 setattr(mandat, field, data[field])
@@ -1292,9 +1266,7 @@ class FinanzenService:
 
     async def deactivate_mandat(self, mandat_id: int) -> SepaMandat:
         """Deactivate a SEPA mandate (soft-delete)."""
-        result = await self.session.execute(
-            select(SepaMandat).where(SepaMandat.id == mandat_id)
-        )
+        result = await self.session.execute(select(SepaMandat).where(SepaMandat.id == mandat_id))
         mandat = result.scalar_one_or_none()
         if mandat is None:
             raise ValueError(f"SEPA-Mandat mit ID {mandat_id} nicht gefunden.")

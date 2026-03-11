@@ -75,7 +75,10 @@ class TestExportBuchungenCsv:
         assert len(lines) == 3  # header + 2 rows
 
         # Check header
-        assert lines[0] == "Umsatz (S/H);Konto;Gegenkonto;BU-Schluessel;Belegdatum;Belegfeld1;Buchungstext;Kostenstelle"
+        assert (
+            lines[0]
+            == "Umsatz (S/H);Konto;Gegenkonto;BU-Schluessel;Belegdatum;Belegfeld1;Buchungstext;Kostenstelle"
+        )
 
         # Row 1: positive amount -> S
         parts1 = lines[1].split(";")

@@ -66,9 +66,7 @@ async def mcp_engine():
 
 @pytest_asyncio.fixture()
 async def mcp_session_factory(mcp_engine):
-    factory = async_sessionmaker(
-        mcp_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    factory = async_sessionmaker(mcp_engine, class_=AsyncSession, expire_on_commit=False)
     set_session_factory(factory)
     yield factory
     set_session_factory(None)
@@ -183,9 +181,7 @@ async def sample_eingangsrechnung(mcp_session: AsyncSession):
 class TestBeitraegeBerechnen:
     @pytest.mark.asyncio
     async def test_single_member(self, mcp_session_factory, sample_member):
-        result = await beitraege_berechnen(
-            billing_year=2025, member_id=sample_member.id
-        )
+        result = await beitraege_berechnen(billing_year=2025, member_id=sample_member.id)
         assert "fees" in result
         assert len(result["fees"]) == 1
         fee = result["fees"][0]
@@ -651,9 +647,7 @@ class TestBudgetPruefen:
 
 class TestSepaXmlGenerieren:
     @pytest.mark.asyncio
-    async def test_sepa_generation(
-        self, mcp_session_factory, sample_member, sample_stammdaten
-    ):
+    async def test_sepa_generation(self, mcp_session_factory, sample_member, sample_stammdaten):
         # Create and issue an invoice
         invoice = await rechnung_erstellen(
             mitglied_id=sample_member.id,

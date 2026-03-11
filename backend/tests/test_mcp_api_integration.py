@@ -36,9 +36,7 @@ async def shared_engine():
 
 @pytest_asyncio.fixture()
 async def shared_factory(shared_engine):
-    return async_sessionmaker(
-        shared_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    return async_sessionmaker(shared_engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @pytest_asyncio.fixture()
@@ -89,12 +87,14 @@ async def api_client(shared_factory):
 async def test_mcp_member_visible_in_api(mcp_session: AsyncSession, api_client: AsyncClient):
     """A member created via MCP service must appear in the API."""
     svc = MitgliederService(mcp_session)
-    member = await svc.create_member(MitgliedCreate(
-        vorname="Test",
-        nachname="MCP-User",
-        email="test.mcp@example.de",
-        geburtsdatum="1990-01-01",
-    ))
+    member = await svc.create_member(
+        MitgliedCreate(
+            vorname="Test",
+            nachname="MCP-User",
+            email="test.mcp@example.de",
+            geburtsdatum="1990-01-01",
+        )
+    )
     await mcp_session.commit()
 
     resp = await api_client.get("/api/mitglieder")
@@ -108,12 +108,14 @@ async def test_mcp_member_visible_in_api(mcp_session: AsyncSession, api_client: 
 async def test_mcp_member_update_visible_in_api(mcp_session: AsyncSession, api_client: AsyncClient):
     """A member updated via MCP must show updated data in the API."""
     svc = MitgliederService(mcp_session)
-    member = await svc.create_member(MitgliedCreate(
-        vorname="Original",
-        nachname="Name",
-        email="original@example.de",
-        geburtsdatum="1985-06-15",
-    ))
+    member = await svc.create_member(
+        MitgliedCreate(
+            vorname="Original",
+            nachname="Name",
+            email="original@example.de",
+            geburtsdatum="1985-06-15",
+        )
+    )
     await mcp_session.commit()
 
     await svc.update_member(member.id, MitgliedUpdate(vorname="Updated"))
@@ -133,14 +135,16 @@ async def test_mcp_member_update_visible_in_api(mcp_session: AsyncSession, api_c
 async def test_mcp_buchung_visible_in_api(mcp_session: AsyncSession, api_client: AsyncClient):
     """A booking created via MCP service must appear in the API."""
     svc = FinanzenService(mcp_session)
-    buchung = await svc.create_booking({
-        "buchungsdatum": __import__("datetime").date(2026, 3, 10),
-        "betrag": 150.00,
-        "beschreibung": "Testbuchung via MCP",
-        "konto": "4100",
-        "gegenkonto": "1200",
-        "sphare": "ideell",
-    })
+    buchung = await svc.create_booking(
+        {
+            "buchungsdatum": __import__("datetime").date(2026, 3, 10),
+            "betrag": 150.00,
+            "beschreibung": "Testbuchung via MCP",
+            "konto": "4100",
+            "gegenkonto": "1200",
+            "sphare": "ideell",
+        }
+    )
     await mcp_session.commit()
 
     resp = await api_client.get("/api/finanzen/buchungen")

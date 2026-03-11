@@ -21,7 +21,12 @@ from sportverein.auth.dependencies import get_current_token, get_db_session
 from sportverein.auth.models import ApiToken
 from sportverein.models.mitglied import BeitragKategorie, MitgliedStatus
 from sportverein.services.datenschutz import DatenschutzService
-from sportverein.services.mitglieder import MitgliedCreate, MitgliedFilter, MitgliedUpdate, MitgliederService
+from sportverein.services.mitglieder import (
+    MitgliedCreate,
+    MitgliedFilter,
+    MitgliedUpdate,
+    MitgliederService,
+)
 
 router = APIRouter(prefix="/api/mitglieder", tags=["mitglieder"])
 
@@ -31,6 +36,7 @@ def _member_to_response(member, include_abteilungen: bool = True) -> MitgliedRes
     abteilungen = []
     if include_abteilungen:
         from sqlalchemy.orm import attributes
+
         state = attributes.instance_state(member)
         # Only access abteilungen if already loaded (avoid lazy load)
         if "abteilungen" in state.dict:
@@ -56,7 +62,9 @@ def _member_to_response(member, include_abteilungen: bool = True) -> MitgliedRes
         eintrittsdatum=member.eintrittsdatum,
         austrittsdatum=member.austrittsdatum,
         status=member.status.value if hasattr(member.status, "value") else str(member.status),
-        beitragskategorie=member.beitragskategorie.value if hasattr(member.beitragskategorie, "value") else str(member.beitragskategorie),
+        beitragskategorie=member.beitragskategorie.value
+        if hasattr(member.beitragskategorie, "value")
+        else str(member.beitragskategorie),
         notizen=member.notizen,
         abteilungen=abteilungen,
     )
@@ -312,5 +320,7 @@ async def set_consent(
     return {
         "member_id": member.id,
         "dsgvo_einwilligung": member.dsgvo_einwilligung,
-        "einwilligung_datum": member.einwilligung_datum.isoformat() if member.einwilligung_datum else None,
+        "einwilligung_datum": member.einwilligung_datum.isoformat()
+        if member.einwilligung_datum
+        else None,
     }

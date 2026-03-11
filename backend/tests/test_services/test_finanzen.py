@@ -43,15 +43,17 @@ class TestCreateBooking:
         session.add(member)
         await session.flush()
 
-        buchung = await svc.create_booking({
-            "buchungsdatum": date(2024, 6, 15),
-            "betrag": Decimal("100.00"),
-            "beschreibung": "Mitgliedsbeitrag",
-            "konto": "4000",
-            "gegenkonto": "1200",
-            "sphare": "ideell",
-            "mitglied_id": member.id,
-        })
+        buchung = await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 6, 15),
+                "betrag": Decimal("100.00"),
+                "beschreibung": "Mitgliedsbeitrag",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+                "mitglied_id": member.id,
+            }
+        )
 
         assert buchung.id is not None
         assert buchung.sphare == Sphare.ideell
@@ -59,60 +61,70 @@ class TestCreateBooking:
 
     async def test_create_booking_with_enum_sphere(self, session):
         svc = FinanzenService(session)
-        buchung = await svc.create_booking({
-            "buchungsdatum": date(2024, 6, 15),
-            "betrag": Decimal("50.00"),
-            "beschreibung": "Kursgebühr",
-            "konto": "4100",
-            "gegenkonto": "1200",
-            "sphare": Sphare.zweckbetrieb,
-        })
+        buchung = await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 6, 15),
+                "betrag": Decimal("50.00"),
+                "beschreibung": "Kursgebühr",
+                "konto": "4100",
+                "gegenkonto": "1200",
+                "sphare": Sphare.zweckbetrieb,
+            }
+        )
         assert buchung.sphare == Sphare.zweckbetrieb
 
     async def test_create_booking_invalid_sphere(self, session):
         svc = FinanzenService(session)
         with pytest.raises(ValueError, match="Invalid sphere"):
-            await svc.create_booking({
-                "buchungsdatum": date(2024, 6, 15),
-                "betrag": Decimal("100.00"),
-                "beschreibung": "Test",
-                "konto": "4000",
-                "gegenkonto": "1200",
-                "sphare": "invalid_sphere",
-            })
+            await svc.create_booking(
+                {
+                    "buchungsdatum": date(2024, 6, 15),
+                    "betrag": Decimal("100.00"),
+                    "beschreibung": "Test",
+                    "konto": "4000",
+                    "gegenkonto": "1200",
+                    "sphare": "invalid_sphere",
+                }
+            )
 
     async def test_create_booking_missing_sphere(self, session):
         svc = FinanzenService(session)
         with pytest.raises(ValueError, match="required"):
-            await svc.create_booking({
-                "buchungsdatum": date(2024, 6, 15),
-                "betrag": Decimal("100.00"),
-                "beschreibung": "Test",
-                "konto": "4000",
-                "gegenkonto": "1200",
-            })
+            await svc.create_booking(
+                {
+                    "buchungsdatum": date(2024, 6, 15),
+                    "betrag": Decimal("100.00"),
+                    "beschreibung": "Test",
+                    "konto": "4000",
+                    "gegenkonto": "1200",
+                }
+            )
 
 
 class TestGetBookings:
     async def test_get_bookings_with_filters(self, session):
         svc = FinanzenService(session)
 
-        await svc.create_booking({
-            "buchungsdatum": date(2024, 3, 1),
-            "betrag": Decimal("100.00"),
-            "beschreibung": "Beitrag",
-            "konto": "4000",
-            "gegenkonto": "1200",
-            "sphare": "ideell",
-        })
-        await svc.create_booking({
-            "buchungsdatum": date(2024, 6, 1),
-            "betrag": Decimal("200.00"),
-            "beschreibung": "Kurs",
-            "konto": "4100",
-            "gegenkonto": "1200",
-            "sphare": "zweckbetrieb",
-        })
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 3, 1),
+                "betrag": Decimal("100.00"),
+                "beschreibung": "Beitrag",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 6, 1),
+                "betrag": Decimal("200.00"),
+                "beschreibung": "Kurs",
+                "konto": "4100",
+                "gegenkonto": "1200",
+                "sphare": "zweckbetrieb",
+            }
+        )
 
         # Filter by sphere
         bookings, total = await svc.get_bookings({"sphare": "ideell"})
@@ -120,24 +132,28 @@ class TestGetBookings:
         assert bookings[0].beschreibung == "Beitrag"
 
         # Filter by date range
-        bookings, total = await svc.get_bookings({
-            "date_from": date(2024, 5, 1),
-            "date_to": date(2024, 7, 1),
-        })
+        bookings, total = await svc.get_bookings(
+            {
+                "date_from": date(2024, 5, 1),
+                "date_to": date(2024, 7, 1),
+            }
+        )
         assert total == 1
         assert bookings[0].beschreibung == "Kurs"
 
     async def test_get_bookings_pagination(self, session):
         svc = FinanzenService(session)
         for i in range(5):
-            await svc.create_booking({
-                "buchungsdatum": date(2024, 1, i + 1),
-                "betrag": Decimal("10.00"),
-                "beschreibung": f"Entry {i}",
-                "konto": "4000",
-                "gegenkonto": "1200",
-                "sphare": "ideell",
-            })
+            await svc.create_booking(
+                {
+                    "buchungsdatum": date(2024, 1, i + 1),
+                    "betrag": Decimal("10.00"),
+                    "beschreibung": f"Entry {i}",
+                    "konto": "4000",
+                    "gegenkonto": "1200",
+                    "sphare": "ideell",
+                }
+            )
 
         bookings, total = await svc.get_bookings(page=1, page_size=2)
         assert total == 5
@@ -147,30 +163,36 @@ class TestGetBookings:
 class TestBalanceBySphere:
     async def test_balance_grouped(self, session):
         svc = FinanzenService(session)
-        await svc.create_booking({
-            "buchungsdatum": date(2024, 1, 1),
-            "betrag": Decimal("100.00"),
-            "beschreibung": "A",
-            "konto": "4000",
-            "gegenkonto": "1200",
-            "sphare": "ideell",
-        })
-        await svc.create_booking({
-            "buchungsdatum": date(2024, 1, 2),
-            "betrag": Decimal("50.00"),
-            "beschreibung": "B",
-            "konto": "4000",
-            "gegenkonto": "1200",
-            "sphare": "ideell",
-        })
-        await svc.create_booking({
-            "buchungsdatum": date(2024, 1, 3),
-            "betrag": Decimal("200.00"),
-            "beschreibung": "C",
-            "konto": "4100",
-            "gegenkonto": "1200",
-            "sphare": "zweckbetrieb",
-        })
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 1),
+                "betrag": Decimal("100.00"),
+                "beschreibung": "A",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 2),
+                "betrag": Decimal("50.00"),
+                "beschreibung": "B",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 3),
+                "betrag": Decimal("200.00"),
+                "beschreibung": "C",
+                "konto": "4100",
+                "gegenkonto": "1200",
+                "sphare": "zweckbetrieb",
+            }
+        )
 
         balance = await svc.get_balance_by_sphere()
         assert balance["ideell"] == Decimal("150.00")
@@ -178,22 +200,26 @@ class TestBalanceBySphere:
 
     async def test_total_balance(self, session):
         svc = FinanzenService(session)
-        await svc.create_booking({
-            "buchungsdatum": date(2024, 1, 1),
-            "betrag": Decimal("100.00"),
-            "beschreibung": "A",
-            "konto": "4000",
-            "gegenkonto": "1200",
-            "sphare": "ideell",
-        })
-        await svc.create_booking({
-            "buchungsdatum": date(2024, 1, 1),
-            "betrag": Decimal("200.00"),
-            "beschreibung": "B",
-            "konto": "4100",
-            "gegenkonto": "1200",
-            "sphare": "zweckbetrieb",
-        })
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 1),
+                "betrag": Decimal("100.00"),
+                "beschreibung": "A",
+                "konto": "4000",
+                "gegenkonto": "1200",
+                "sphare": "ideell",
+            }
+        )
+        await svc.create_booking(
+            {
+                "buchungsdatum": date(2024, 1, 1),
+                "betrag": Decimal("200.00"),
+                "beschreibung": "B",
+                "konto": "4100",
+                "gegenkonto": "1200",
+                "sphare": "zweckbetrieb",
+            }
+        )
 
         total = await svc.get_total_balance()
         assert total == Decimal("300.00")
@@ -273,14 +299,17 @@ class TestPaymentAndStatus:
         await session.flush()
 
         svc = FinanzenService(session)
-        rechnung = await svc.create_invoice(
-            member.id, Decimal("50.00"), "Test", date(2024, 1, 31)
-        )
+        rechnung = await svc.create_invoice(member.id, Decimal("50.00"), "Test", date(2024, 1, 31))
         zahlung = await svc.record_payment(
             rechnung.id, Decimal("50.00"), Zahlungsart.lastschrift, referenz="REF-001"
         )
         assert zahlung.referenz == "REF-001"
         assert zahlung.zahlungsart == Zahlungsart.lastschrift
+
+    async def test_record_payment_nonexistent_invoice(self, session):
+        svc = FinanzenService(session)
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await svc.record_payment(99999, Decimal("50.00"), "ueberweisung")
 
 
 class TestOverdueInvoices:
@@ -342,7 +371,10 @@ class TestSepaXml:
         root = ET.fromstring(xml_str)
 
         # Verify structure
-        assert root.tag == "{urn:iso:std:iso:20022:tech:xsd:pain.008.001.02}Document" or root.tag == "Document"
+        assert (
+            root.tag == "{urn:iso:std:iso:20022:tech:xsd:pain.008.001.02}Document"
+            or root.tag == "Document"
+        )
 
         # Find elements (with or without namespace)
         ns = {"ns": "urn:iso:std:iso:20022:tech:xsd:pain.008.001.02"}

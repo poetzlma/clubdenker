@@ -137,9 +137,7 @@ class ZugferdService:
         occ_dt_str = etree.SubElement(occ_dt, _udt("DateTimeString"), format="102")
         # Use leistungsdatum, or leistungszeitraum_von, or rechnungsdatum
         leistungsdatum = (
-            rechnung.leistungsdatum
-            or rechnung.leistungszeitraum_von
-            or rechnung.rechnungsdatum
+            rechnung.leistungsdatum or rechnung.leistungszeitraum_von or rechnung.rechnungsdatum
         )
         occ_dt_str.text = _fmt_date_102(leistungsdatum)
 
@@ -248,9 +246,7 @@ class ZugferdService:
         # Line trade agreement
         line_agreement = etree.SubElement(item, _ram("SpecifiedLineTradeAgreement"))
         net_price = etree.SubElement(line_agreement, _ram("NetPriceProductTradePrice"))
-        etree.SubElement(net_price, _ram("ChargeAmount")).text = _fmt_amount(
-            pos.einzelpreis_netto
-        )
+        etree.SubElement(net_price, _ram("ChargeAmount")).text = _fmt_amount(pos.einzelpreis_netto)
 
         # Line trade delivery
         line_delivery = etree.SubElement(item, _ram("SpecifiedLineTradeDelivery"))
@@ -265,12 +261,8 @@ class ZugferdService:
         line_settlement = etree.SubElement(item, _ram("SpecifiedLineTradeSettlement"))
         line_tax = etree.SubElement(line_settlement, _ram("ApplicableTradeTax"))
         etree.SubElement(line_tax, _ram("TypeCode")).text = "VAT"
-        etree.SubElement(line_tax, _ram("CategoryCode")).text = _tax_category_code(
-            pos.steuersatz
-        )
-        etree.SubElement(line_tax, _ram("RateApplicablePercent")).text = _fmt_amount(
-            pos.steuersatz
-        )
+        etree.SubElement(line_tax, _ram("CategoryCode")).text = _tax_category_code(pos.steuersatz)
+        etree.SubElement(line_tax, _ram("RateApplicablePercent")).text = _fmt_amount(pos.steuersatz)
 
         line_summation = etree.SubElement(
             line_settlement, _ram("SpecifiedTradeSettlementLineMonetarySummation")
@@ -311,7 +303,9 @@ class ZugferdService:
                     etree.SubElement(tax_el, _ram("ExemptionReason")).text = str(
                         group["exemption_reason"]
                     )
-                etree.SubElement(tax_el, _ram("BasisAmount")).text = _fmt_amount(Decimal(str(group["basis"])))
+                etree.SubElement(tax_el, _ram("BasisAmount")).text = _fmt_amount(
+                    Decimal(str(group["basis"]))
+                )
                 etree.SubElement(tax_el, _ram("CategoryCode")).text = _tax_category_code(rate)
                 etree.SubElement(tax_el, _ram("RateApplicablePercent")).text = _fmt_amount(rate)
         else:

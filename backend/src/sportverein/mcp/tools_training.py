@@ -40,9 +40,7 @@ def _anwesenheit_to_dict(a: Any) -> dict:
 
 
 @mcp.tool(
-    description=(
-        "Trainingsgruppen verwalten: auflisten, erstellen, aktualisieren, loeschen."
-    )
+    description=("Trainingsgruppen verwalten: auflisten, erstellen, aktualisieren, loeschen.")
 )
 async def training_verwalten(
     action: str,
@@ -65,9 +63,7 @@ async def training_verwalten(
         svc = TrainingService(session)
 
         if action == "list":
-            gruppen = await svc.list_trainingsgruppen(
-                abteilung_id=abteilung_id, aktiv=aktiv
-            )
+            gruppen = await svc.list_trainingsgruppen(abteilung_id=abteilung_id, aktiv=aktiv)
             await session.commit()
             return {"items": [_gruppe_to_dict(g) for g in gruppen]}
 
