@@ -79,13 +79,18 @@ class MitgliederService:
     async def _next_mitgliedsnummer(self) -> str:
         # Find the max existing number to avoid collisions
         result = await self.session.execute(
-            select(Mitglied.mitgliedsnummer).order_by(Mitglied.mitgliedsnummer.desc()).limit(1)
+            select(Mitglied.mitgliedsnummer)
+            .where(Mitglied.mitgliedsnummer.like("M-%"))
+            .order_by(Mitglied.mitgliedsnummer.desc())
+            .limit(1)
         )
         last: str | None = result.scalar_one_or_none()
         if last is not None:
-            # Extract numeric part from "M-XXXX"
-            num = int(last.split("-")[1])
-            return f"M-{num + 1:04d}"
+            try:
+                num = int(last.split("-")[1])
+                return f"M-{num + 1:04d}"
+            except (ValueError, IndexError):
+                pass
         return "M-0001"
 
     # -- CRUD ----------------------------------------------------------------
@@ -180,8 +185,10 @@ class MitgliederService:
         total_result = await self.session.execute(count_query)
         total = total_result.scalar_one()
 
-        # Sorting
-        sort_col = getattr(Mitglied, filters.sort_by, Mitglied.nachname)
+        # Sorting (allowlist to prevent accessing non-column attributes)
+        _ALLOWED_SORT = {"nachname", "vorname", "email", "mitgliedsnummer", "eintrittsdatum", "status", "beitragskategorie"}
+        sort_field = filters.sort_by if filters.sort_by in _ALLOWED_SORT else "nachname"
+        sort_col = getattr(Mitglied, sort_field, Mitglied.nachname)
         if filters.sort_order == "desc":
             sort_col = sort_col.desc()
         else:

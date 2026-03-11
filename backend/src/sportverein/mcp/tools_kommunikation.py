@@ -66,6 +66,10 @@ async def protokoll_anlegen(
     from sportverein.services.protokoll import ProtokollService
 
     effective_datum = datum or date_type.today().isoformat()
+    try:
+        date_type.fromisoformat(effective_datum)
+    except ValueError:
+        return {"error": f"Ungültiges Datum: {effective_datum}. Format: YYYY-MM-DD"}
     async with async_session() as session:
         svc = ProtokollService(session)
         p = await svc.create_protokoll(

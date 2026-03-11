@@ -353,14 +353,17 @@ async def leistungsverrechnung(
     """allocations: list of {kostenstelle_id: int, anteil: float, beschreibung?: str}"""
     async with get_mcp_session() as session:
         svc = FinanzenService(session)
-        parsed = [
-            {
-                "kostenstelle_id": a["kostenstelle_id"],
-                "anteil": Decimal(str(a["anteil"])),
-                "beschreibung": a.get("beschreibung"),
-            }
-            for a in allocations
-        ]
+        try:
+            parsed = [
+                {
+                    "kostenstelle_id": a["kostenstelle_id"],
+                    "anteil": Decimal(str(a["anteil"])),
+                    "beschreibung": a.get("beschreibung"),
+                }
+                for a in allocations
+            ]
+        except (KeyError, ValueError, TypeError) as exc:
+            return {"error": f"Ungültige allocations: {exc}. Erwartet: {{kostenstelle_id: int, anteil: float, beschreibung?: str}}"}
         try:
             children = await svc.allocate_shared_costs(buchung_id, parsed)
         except ValueError as exc:

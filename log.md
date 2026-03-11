@@ -722,3 +722,27 @@ Added `Query(1, ge=1)` for page and `Query(20, ge=1, le=100)` for page_size on a
 - Frontend: 120 passed
 - Total: 1091
 - Ruff: clean
+
+### Loop 35: Mitgliedsnummer Crash, Sort Injection, MCP Input Validation
+
+#### Bugs Found & Fixed
+| # | Bug | Severity | File |
+|---|-----|----------|------|
+| 49 | `_next_mitgliedsnummer` crashes on non-standard member number format (IndexError/ValueError) | Major | `services/mitglieder.py:87` |
+| 50 | `search_members` sort_by allows arbitrary attribute access via getattr -- potential crash on non-column attributes | Medium | `services/mitglieder.py:184` |
+| 51 | `leistungsverrechnung` MCP tool: missing `kostenstelle_id` or `anteil` in allocations dict raises unhandled KeyError | Medium | `mcp/tools_beitraege.py:356-361` |
+| 52 | `protokoll_anlegen` MCP tool: datum string passed without validation -- invalid dates stored in DB | Medium | `mcp/tools_kommunikation.py:68` |
+| 53 | `list_protokolle` API: invalid `typ` query param raises unhandled ValueError (500) | Medium | `api/dokumente.py:50` |
+
+#### Fix Details
+- Bug #49: Added `.where(LIKE "M-%")` filter and try/except guard (same pattern as beitraege fix)
+- Bug #50: Added allowlist of valid sort columns, falls back to "nachname"
+- Bug #51: Wrapped allocation parsing in try/except (KeyError, ValueError, TypeError)
+- Bug #52: Added date.fromisoformat() validation before passing to service
+- Bug #53: Added try/except ValueError around list_protokolle call, returns 400
+
+#### Test Counts
+- Backend: 971 passed
+- Frontend: 120 passed
+- Total: 1091
+- Ruff: clean
