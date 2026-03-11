@@ -652,6 +652,17 @@ class FinanzenService:
         if rechnung is None:
             raise ValueError(f"Rechnung {rechnung_id} nicht gefunden")
 
+        if betrag <= Decimal("0"):
+            raise ValueError("Zahlungsbetrag muss positiv sein.")
+
+        # Check for overpayment
+        current_open = rechnung.offener_betrag or rechnung.betrag
+        if betrag > current_open:
+            raise ValueError(
+                f"Zahlungsbetrag ({betrag}) übersteigt den offenen Betrag "
+                f"({current_open})."
+            )
+
         zahlung = Zahlung(
             rechnung_id=rechnung_id,
             betrag=betrag,

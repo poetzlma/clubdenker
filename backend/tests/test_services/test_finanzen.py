@@ -1101,3 +1101,56 @@ async def test_delete_draft_invoice_with_payments(session):
 
     with pytest.raises(ValueError, match="Zahlung"):
         await svc.delete_invoice(rechnung.id)
+
+
+class TestOverpaymentValidation:
+    async def test_record_payment_overpayment(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("100.00"),
+            beschreibung="Overpayment test",
+            faelligkeitsdatum=date(2024, 1, 31),
+        )
+
+        with pytest.raises(ValueError, match="übersteigt"):
+            await svc.record_payment(rechnung.id, Decimal("150.00"), "ueberweisung")
+
+    async def test_record_payment_negative_amount(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("100.00"),
+            beschreibung="Negative payment test",
+            faelligkeitsdatum=date(2024, 1, 31),
+        )
+
+        with pytest.raises(ValueError, match="positiv"):
+            await svc.record_payment(rechnung.id, Decimal("-50.00"), "ueberweisung")
+
+    async def test_record_payment_exact_amount(self, session):
+        member = _make_member()
+        session.add(member)
+        await session.flush()
+
+        svc = FinanzenService(session)
+        rechnung = await svc.create_invoice(
+            mitglied_id=member.id,
+            betrag=Decimal("100.00"),
+            beschreibung="Exact payment test",
+            faelligkeitsdatum=date(2024, 1, 31),
+        )
+
+        zahlung = await svc.record_payment(rechnung.id, Decimal("100.00"), "ueberweisung")
+        await session.refresh(rechnung)
+
+        assert zahlung.betrag == Decimal("100.00")
+        assert rechnung.status == RechnungStatus.bezahlt
