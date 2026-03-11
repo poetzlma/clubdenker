@@ -18,8 +18,3 @@ app.include_router(api_router)
 
 # Mount the MCP server at /mcp
 app.mount("/mcp", mcp.http_app())
-
-
-@app.get("/health")
-async def health_check() -> dict[str, str]:
-    return {"status": "ok"}

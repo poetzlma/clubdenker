@@ -1015,3 +1015,79 @@ async def test_sepa_xml_no_invoices(client):
         json={"rechnungen_ids": []},
     )
     assert resp.status_code == 400
+
+
+# -- Pagination edge-case tests ---------------------------------------------
+
+
+async def test_list_bookings_page_zero(client):
+    """GET /buchungen?page=0 should return 422 (validation) or default to page 1."""
+    resp = await client.get("/api/finanzen/buchungen", params={"page": 0})
+    # page=0 causes offset=(0-1)*20=-20 which is invalid;
+    # acceptable responses: 422 validation error, 400, or graceful fallback to page 1
+    assert resp.status_code in (200, 400, 422)
+    if resp.status_code == 200:
+        body = resp.json()
+        # If the API silently handles it, items should be empty or valid
+        assert isinstance(body["items"], list)
+
+
+async def test_list_bookings_negative_page_size(client):
+    """GET /buchungen?page_size=-1 should return 422 or handle gracefully."""
+    resp = await client.get("/api/finanzen/buchungen", params={"page_size": -1})
+    # negative page_size causes LIMIT -1 which is invalid in most DBs;
+    # acceptable: 422 validation error, 400, or graceful fallback
+    assert resp.status_code in (200, 400, 422)
+    if resp.status_code == 200:
+        body = resp.json()
+        assert isinstance(body["items"], list)
+
+
+async def test_list_bookings_large_page(client, session: AsyncSession):
+    """GET /buchungen?page=9999 should return empty items when no data at that offset."""
+    member = await _create_member(session)
+    await client.post(
+        "/api/finanzen/buchungen",
+        json={**BOOKING_DATA, "mitglied_id": member.id},
+    )
+
+    resp = await client.get("/api/finanzen/buchungen", params={"page": 9999})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["items"] == []
+    assert body["total"] == 1  # total reflects all records, not just this page
+
+
+async def test_list_rechnungen_pagination(client, session: AsyncSession):
+    """Create 3 invoices, GET with page_size=2, verify total=3 and items=2."""
+    member = await _create_member(session)
+    for i in range(3):
+        resp = await client.post(
+            "/api/finanzen/rechnungen",
+            json={
+                "mitglied_id": member.id,
+                "betrag": 100.00 + i,
+                "beschreibung": f"Invoice {i}",
+                "faelligkeitsdatum": "2026-12-31",
+            },
+        )
+        assert resp.status_code == 201
+
+    resp = await client.get(
+        "/api/finanzen/rechnungen", params={"page": 1, "page_size": 2}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 3
+    assert len(body["items"]) == 2
+    assert body["page"] == 1
+    assert body["page_size"] == 2
+
+    # Page 2 should have the remaining 1 item
+    resp2 = await client.get(
+        "/api/finanzen/rechnungen", params={"page": 2, "page_size": 2}
+    )
+    assert resp2.status_code == 200
+    body2 = resp2.json()
+    assert body2["total"] == 3
+    assert len(body2["items"]) == 1

@@ -230,8 +230,8 @@ async def list_bookings(
     date_from: date | None = None,
     date_to: date | None = None,
     mitglied_id: int | None = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     _token: ApiToken = Depends(get_current_token),
     session: AsyncSession = Depends(get_db_session),
 ) -> BuchungListResponse:
@@ -317,8 +317,8 @@ async def generate_sepa(
 async def list_invoices(
     rechnung_status: str | None = Query(None, alias="status"),
     mitglied_id: int | None = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     _token: ApiToken = Depends(get_current_token),
     session: AsyncSession = Depends(get_db_session),
 ) -> RechnungListResponse:
@@ -1109,8 +1109,8 @@ async def list_eingangsrechnungen(
     eingangsrechnung_status: str | None = Query(None, alias="status"),
     date_from: date | None = None,
     date_to: date | None = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     _token: ApiToken = Depends(get_current_token),
     session: AsyncSession = Depends(get_db_session),
 ) -> EingangsrechnungListResponse:

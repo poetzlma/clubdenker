@@ -366,6 +366,20 @@ async def test_cancel_member_not_found(client):
     assert resp.status_code == 404
 
 
+async def test_search_members_large_page(client):
+    """GET /mitglieder?page=9999 returns empty items when beyond available data."""
+    # Create a member so total > 0
+    await client.post(
+        "/api/mitglieder", json={**MEMBER_DATA, "email": "largepage@example.de"}
+    )
+
+    resp = await client.get("/api/mitglieder", params={"page": 9999})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["items"] == []
+    assert data["total"] == 1  # total reflects all records, not just this page
+
+
 async def test_stelle_rechnung_already_gestellt(client, session):
     """Create invoice, stelle it, stelle again - should return 400."""
 

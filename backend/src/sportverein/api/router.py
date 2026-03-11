@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from sportverein.api.agents import router as agents_router
 from sportverein.api.audit import router as audit_router
+from sportverein.api.health import router as health_router
 from sportverein.api.chat import router as chat_router
 from sportverein.api.dashboard import router as dashboard_router
 from sportverein.api.finanzen import router as finanzen_router
@@ -26,3 +27,4 @@ api_router.include_router(audit_router)
 api_router.include_router(setup_router)
 api_router.include_router(training_router)
 api_router.include_router(dokumente_router)
+api_router.include_router(health_router)
